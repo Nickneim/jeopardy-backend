@@ -6,8 +6,13 @@ public record ClueResponse(
         Long id,
         String question,
         String answer,
-        short rowNumber,
         ClueType clueType,
         String mediaUrl,
-        Long categoryId
+
+        Integer clueValue,
+        boolean isFinalClue,
+
+        Long categoryId,
+        String categoryName,
+        String categoryComments
 ) {}
