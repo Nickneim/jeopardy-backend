@@ -51,5 +51,21 @@ public class Game {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @OrderBy("columnNumber ASC")
+    private List<Category> categories = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "game",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<GameDailyDouble> dailyDoubles = new ArrayList<>();
+
+    public List<Category> getCategories() {
+        return categories;
+    }
+
+    public List<GameDailyDouble> getDailyDoubles() {
+        return dailyDoubles;
+    }
 }
