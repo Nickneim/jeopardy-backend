@@ -10,6 +10,8 @@ public record GameResponse(
         String season,
         List<GameCategoryResponse> jeopardyRound,
         List<GameCategoryResponse> doubleJeopardyRound,
-        GameCategoryResponse finalJeopardy
+        GameCategoryResponse finalJeopardy,
+
+        List<Long> dailyDoubleClueIds
 ) {
 }

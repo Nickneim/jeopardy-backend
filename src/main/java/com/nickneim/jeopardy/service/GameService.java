@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.dto.GameResponse;
 import com.nickneim.jeopardy.entity.Category;
 import com.nickneim.jeopardy.entity.Clue;
 import com.nickneim.jeopardy.entity.Game;
+import com.nickneim.jeopardy.entity.GameDailyDouble;
 import com.nickneim.jeopardy.repository.GameRepository;
 import org.springframework.stereotype.Service;
 
@@ -55,6 +56,9 @@ public class GameService {
         );
     }
 
+    private static Long getClueIdFromGameDailyDouble(GameDailyDouble gameDailyDouble) {
+        return gameDailyDouble.getClue().getId();
+    }
 
     public GameResponse getGame(Long gameId) {
         Game game = gameRepository.findById(gameId)
@@ -66,6 +70,8 @@ public class GameService {
         List<GameCategoryResponse> doubleJeopardyRound = categories.stream().filter(category -> category.columnNumber() > 6 && category.columnNumber() <= 12).toList();
         GameCategoryResponse finalJeopardy = categories.stream().filter(category -> category.columnNumber() == 13).findAny().orElse(null);
 
+        List<Long> dailyDoubleClueIds = game.getDailyDoubles().stream().map(GameService::getClueIdFromGameDailyDouble).toList();
+
         return new GameResponse(
                 game.getId(),
                 game.getTitle(),
@@ -73,7 +79,8 @@ public class GameService {
                 game.getSeason(),
                 jeopardyRound,
                 doubleJeopardyRound,
-                finalJeopardy
+                finalJeopardy,
+                dailyDoubleClueIds
         );
     }
 }
