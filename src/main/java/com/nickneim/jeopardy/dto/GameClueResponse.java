@@ -9,5 +9,5 @@ public record GameClueResponse(
     ClueType clueType,
     String mediaUrl,
 
-    Integer clueValue
+    Integer value
 ) {}
