@@ -22,19 +22,6 @@ public class GameService {
         this.gameRepository = gameRepository;
     }
 
-    private static int getClueValue(Clue clue) {
-        short categoryColumn = clue.getCategory().getColumnNumber();
-        short clueRow = clue.getRowNumber();
-
-        if (categoryColumn <= 6) {
-            return 100 * clueRow;
-        }
-        if (categoryColumn <= 12) {
-            return 200 * clueRow;
-        }
-        return 2000;
-    }
-
     private static GameClueResponse getGameClue(Clue clue) {
         return new GameClueResponse(
                 clue.getId(),
@@ -42,7 +29,7 @@ public class GameService {
                 clue.getAnswer(),
                 clue.getClueType(),
                 clue.getMediaUrl(),
-                getClueValue(clue)
+                clue.getValue()
         );
     }
 

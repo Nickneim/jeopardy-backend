@@ -88,4 +88,21 @@ public class Clue {
         return category;
     }
 
+    public int getValue() {
+        short column = category.getColumnNumber();
+        short row = rowNumber;
+        if (column <= 6) {
+            return 100 * row;
+        }
+
+        if (column <= 12) {
+            return 200 * row;
+        }
+
+        return 2000;
+    }
+
+    public boolean isFinalClue() {
+        return category.getColumnNumber() == 13;
+    }
 }

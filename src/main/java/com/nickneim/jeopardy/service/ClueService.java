@@ -14,23 +14,6 @@ public class ClueService {
         this.clueRepository = clueRepository;
     }
 
-    private static int getClueValue(Clue clue) {
-        short categoryColumn = clue.getCategory().getColumnNumber();
-        short clueRow = clue.getRowNumber();
-
-        if (categoryColumn <= 6) {
-            return 100 * clueRow;
-        }
-        if (categoryColumn <= 12) {
-            return 200 * clueRow;
-        }
-        return 2000;
-    }
-
-    private boolean isFinalClue(Clue clue) {
-        return clue.getCategory().getColumnNumber() == 13;
-    }
-
     public ClueResponse getClue(Long id) {
         Clue clue = clueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Clue not found: " + id));
@@ -42,8 +25,8 @@ public class ClueService {
                 clue.getClueType(),
                 clue.getMediaUrl(),
 
-                getClueValue(clue),
-                isFinalClue(clue),
+                clue.getValue(),
+                clue.isFinalClue(),
 
                 clue.getCategory().getId(),
                 clue.getCategory().getName(),
