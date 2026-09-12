@@ -9,7 +9,7 @@ public record ClueResponse(
         ClueType clueType,
         String mediaUrl,
 
-        Integer clueValue,
+        Integer value,
         boolean isFinalClue,
 
         Long categoryId,
