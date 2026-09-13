@@ -4,10 +4,7 @@ package com.nickneim.jeopardy.service;
 import com.nickneim.jeopardy.dto.GameCategoryResponse;
 import com.nickneim.jeopardy.dto.GameClueResponse;
 import com.nickneim.jeopardy.dto.GameResponse;
-import com.nickneim.jeopardy.entity.Category;
-import com.nickneim.jeopardy.entity.Clue;
-import com.nickneim.jeopardy.entity.Game;
-import com.nickneim.jeopardy.entity.GameDailyDouble;
+import com.nickneim.jeopardy.entity.*;
 import com.nickneim.jeopardy.repository.GameRepository;
 import org.springframework.stereotype.Service;
 
@@ -51,11 +48,9 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found: " + gameId));
 
-
-        List<GameCategoryResponse> categories = game.getCategories().stream().map(GameService::getGameCategory).toList();
-        List<GameCategoryResponse> jeopardyRound = categories.stream().filter(gameCategoryResponse -> gameCategoryResponse.columnNumber() <= 6).toList();
-        List<GameCategoryResponse> doubleJeopardyRound = categories.stream().filter(category -> category.columnNumber() > 6 && category.columnNumber() <= 12).toList();
-        GameCategoryResponse finalJeopardy = categories.stream().filter(category -> category.columnNumber() == 13).findAny().orElse(null);
+        List<GameCategoryResponse> jeopardyRound = game.getCategories().stream().filter(Category::isJeopardyRound).map(GameService::getGameCategory).toList();
+        List<GameCategoryResponse> doubleJeopardyRound = game.getCategories().stream().filter(Category::isDoubleJeopardyRound).map(GameService::getGameCategory).toList();
+        GameCategoryResponse finalJeopardy = game.getCategories().stream().filter(Category::isFinalJeopardy).map(GameService::getGameCategory).findFirst().orElse(null);
 
         List<Long> dailyDoubleClueIds = game.getDailyDoubles().stream().map(GameService::getClueIdFromGameDailyDouble).toList();
 
