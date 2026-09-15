@@ -1,22 +1,31 @@
 package com.nickneim.jeopardy.service;
 
 import com.nickneim.jeopardy.dto.GameResponse;
+import com.nickneim.jeopardy.dto.GameSummaryResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.entity.Category;
 import com.nickneim.jeopardy.entity.Clue;
 import com.nickneim.jeopardy.entity.ClueType;
 import com.nickneim.jeopardy.entity.Game;
 import com.nickneim.jeopardy.entity.GameDailyDouble;
+import com.nickneim.jeopardy.exception.GameNotFoundException;
 import com.nickneim.jeopardy.repository.GameRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -196,10 +205,132 @@ class GameServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                RuntimeException.class,
+                GameNotFoundException.class,
                 () -> gameService.getGame(123L)
         );
 
         verify(gameRepository).findById(123L);
+    }
+
+    @Test
+    void getGames_returnsPaginatedGameSummaries() {
+        Game game1 = new Game(
+                "Show #100",
+                LocalDate.of(2025, 2, 1),
+                "40"
+        );
+
+        Game game2 = new Game(
+                "Show #101",
+                LocalDate.of(2025, 2, 2),
+                "40"
+        );
+
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(game2, game1),
+                Pageable.ofSize(20),
+                2
+        );
+
+        when(gameRepository.findAll(any(Pageable.class)))
+                .thenReturn(gamePage);
+
+        PageResponse<GameSummaryResponse> response =
+                gameService.getGames(0, 20);
+
+        assertEquals(0, response.page());
+        assertEquals(20, response.size());
+        assertEquals(2, response.totalElements());
+        assertEquals(1, response.totalPages());
+
+        assertEquals(2, response.content().size());
+
+        assertEquals(
+                game2.getTitle(),
+                response.content().get(0).title()
+        );
+        assertEquals(
+                game2.getGameDate(),
+                response.content().get(0).gameDate()
+        );
+        assertEquals(
+                game2.getSeason(),
+                response.content().get(0).season()
+        );
+
+        assertEquals(
+                game1.getTitle(),
+                response.content().get(1).title()
+        );
+    }
+
+    @Test
+    void getGames_returnsEmptyPageWhenNoGamesExist() {
+        Page<Game> emptyPage = new PageImpl<>(
+                List.of(),
+                Pageable.ofSize(20),
+                0
+        );
+
+        when(gameRepository.findAll(any(Pageable.class)))
+                .thenReturn(emptyPage);
+
+        PageResponse<GameSummaryResponse> response =
+                gameService.getGames(0, 20);
+
+        assertTrue(response.content().isEmpty());
+        assertEquals(0, response.page());
+        assertEquals(20, response.size());
+        assertEquals(0, response.totalElements());
+        assertEquals(0, response.totalPages());
+
+        verify(gameRepository).findAll(any(Pageable.class));
+    }
+
+    @Test
+    void getGames_requestsCorrectPageAndSize() {
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(),
+                Pageable.ofSize(10).withPage(2),
+                25
+        );
+
+        when(gameRepository.findAll(any(Pageable.class)))
+                .thenReturn(gamePage);
+
+        gameService.getGames(2, 10);
+
+        verify(gameRepository).findAll(
+                argThat((Pageable pageable) ->
+                        pageable.getPageNumber() == 2
+                                && pageable.getPageSize() == 10
+                )
+        );
+    }
+
+    @Test
+    void getGames_sortsByGameDateDescendingThenIdDescending() {
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(),
+                Pageable.ofSize(20),
+                0
+        );
+
+        when(gameRepository.findAll(any(Pageable.class)))
+                .thenReturn(gamePage);
+
+        gameService.getGames(0, 20);
+
+        verify(gameRepository).findAll(
+                argThat((Pageable pageable) -> {
+                    var orders = pageable.getSort().toList();
+
+                    return orders.size() == 2
+                            && orders.get(0).getProperty().equals("gameDate")
+                            && orders.get(0).isDescending()
+                            && orders.get(1).getProperty().equals("id")
+                            && orders.get(1).isDescending();
+                })
+        );
     }
 }
