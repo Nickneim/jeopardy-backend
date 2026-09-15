@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.service;
 
 import com.nickneim.jeopardy.dto.*;
 import com.nickneim.jeopardy.entity.*;
+import com.nickneim.jeopardy.exception.GameNotFoundException;
 import com.nickneim.jeopardy.repository.GameRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,9 +47,9 @@ public class GameService {
         return gameDailyDouble.getClue().getId();
     }
 
-    public GameResponse getGame(Long gameId) {
-        Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new RuntimeException("Game not found: " + gameId));
+    public GameResponse getGame(Long id) {
+        Game game = gameRepository.findById(id)
+                .orElseThrow(() -> new GameNotFoundException(id));
 
         List<GameCategoryResponse> jeopardyRound = game.getCategories().stream().filter(Category::isJeopardyRound).map(GameService::getGameCategory).toList();
         List<GameCategoryResponse> doubleJeopardyRound = game.getCategories().stream().filter(Category::isDoubleJeopardyRound).map(GameService::getGameCategory).toList();
