@@ -1,11 +1,10 @@
 package com.nickneim.jeopardy.controller;
 
 import com.nickneim.jeopardy.dto.GameResponse;
+import com.nickneim.jeopardy.dto.GameSummaryResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.service.GameService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/games")
@@ -20,5 +19,13 @@ public class GameController {
     @GetMapping("/{id}")
     public GameResponse getClue(@PathVariable Long id) {
         return gameService.getGame(id);
+    }
+
+    @GetMapping
+    public PageResponse<GameSummaryResponse> getGames(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return gameService.getGames(page, size);
     }
 }

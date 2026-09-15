@@ -1,11 +1,13 @@
 package com.nickneim.jeopardy.service;
 
 
-import com.nickneim.jeopardy.dto.GameCategoryResponse;
-import com.nickneim.jeopardy.dto.GameClueResponse;
-import com.nickneim.jeopardy.dto.GameResponse;
+import com.nickneim.jeopardy.dto.*;
 import com.nickneim.jeopardy.entity.*;
 import com.nickneim.jeopardy.repository.GameRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -65,4 +67,35 @@ public class GameService {
                 dailyDoubleClueIds
         );
     }
+
+    public PageResponse<GameSummaryResponse> getGames(int page, int size) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("gameDate"),
+                        Sort.Order.desc("id")
+                )
+        );
+
+        Page<Game> games = gameRepository.findAll(pageable);
+
+        List<GameSummaryResponse> content = games.getContent()
+                .stream()
+                .map(game -> new GameSummaryResponse(
+                        game.getId(),
+                        game.getTitle(),
+                        game.getGameDate(),
+                        game.getSeason()
+                ))
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                games.getNumber(),
+                games.getSize(),
+                games.getTotalElements(),
+                games.getTotalPages()
+        );
+    }
+
 }
