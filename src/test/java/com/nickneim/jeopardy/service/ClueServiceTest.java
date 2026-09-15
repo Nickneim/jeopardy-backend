@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.entity.Category;
 import com.nickneim.jeopardy.entity.Clue;
 import com.nickneim.jeopardy.entity.ClueType;
 import com.nickneim.jeopardy.entity.Game;
+import com.nickneim.jeopardy.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.repository.ClueRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -77,7 +78,7 @@ class ClueServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(
-                RuntimeException.class,
+                ClueNotFoundException.class,
                 () -> clueService.getClue(123L)
         );
 

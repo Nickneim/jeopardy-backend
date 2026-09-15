@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.controller;
 
 import com.nickneim.jeopardy.dto.ClueResponse;
 import com.nickneim.jeopardy.entity.ClueType;
+import com.nickneim.jeopardy.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.service.ClueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,5 +61,22 @@ class ClueControllerTest {
                     """));
 
         verify(clueService).getClue(123L);
+    }
+
+    @Test
+    void getClue_returnsNotFoundWhenClueDoesNotExist() throws Exception {
+        when(clueService.getClue(999L))
+                .thenThrow(new ClueNotFoundException(999L));
+
+        mockMvc.perform(get("/api/clues/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().json("""
+                    {
+                        "status": 404,
+                        "message": "Clue not found: 999"
+                    }
+                    """));
+
+        verify(clueService).getClue(999L);
     }
 }
