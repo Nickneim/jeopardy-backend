@@ -1,5 +1,5 @@
 DELETE FROM game
-WHERE title = 'Game Integration Test Game';
+WHERE title LIKE 'Game Integration Test Game%';
 
 ALTER TABLE game ALTER COLUMN id RESTART WITH 1;
 ALTER TABLE category ALTER COLUMN id RESTART WITH 1;
