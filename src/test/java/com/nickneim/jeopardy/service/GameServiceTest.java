@@ -151,7 +151,7 @@ class GameServiceTest {
                 jeopardyClue.getMediaUrl(),
                 jeopardyClueResponse.mediaUrl()
         );
-        assertEquals(jeopardyClue.getValue(), jeopardyClueResponse.value());
+        assertEquals(jeopardyClue.getRowNumber(), jeopardyClueResponse.rowNumber());
 
         var doubleJeopardyResponse =
                 response.doubleJeopardyRound().getFirst();
@@ -168,7 +168,7 @@ class GameServiceTest {
                 doubleJeopardyClue.getQuestion(),
                 doubleJeopardyClueResponse.question()
         );
-        assertEquals(doubleJeopardyClue.getValue(), doubleJeopardyClueResponse.value());
+        assertEquals(doubleJeopardyClue.getRowNumber(), doubleJeopardyClueResponse.rowNumber());
 
         var finalResponse = response.finalJeopardy();
 
@@ -184,7 +184,7 @@ class GameServiceTest {
         var finalClueResponse = finalResponse.clues().getFirst();
 
         assertEquals(finalClue.getQuestion(), finalClueResponse.question());
-        assertEquals(finalClue.getValue(), finalClueResponse.value());
+        assertEquals(finalClue.getRowNumber(), finalClueResponse.rowNumber());
 
         assertEquals(
                 1,

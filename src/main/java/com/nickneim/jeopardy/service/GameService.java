@@ -29,7 +29,7 @@ public class GameService {
                 clue.getAnswer(),
                 clue.getClueType(),
                 clue.getMediaUrl(),
-                clue.getValue()
+                clue.getRowNumber()
         );
     }
 
