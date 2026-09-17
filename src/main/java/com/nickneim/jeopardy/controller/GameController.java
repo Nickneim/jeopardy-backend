@@ -28,8 +28,9 @@ public class GameController {
     @GetMapping
     public PageResponse<GameSummaryResponse> getGames(
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) String season
     ) {
-        return gameService.getGames(page, size);
+        return gameService.getGames(page, size, season);
     }
 }

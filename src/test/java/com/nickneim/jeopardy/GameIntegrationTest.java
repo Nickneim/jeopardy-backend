@@ -147,4 +147,28 @@ class GameIntegrationTest {
                 });
     }
 
+    @Test
+    void getGames_returnsRequestedSeason() {
+        restTestClient.get()
+                .uri("/api/games?season=39")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .value(body -> {
+                    assertThat(body.page()).isEqualTo(0);
+                    assertThat(body.size()).isEqualTo(20);
+                    assertThat(body.totalElements()).isEqualTo(3);
+                    assertThat(body.totalPages()).isEqualTo(1);
+
+                    assertThat(body.content()).hasSize(3);
+
+                    assertThat(body.content().get(0).title())
+                            .isEqualTo("Game Integration Test Game 25");
+                    assertThat(body.content().get(1).title())
+                            .isEqualTo("Game Integration Test Game 24");
+                    assertThat(body.content().get(2).title())
+                            .isEqualTo("Game Integration Test Game 23");
+                });
+    }
 }

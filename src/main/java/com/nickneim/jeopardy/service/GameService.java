@@ -69,7 +69,7 @@ public class GameService {
         );
     }
 
-    public PageResponse<GameSummaryResponse> getGames(int page, int size) {
+    public PageResponse<GameSummaryResponse> getGames(int page, int size, String season) {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -78,7 +78,13 @@ public class GameService {
                 )
         );
 
-        Page<Game> games = gameRepository.findAll(pageable);
+        Page<Game> games;
+        if (season == null) {
+            games = gameRepository.findAll(pageable);
+        } else {
+            games = gameRepository.findBySeason(season, pageable);
+        }
+
 
         List<GameSummaryResponse> content = games.getContent()
                 .stream()

@@ -105,6 +105,6 @@ VALUES
     ('Game Integration Test Game 20', '2025-02-19', '40'),
     ('Game Integration Test Game 21', '2025-02-20', '40'),
     ('Game Integration Test Game 22', '2025-02-21', '40'),
-    ('Game Integration Test Game 23', '2025-02-22', '40'),
-    ('Game Integration Test Game 24', '2025-02-23', '40'),
-    ('Game Integration Test Game 25', '2025-02-24', '40');
+    ('Game Integration Test Game 23', '2025-02-22', '39'),
+    ('Game Integration Test Game 24', '2025-02-23', '39'),
+    ('Game Integration Test Game 25', '2025-02-24', '39');

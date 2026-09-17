@@ -24,8 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -236,7 +235,7 @@ class GameServiceTest {
                 .thenReturn(gamePage);
 
         PageResponse<GameSummaryResponse> response =
-                gameService.getGames(0, 20);
+                gameService.getGames(0, 20, null);
 
         assertEquals(0, response.page());
         assertEquals(20, response.size());
@@ -276,7 +275,7 @@ class GameServiceTest {
                 .thenReturn(emptyPage);
 
         PageResponse<GameSummaryResponse> response =
-                gameService.getGames(0, 20);
+                gameService.getGames(0, 20, null);
 
         assertTrue(response.content().isEmpty());
         assertEquals(0, response.page());
@@ -298,7 +297,7 @@ class GameServiceTest {
         when(gameRepository.findAll(any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        gameService.getGames(2, 10);
+        gameService.getGames(2, 10, null);
 
         verify(gameRepository).findAll(
                 argThat((Pageable pageable) ->
@@ -319,7 +318,7 @@ class GameServiceTest {
         when(gameRepository.findAll(any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        gameService.getGames(0, 20);
+        gameService.getGames(0, 20, null);
 
         verify(gameRepository).findAll(
                 argThat((Pageable pageable) -> {
@@ -331,6 +330,37 @@ class GameServiceTest {
                             && orders.get(1).getProperty().equals("id")
                             && orders.get(1).isDescending();
                 })
+        );
+    }
+
+    @Test
+    void getGames_filtersBySeason() {
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "39"
+        );
+
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(game),
+                Pageable.ofSize(20).withPage(0),
+                1
+        );
+
+        when(gameRepository.findBySeason(eq("39"), any(Pageable.class)))
+                .thenReturn(gamePage);
+
+        PageResponse<GameSummaryResponse> response =
+                gameService.getGames(0, 20, "39");
+
+        assertEquals(1, response.content().size());
+        assertEquals("Show #123", response.content().get(0).title());
+        assertEquals("39", response.content().get(0).season());
+        assertEquals(1, response.totalElements());
+
+        verify(gameRepository).findBySeason(
+                eq("39"),
+                any(Pageable.class)
         );
     }
 }

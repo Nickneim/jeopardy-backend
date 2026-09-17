@@ -104,7 +104,7 @@ class GameControllerTest {
                 3
         );
 
-        when(gameService.getGames(1, 20))
+        when(gameService.getGames(1, 20, null))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/games")
@@ -134,7 +134,7 @@ class GameControllerTest {
                     }
                     """));
 
-        verify(gameService).getGames(1, 20);
+        verify(gameService).getGames(1, 20, null);
     }
 
     @Test
@@ -147,7 +147,7 @@ class GameControllerTest {
                 0
         );
 
-        when(gameService.getGames(0, 20))
+        when(gameService.getGames(0, 20, null))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/games"))
@@ -162,7 +162,7 @@ class GameControllerTest {
                     }
                     """));
 
-        verify(gameService).getGames(0, 20);
+        verify(gameService).getGames(0, 20, null);
     }
 
     @Test
@@ -211,5 +211,62 @@ class GameControllerTest {
                     """));
 
         verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_returnsGamesForRequestedSeason() throws Exception {
+        PageResponse<GameSummaryResponse> response = new PageResponse<>(
+                List.of(
+                        new GameSummaryResponse(
+                                123L,
+                                "Show #123",
+                                LocalDate.of(2025, 1, 1),
+                                "39"
+                        ),
+                        new GameSummaryResponse(
+                                122L,
+                                "Show #122",
+                                LocalDate.of(2025, 1, 1),
+                                "39"
+                        )
+                ),
+                1,
+                20,
+                42,
+                3
+        );
+
+        when(gameService.getGames(1, 20, "39"))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/games")
+                        .param("page", "1")
+                        .param("size", "20")
+                        .param("season", "39"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                    {
+                        "content": [
+                            {
+                                "id": 123,
+                                "title": "Show #123",
+                                "gameDate": "2025-01-01",
+                                "season": "39"
+                            },
+                            {
+                                "id": 122,
+                                "title": "Show #122",
+                                "gameDate": "2025-01-01",
+                                "season": "39"
+                            }
+                        ],
+                        "page": 1,
+                        "size": 20,
+                        "totalElements": 42,
+                        "totalPages": 3
+                    }
+                    """));
+
+        verify(gameService).getGames(1, 20, "39");
     }
 }
