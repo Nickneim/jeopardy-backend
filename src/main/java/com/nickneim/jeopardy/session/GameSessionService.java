@@ -1,0 +1,37 @@
+package com.nickneim.jeopardy.session;
+
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+public class GameSessionService {
+
+    private final Map<UUID, GameSession> sessions =
+            new ConcurrentHashMap<>();
+
+    public GameSession createSession() {
+        UUID id = UUID.randomUUID();
+
+        GameSession session = new GameSession(id);
+        sessions.put(id, session);
+
+        return session;
+    }
+
+    public GameSession getSession(UUID id) {
+        GameSession session = sessions.get(id);
+
+        if (session == null) {
+            throw new GameSessionNotFoundException(id);
+        }
+
+        return session;
+    }
+
+    public void removeSession(UUID id) {
+        sessions.remove(id);
+    }
+}
