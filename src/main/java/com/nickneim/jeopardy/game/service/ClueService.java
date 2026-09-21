@@ -19,19 +19,6 @@ public class ClueService {
         Clue clue = clueRepository.findById(id)
                 .orElseThrow(() -> new ClueNotFoundException(id));
 
-        return new ClueResponse(
-                clue.getId(),
-                clue.getQuestion(),
-                clue.getAnswer(),
-                clue.getClueType(),
-                clue.getMediaUrl(),
-
-                clue.getValue(),
-                clue.isFinalClue(),
-
-                clue.getCategory().getId(),
-                clue.getCategory().getName(),
-                clue.getCategory().getComments()
-        );
+        return ClueResponse.from(clue);
     }
 }

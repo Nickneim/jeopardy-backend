@@ -21,7 +21,7 @@ public class GameSessionController {
     public CreateGameSessionResponse createSession() {
         GameSession session = gameSessionService.createSession();
 
-        return new CreateGameSessionResponse(session.getId());
+        return CreateGameSessionResponse.from(session);
     }
 
 }

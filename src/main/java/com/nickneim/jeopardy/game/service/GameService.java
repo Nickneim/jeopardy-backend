@@ -25,51 +25,12 @@ public class GameService {
         this.gameRepository = gameRepository;
     }
 
-    private static GameClueResponse getGameClue(Clue clue) {
-        return new GameClueResponse(
-                clue.getId(),
-                clue.getQuestion(),
-                clue.getAnswer(),
-                clue.getClueType(),
-                clue.getMediaUrl(),
-                clue.getRowNumber()
-        );
-    }
-
-    private static GameCategoryResponse getGameCategory(Category category) {
-        return new GameCategoryResponse(
-                category.getId(),
-                category.getName(),
-                category.getComments(),
-                category.getColumnNumber(),
-                category.getClues().stream().map(GameService::getGameClue).toList()
-        );
-    }
-
-    private static Long getClueIdFromGameDailyDouble(GameDailyDouble gameDailyDouble) {
-        return gameDailyDouble.getClue().getId();
-    }
 
     public GameResponse getGame(Long id) {
         Game game = gameRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
 
-        List<GameCategoryResponse> jeopardyRound = game.getCategories().stream().filter(Category::isJeopardyRound).map(GameService::getGameCategory).toList();
-        List<GameCategoryResponse> doubleJeopardyRound = game.getCategories().stream().filter(Category::isDoubleJeopardyRound).map(GameService::getGameCategory).toList();
-        GameCategoryResponse finalJeopardy = game.getCategories().stream().filter(Category::isFinalJeopardy).map(GameService::getGameCategory).findFirst().orElse(null);
-
-        List<Long> dailyDoubleClueIds = game.getDailyDoubles().stream().map(GameService::getClueIdFromGameDailyDouble).toList();
-
-        return new GameResponse(
-                game.getId(),
-                game.getTitle(),
-                game.getGameDate(),
-                game.getSeason(),
-                jeopardyRound,
-                doubleJeopardyRound,
-                finalJeopardy,
-                dailyDoubleClueIds
-        );
+        return GameResponse.from(game);
     }
 
     public PageResponse<GameSummaryResponse> getGames(int page, int size, String season) {
@@ -91,12 +52,7 @@ public class GameService {
 
         List<GameSummaryResponse> content = games.getContent()
                 .stream()
-                .map(game -> new GameSummaryResponse(
-                        game.getId(),
-                        game.getTitle(),
-                        game.getGameDate(),
-                        game.getSeason()
-                ))
+                .map(GameSummaryResponse::from)
                 .toList();
 
         return new PageResponse<>(
