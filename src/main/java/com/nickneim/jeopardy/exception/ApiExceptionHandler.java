@@ -1,6 +1,8 @@
 package com.nickneim.jeopardy.exception;
 
-import com.nickneim.jeopardy.dto.ApiErrorResponse;
+import com.nickneim.jeopardy.game.dto.ApiErrorResponse;
+import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
+import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
