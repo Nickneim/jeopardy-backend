@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.dto.ClueResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
@@ -30,7 +29,7 @@ class ClueServiceTest {
     private ClueService clueService;
 
     @Test
-    void getClue_mapsClueToResponse() throws Exception {
+    void getClue_returnsClue() {
         Game game = new Game(
                 "Show #123",
                 LocalDate.of(2025, 1, 1),
@@ -56,20 +55,12 @@ class ClueServiceTest {
         when(clueRepository.findById(123L))
                 .thenReturn(Optional.of(clue));
 
-        ClueResponse response = clueService.getClue(123L);
 
-        assertEquals(clue.getId(), response.id());
-        assertEquals(clue.getQuestion(), response.question());
-        assertEquals(clue.getAnswer(), response.answer());
-        assertEquals(clue.getClueType(), response.clueType());
-        assertEquals(clue.getMediaUrl(), response.mediaUrl());
+        Clue returnedClue = clueService.getClue(123L);
 
-        assertEquals(clue.getValue(), response.value());
-        assertEquals(clue.isFinalClue(), response.isFinalClue());
+        assertEquals(clue, returnedClue);
 
-        assertEquals(category.getId(), response.categoryId());
-        assertEquals(category.getName(), response.categoryName());
-        assertEquals(category.getComments(), response.categoryComments());
+        verify(clueRepository).findById(123L);
     }
 
     @Test

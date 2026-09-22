@@ -1,14 +1,19 @@
 package com.nickneim.jeopardy.game.controller;
 
-import com.nickneim.jeopardy.game.dto.ClueResponse;
+import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
+import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.service.ClueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDate;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,42 +31,55 @@ class ClueControllerTest {
     private ClueService clueService;
 
     @Test
-    void getClue_returnsClue() throws Exception {
-        ClueResponse response = new ClueResponse(
-                123L,
-                "Who was the first president of the United States?",
-                "Who is George Washington?",
-                ClueType.TEXT,
-                null,
-                300,
-                false,
-                456L,
-                "HISTORY",
-                "Some comments"
+    void getClue_returnsClueResponse() throws Exception {
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
         );
 
+        Category category = new Category(
+                "HISTORY",
+                (short) 1,
+                "Some comments",
+                game
+        );
+
+        Clue clue = new Clue(
+                "Who was the first president of the United States?",
+                "Who is George Washington?",
+                (short) 3,
+                ClueType.TEXT,
+                null,
+                category
+        );
+
+        ReflectionTestUtils.setField(category, "id", 456L);
+        ReflectionTestUtils.setField(clue, "id", 123L);
+
         when(clueService.getClue(123L))
-                .thenReturn(response);
+                .thenReturn(clue);
 
         mockMvc.perform(get("/api/clues/123"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                    {
-                        "id": 123,
-                        "question": "Who was the first president of the United States?",
-                        "answer": "Who is George Washington?",
-                        "clueType": "TEXT",
-                        "mediaUrl": null,
-                        "value": 300,
-                        "isFinalClue": false,
-                        "categoryId": 456,
-                        "categoryName": "HISTORY",
-                        "categoryComments": "Some comments"
-                    }
-                    """));
+                {
+                    "id": 123,
+                    "question": "Who was the first president of the United States?",
+                    "answer": "Who is George Washington?",
+                    "clueType": "TEXT",
+                    "mediaUrl": null,
+                    "value": 300,
+                    "isFinalClue": false,
+                    "categoryId": 456,
+                    "categoryName": "HISTORY",
+                    "categoryComments": "Some comments"
+                }
+                """));
 
         verify(clueService).getClue(123L);
     }
+
 
     @Test
     void getClue_returnsNotFoundWhenClueDoesNotExist() throws Exception {
@@ -80,3 +98,4 @@ class ClueControllerTest {
         verify(clueService).getClue(999L);
     }
 }
+

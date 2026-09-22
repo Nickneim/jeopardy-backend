@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.dto.ClueResponse;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.repository.ClueRepository;
@@ -15,10 +14,8 @@ public class ClueService {
         this.clueRepository = clueRepository;
     }
 
-    public ClueResponse getClue(Long id) {
-        Clue clue = clueRepository.findById(id)
+    public Clue getClue(Long id) {
+        return clueRepository.findById(id)
                 .orElseThrow(() -> new ClueNotFoundException(id));
-
-        return ClueResponse.from(clue);
     }
 }
