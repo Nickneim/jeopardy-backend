@@ -1,13 +1,14 @@
 package com.nickneim.jeopardy.game.controller;
 
-import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
-import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -202,84 +203,82 @@ class GameControllerTest {
 
     @Test
     void getGames_returnsGamesForRequestedPage() throws Exception {
-        PageResponse<GameSummaryResponse> response = new PageResponse<>(
-                List.of(
-                        new GameSummaryResponse(
-                                123L,
-                                "Show #123",
-                                LocalDate.of(2025, 1, 1),
-                                "40"
-                        ),
-                        new GameSummaryResponse(
-                                122L,
-                                "Show #122",
-                                LocalDate.of(2025, 1, 1),
-                                "40"
-                        )
-                ),
-                1,
-                20,
-                42,
-                3
+        Game game1 = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+
+        Game game2 = new Game(
+                "Show #122",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+
+        ReflectionTestUtils.setField(game1, "id", 123L);
+        ReflectionTestUtils.setField(game2, "id", 122L);
+
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(game1, game2),
+                PageRequest.of(1, 20),
+                42
         );
 
         when(gameService.getGames(1, 20, null))
-                .thenReturn(response);
+                .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
                         .param("page", "1")
                         .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                    {
-                        "content": [
-                            {
-                                "id": 123,
-                                "title": "Show #123",
-                                "gameDate": "2025-01-01",
-                                "season": "40"
-                            },
-                            {
-                                "id": 122,
-                                "title": "Show #122",
-                                "gameDate": "2025-01-01",
-                                "season": "40"
-                            }
-                        ],
-                        "page": 1,
-                        "size": 20,
-                        "totalElements": 42,
-                        "totalPages": 3
-                    }
-                    """));
+                {
+                    "content": [
+                        {
+                            "id": 123,
+                            "title": "Show #123",
+                            "gameDate": "2025-01-01",
+                            "season": "40"
+                        },
+                        {
+                            "id": 122,
+                            "title": "Show #122",
+                            "gameDate": "2025-01-01",
+                            "season": "40"
+                        }
+                    ],
+                    "page": 1,
+                    "size": 20,
+                    "totalElements": 42,
+                    "totalPages": 3
+                }
+                """));
 
         verify(gameService).getGames(1, 20, null);
     }
 
     @Test
     void getGames_usesDefaultPageAndSize() throws Exception {
-        PageResponse<GameSummaryResponse> response = new PageResponse<>(
+        Page<Game> emptyPage = new PageImpl<>(
                 List.of(),
-                0,
-                20,
-                0,
+                PageRequest.of(0, 20),
                 0
         );
 
         when(gameService.getGames(0, 20, null))
-                .thenReturn(response);
+                .thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/games"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                    {
-                        "content": [],
-                        "page": 0,
-                        "size": 20,
-                        "totalElements": 0,
-                        "totalPages": 0
-                    }
-                    """));
+                {
+                    "content": [],
+                    "page": 0,
+                    "size": 20,
+                    "totalElements": 0,
+                    "totalPages": 0
+                }
+                """));
 
         verify(gameService).getGames(0, 20, null);
     }
@@ -291,11 +290,11 @@ class GameControllerTest {
                         .param("size", "20"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().json("""
-                    {
-                        "status": 400,
-                        "message": "Invalid request parameters"
-                    }
-                    """));
+                {
+                    "status": 400,
+                    "message": "Invalid request parameters"
+                }
+                """));
 
         verifyNoInteractions(gameService);
     }
@@ -307,11 +306,11 @@ class GameControllerTest {
                         .param("size", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().json("""
-                    {
-                        "status": 400,
-                        "message": "Invalid request parameters"
-                    }
-                    """));
+                {
+                    "status": 400,
+                    "message": "Invalid request parameters"
+                }
+                """));
 
         verifyNoInteractions(gameService);
     }
@@ -323,40 +322,40 @@ class GameControllerTest {
                         .param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().json("""
-                    {
-                        "status": 400,
-                        "message": "Invalid request parameters"
-                    }
-                    """));
+                {
+                    "status": 400,
+                    "message": "Invalid request parameters"
+                }
+                """));
 
         verifyNoInteractions(gameService);
     }
 
     @Test
     void getGames_returnsGamesForRequestedSeason() throws Exception {
-        PageResponse<GameSummaryResponse> response = new PageResponse<>(
-                List.of(
-                        new GameSummaryResponse(
-                                123L,
-                                "Show #123",
-                                LocalDate.of(2025, 1, 1),
-                                "39"
-                        ),
-                        new GameSummaryResponse(
-                                122L,
-                                "Show #122",
-                                LocalDate.of(2025, 1, 1),
-                                "39"
-                        )
-                ),
-                1,
-                20,
-                42,
-                3
+        Game game1 = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "39"
+        );
+
+        Game game2 = new Game(
+                "Show #122",
+                LocalDate.of(2025, 1, 1),
+                "39"
+        );
+
+        ReflectionTestUtils.setField(game1, "id", 123L);
+        ReflectionTestUtils.setField(game2, "id", 122L);
+
+        Page<Game> gamePage = new PageImpl<>(
+                List.of(game1, game2),
+                PageRequest.of(1, 20),
+                42
         );
 
         when(gameService.getGames(1, 20, "39"))
-                .thenReturn(response);
+                .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
                         .param("page", "1")
@@ -364,30 +363,31 @@ class GameControllerTest {
                         .param("season", "39"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                    {
-                        "content": [
-                            {
-                                "id": 123,
-                                "title": "Show #123",
-                                "gameDate": "2025-01-01",
-                                "season": "39"
-                            },
-                            {
-                                "id": 122,
-                                "title": "Show #122",
-                                "gameDate": "2025-01-01",
-                                "season": "39"
-                            }
-                        ],
-                        "page": 1,
-                        "size": 20,
-                        "totalElements": 42,
-                        "totalPages": 3
-                    }
-                    """));
+                {
+                    "content": [
+                        {
+                            "id": 123,
+                            "title": "Show #123",
+                            "gameDate": "2025-01-01",
+                            "season": "39"
+                        },
+                        {
+                            "id": 122,
+                            "title": "Show #122",
+                            "gameDate": "2025-01-01",
+                            "season": "39"
+                        }
+                    ],
+                    "page": 1,
+                    "size": 20,
+                    "totalElements": 42,
+                    "totalPages": 3
+                }
+                """));
 
         verify(gameService).getGames(1, 20, "39");
     }
+
 }
 
 

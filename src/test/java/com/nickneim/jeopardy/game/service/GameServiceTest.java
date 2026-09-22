@@ -1,7 +1,5 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
-import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
@@ -131,7 +129,7 @@ class GameServiceTest {
     }
 
     @Test
-    void getGames_returnsPaginatedGameSummaries() {
+    void getGames_returnsGames() {
         Game game1 = new Game(
                 "Show #100",
                 LocalDate.of(2025, 2, 1),
@@ -153,33 +151,16 @@ class GameServiceTest {
         when(gameRepository.findAll(any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        PageResponse<GameSummaryResponse> response =
+        Page<Game> returnedPage =
                 gameService.getGames(0, 20, null);
 
-        assertEquals(0, response.page());
-        assertEquals(20, response.size());
-        assertEquals(2, response.totalElements());
-        assertEquals(1, response.totalPages());
+        assertEquals(gamePage, returnedPage);
 
-        assertEquals(2, response.content().size());
+        assertEquals(2, returnedPage.getContent().size());
+        assertEquals(game2, returnedPage.getContent().get(0));
+        assertEquals(game1, returnedPage.getContent().get(1));
 
-        assertEquals(
-                game2.getTitle(),
-                response.content().get(0).title()
-        );
-        assertEquals(
-                game2.getGameDate(),
-                response.content().get(0).gameDate()
-        );
-        assertEquals(
-                game2.getSeason(),
-                response.content().get(0).season()
-        );
-
-        assertEquals(
-                game1.getTitle(),
-                response.content().get(1).title()
-        );
+        verify(gameRepository).findAll(any(Pageable.class));
     }
 
     @Test
@@ -193,14 +174,14 @@ class GameServiceTest {
         when(gameRepository.findAll(any(Pageable.class)))
                 .thenReturn(emptyPage);
 
-        PageResponse<GameSummaryResponse> response =
+        Page<Game> returnedPage =
                 gameService.getGames(0, 20, null);
 
-        assertTrue(response.content().isEmpty());
-        assertEquals(0, response.page());
-        assertEquals(20, response.size());
-        assertEquals(0, response.totalElements());
-        assertEquals(0, response.totalPages());
+        assertTrue(returnedPage.isEmpty());
+        assertEquals(0, returnedPage.getNumber());
+        assertEquals(20, returnedPage.getSize());
+        assertEquals(0, returnedPage.getTotalElements());
+        assertEquals(0, returnedPage.getTotalPages());
 
         verify(gameRepository).findAll(any(Pageable.class));
     }
@@ -269,17 +250,17 @@ class GameServiceTest {
         when(gameRepository.findBySeason(eq("39"), any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        PageResponse<GameSummaryResponse> response =
+        Page<Game> returnedPage =
                 gameService.getGames(0, 20, "39");
 
-        assertEquals(1, response.content().size());
-        assertEquals("Show #123", response.content().get(0).title());
-        assertEquals("39", response.content().get(0).season());
-        assertEquals(1, response.totalElements());
+        assertEquals(1, returnedPage.getContent().size());
+        assertEquals(game, returnedPage.getContent().getFirst());
+        assertEquals(1, returnedPage.getTotalElements());
 
         verify(gameRepository).findBySeason(
                 eq("39"),
                 any(Pageable.class)
         );
     }
+
 }
