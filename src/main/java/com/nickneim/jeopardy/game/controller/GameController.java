@@ -22,7 +22,7 @@ public class GameController {
 
     @GetMapping("/{id}")
     public GameResponse getClue(@PathVariable Long id) {
-        return gameService.getGame(id);
+        return GameResponse.from(gameService.getGame(id));
     }
 
     @GetMapping

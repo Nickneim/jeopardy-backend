@@ -26,11 +26,9 @@ public class GameService {
     }
 
 
-    public GameResponse getGame(Long id) {
-        Game game = gameRepository.findById(id)
+    public Game getGame(Long id) {
+        return gameRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
-
-        return GameResponse.from(game);
     }
 
     public PageResponse<GameSummaryResponse> getGames(int page, int size, String season) {

@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.Category;
@@ -38,7 +37,7 @@ class GameServiceTest {
     private GameService gameService;
 
     @Test
-    void getGame_mapsGameToResponse() {
+    void getGame_returnsGame() {
         Game game = new Game(
                 "Show #123",
                 LocalDate.of(2025, 1, 1),
@@ -111,89 +110,9 @@ class GameServiceTest {
         when(gameRepository.findById(123L))
                 .thenReturn(Optional.of(game));
 
-        GameResponse response = gameService.getGame(123L);
+        Game returnedGame = gameService.getGame(123L);
 
-        assertEquals(game.getId(), response.id());
-        assertEquals(game.getTitle(), response.title());
-        assertEquals(game.getGameDate(), response.gameDate());
-        assertEquals(game.getSeason(), response.season());
-
-        assertEquals(1, response.jeopardyRound().size());
-        assertEquals(1, response.doubleJeopardyRound().size());
-        assertNotNull(response.finalJeopardy());
-
-        var jeopardyResponse = response.jeopardyRound().getFirst();
-        assertEquals(jeopardyCategory.getId(), jeopardyResponse.id());
-        assertEquals(jeopardyCategory.getName(), jeopardyResponse.name());
-        assertEquals(
-                jeopardyCategory.getComments(),
-                jeopardyResponse.comments()
-        );
-        assertEquals(
-                jeopardyCategory.getColumnNumber(),
-                jeopardyResponse.columnNumber()
-        );
-
-        var jeopardyClueResponse = jeopardyResponse.clues().getFirst();
-        assertEquals(
-                jeopardyClue.getQuestion(),
-                jeopardyClueResponse.question()
-        );
-        assertEquals(
-                jeopardyClue.getAnswer(),
-                jeopardyClueResponse.answer()
-        );
-        assertEquals(
-                jeopardyClue.getClueType(),
-                jeopardyClueResponse.clueType()
-        );
-        assertEquals(
-                jeopardyClue.getMediaUrl(),
-                jeopardyClueResponse.mediaUrl()
-        );
-        assertEquals(jeopardyClue.getRowNumber(), jeopardyClueResponse.rowNumber());
-
-        var doubleJeopardyResponse =
-                response.doubleJeopardyRound().getFirst();
-
-        assertEquals(
-                doubleJeopardyCategory.getName(),
-                doubleJeopardyResponse.name()
-        );
-
-        var doubleJeopardyClueResponse =
-                doubleJeopardyResponse.clues().getFirst();
-
-        assertEquals(
-                doubleJeopardyClue.getQuestion(),
-                doubleJeopardyClueResponse.question()
-        );
-        assertEquals(doubleJeopardyClue.getRowNumber(), doubleJeopardyClueResponse.rowNumber());
-
-        var finalResponse = response.finalJeopardy();
-
-        assertEquals(
-                finalJeopardyCategory.getName(),
-                finalResponse.name()
-        );
-        assertEquals(
-                finalJeopardyCategory.getColumnNumber(),
-                finalResponse.columnNumber()
-        );
-
-        var finalClueResponse = finalResponse.clues().getFirst();
-
-        assertEquals(finalClue.getQuestion(), finalClueResponse.question());
-        assertEquals(finalClue.getRowNumber(), finalClueResponse.rowNumber());
-
-        assertEquals(
-                1,
-                response.dailyDoubleClueIds().size()
-        );
-        assertEquals(
-                doubleJeopardyClue.getId(),
-                response.dailyDoubleClueIds().getFirst()
-        );
+        assertEquals(game, returnedGame);
 
         verify(gameRepository).findById(123L);
     }

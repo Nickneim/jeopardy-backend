@@ -1,14 +1,15 @@
 package com.nickneim.jeopardy.game.controller;
 
-import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -30,21 +31,89 @@ class GameControllerTest {
     @MockitoBean
     private GameService gameService;
 
+
     @Test
-    void getGame_returnsGame() throws Exception {
-        GameResponse response = new GameResponse(
-                123L,
+    void getGame_returnsGameResponse() throws Exception {
+        Game game = new Game(
                 "Show #123",
                 LocalDate.of(2025, 1, 1),
-                "40",
-                List.of(),
-                List.of(),
-                null,
-                List.of()
+                "40"
         );
 
+        Category jeopardyCategory = new Category(
+                "HISTORY",
+                (short) 1,
+                "History comments",
+                game
+        );
+
+        Category doubleJeopardyCategory = new Category(
+                "SCIENCE",
+                (short) 7,
+                "Science comments",
+                game
+        );
+
+        Category finalJeopardyCategory = new Category(
+                "FINAL HISTORY",
+                (short) 13,
+                "Final comments",
+                game
+        );
+
+        Clue jeopardyClue = new Clue(
+                "Who was the first president of the United States?",
+                "Who is George Washington?",
+                (short) 3,
+                ClueType.TEXT,
+                null,
+                jeopardyCategory
+        );
+
+        Clue doubleJeopardyClue = new Clue(
+                "This planet is known as the Red Planet.",
+                "What is Mars?",
+                (short) 4,
+                ClueType.TEXT,
+                null,
+                doubleJeopardyCategory
+        );
+
+        Clue finalClue = new Clue(
+                "This historical event began in 1775.",
+                "What is the American Revolution?",
+                (short) 1,
+                ClueType.TEXT,
+                null,
+                finalJeopardyCategory
+        );
+
+        jeopardyCategory.getClues().add(jeopardyClue);
+        doubleJeopardyCategory.getClues().add(doubleJeopardyClue);
+        finalJeopardyCategory.getClues().add(finalClue);
+
+        game.getCategories().add(jeopardyCategory);
+        game.getCategories().add(doubleJeopardyCategory);
+        game.getCategories().add(finalJeopardyCategory);
+
+        GameDailyDouble dailyDouble = new GameDailyDouble(
+                game,
+                doubleJeopardyClue
+        );
+
+        game.getDailyDoubles().add(dailyDouble);
+
+        ReflectionTestUtils.setField(game, "id", 123L);
+        ReflectionTestUtils.setField(jeopardyCategory, "id", 456L);
+        ReflectionTestUtils.setField(doubleJeopardyCategory, "id", 457L);
+        ReflectionTestUtils.setField(finalJeopardyCategory, "id", 458L);
+
+        ReflectionTestUtils.setField(jeopardyClue, "id", 1001L);
+        ReflectionTestUtils.setField(doubleJeopardyClue, "id", 1002L);
+        ReflectionTestUtils.setField(finalClue, "id", 1003L);
+
         when(gameService.getGame(123L))
-                .thenReturn(response);
+                .thenReturn(game);
 
         mockMvc.perform(get("/api/games/123"))
                 .andExpect(status().isOk())
@@ -54,15 +123,65 @@ class GameControllerTest {
                         "title": "Show #123",
                         "gameDate": "2025-01-01",
                         "season": "40",
-                        "jeopardyRound": [],
-                        "doubleJeopardyRound": [],
-                        "finalJeopardy": null,
-                        "dailyDoubleClueIds": []
+                        "jeopardyRound": [
+                            {
+                                "id": 456,
+                                "name": "HISTORY",
+                                "columnNumber": 1,
+                                "comments": "History comments",
+                                "clues": [
+                                    {
+                                        "id": 1001,
+                                        "question": "Who was the first president of the United States?",
+                                        "answer": "Who is George Washington?",
+                                        "rowNumber": 3,
+                                        "clueType": "TEXT",
+                                        "mediaUrl": null
+                                    }
+                                ]
+                            }
+                        ],
+                        "doubleJeopardyRound": [
+                            {
+                                "id": 457,
+                                "name": "SCIENCE",
+                                "columnNumber": 7,
+                                "comments": "Science comments",
+                                "clues": [
+                                    {
+                                        "id": 1002,
+                                        "question": "This planet is known as the Red Planet.",
+                                        "answer": "What is Mars?",
+                                        "rowNumber": 4,
+                                        "clueType": "TEXT",
+                                        "mediaUrl": null
+                                    }
+                                ]
+                            }
+                        ],
+                        "finalJeopardy": {
+                            "id": 458,
+                            "name": "FINAL HISTORY",
+                            "columnNumber": 13,
+                            "comments": "Final comments",
+                            "clues": [
+                                {
+                                    "id": 1003,
+                                    "question": "This historical event began in 1775.",
+                                    "answer": "What is the American Revolution?",
+                                    "rowNumber": 1,
+                                    "clueType": "TEXT",
+                                    "mediaUrl": null
+                                }
+                            ]
+                        },
+                        "dailyDoubleClueIds": [1002]
                     }
                     """));
 
         verify(gameService).getGame(123L);
     }
+
 
     @Test
     void getGame_returnsNotFoundWhenGameDoesNotExist() throws Exception {
@@ -270,3 +389,6 @@ class GameControllerTest {
         verify(gameService).getGames(1, 20, "39");
     }
 }
+
+
+
