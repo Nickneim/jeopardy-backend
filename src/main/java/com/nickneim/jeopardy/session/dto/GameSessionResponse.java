@@ -18,11 +18,7 @@ public record GameSessionResponse(
                 session.getRound(),
                 session.getState(),
                 session.getPlayers().stream()
-                        .map(player -> new PlayerResponse(
-                                player.getId(),
-                                player.getName(),
-                                player.getScore()
-                        ))
+                        .map(PlayerResponse::from)
                         .toList()
         );
     }
