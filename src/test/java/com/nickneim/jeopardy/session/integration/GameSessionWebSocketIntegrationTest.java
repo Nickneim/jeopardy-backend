@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.integration;
 
+import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -21,6 +22,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -63,15 +65,20 @@ class GameSessionWebSocketIntegrationTest {
     void playerJoiningSession_broadcastsUpdatedSession()
             throws Exception {
 
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+
         GameSession session =
-                gameSessionService.createSession();
+                gameSessionService.createSession(game);
 
         StompSession stompSession =
                 connect();
 
-        BlockingQueue<
-                GameSessionResponse
-                > receivedMessages = new LinkedBlockingQueue<>();
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                new LinkedBlockingQueue<>();
 
         subscribeToSession(
                 stompSession,
@@ -79,10 +86,11 @@ class GameSessionWebSocketIntegrationTest {
                 receivedMessages
         );
 
-        JoinSessionRequest joinSessionRequest = new JoinSessionRequest(
-                1L,
-                "Nico"
-        );
+        JoinSessionRequest joinSessionRequest =
+                new JoinSessionRequest(
+                        1L,
+                        "Nico"
+                );
 
         joinSession(
                 stompSession,
@@ -104,9 +112,18 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         assertEquals(1, response.players().size());
-        assertEquals(joinSessionRequest.playerId(), response.players().getFirst().id());
-        assertEquals(joinSessionRequest.playerName(), response.players().getFirst().name());
-        assertEquals(0, response.players().getFirst().score());
+        assertEquals(
+                joinSessionRequest.playerId(),
+                response.players().getFirst().id()
+        );
+        assertEquals(
+                joinSessionRequest.playerName(),
+                response.players().getFirst().name()
+        );
+        assertEquals(
+                0,
+                response.players().getFirst().score()
+        );
     }
 
     private StompSession connect()

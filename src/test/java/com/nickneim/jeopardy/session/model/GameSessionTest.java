@@ -1,7 +1,9 @@
 package com.nickneim.jeopardy.session.model;
 
+import com.nickneim.jeopardy.game.entity.Game;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,8 +12,14 @@ class GameSessionTest {
 
     @Test
     void addPlayer_addsPlayerToSession() {
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+        UUID sessionId = UUID.randomUUID();
         GameSession session =
-                new GameSession(UUID.randomUUID());
+                new GameSession(sessionId, game);
 
         GameSessionPlayer player =
                 new GameSessionPlayer(1L, "Nico");

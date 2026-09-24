@@ -1,7 +1,10 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -14,11 +17,11 @@ public class GameSessionService {
     private final Map<UUID, GameSession> sessions =
             new ConcurrentHashMap<>();
 
-    public GameSession createSession() {
-        UUID id = UUID.randomUUID();
+    public GameSession createSession(Game game) {
+        UUID sessionId = UUID.randomUUID();
 
-        GameSession session = new GameSession(id);
-        sessions.put(id, session);
+        GameSession session = new GameSession(sessionId, game);
+        sessions.put(sessionId, session);
 
         return session;
     }

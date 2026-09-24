@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.model;
 
+import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
 
 import java.time.Duration;
@@ -13,6 +14,7 @@ import java.util.UUID;
 public class GameSession {
 
     private final UUID id;
+    private final Game game;
     private final List<GameSessionPlayer> players = new ArrayList<>();
 
     private GameRound round;
@@ -27,14 +29,19 @@ public class GameSession {
     private Instant stateStartedAt;
     private Duration stateTimeout;
 
-    public GameSession(UUID id) {
+    public GameSession(UUID id, Game game) {
         this.id = id;
+        this.game = game;
         this.round = GameRound.JEOPARDY;
         this.state = GameSessionState.CHOOSING_CLUE;
     }
 
     public UUID getId() {
         return id;
+    }
+
+    public Game getGame() {
+        return game;
     }
 
     public List<GameSessionPlayer> getPlayers() {

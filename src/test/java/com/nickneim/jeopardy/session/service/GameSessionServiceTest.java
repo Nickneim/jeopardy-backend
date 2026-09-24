@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -7,6 +8,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,7 +26,12 @@ class GameSessionServiceTest {
 
     @Test
     void createSession_createsAndStoresSession() {
-        GameSession session = gameSessionService.createSession();
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+        GameSession session = gameSessionService.createSession(game);
 
         assertNotNull(session);
         assertNotNull(session.getId());
@@ -47,7 +54,12 @@ class GameSessionServiceTest {
 
     @Test
     void removeSession_removesSession() {
-        GameSession session = gameSessionService.createSession();
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+        GameSession session = gameSessionService.createSession(game);
 
         gameSessionService.removeSession(session.getId());
 
@@ -59,7 +71,12 @@ class GameSessionServiceTest {
 
     @Test
     void createSession_startsInJeopardyChoosingClueState() {
-        GameSession session = gameSessionService.createSession();
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+        GameSession session = gameSessionService.createSession(game);
 
         assertEquals(
                 GameRound.JEOPARDY,
