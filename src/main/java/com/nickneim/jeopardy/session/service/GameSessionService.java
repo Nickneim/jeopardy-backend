@@ -1,10 +1,8 @@
 package com.nickneim.jeopardy.session.service;
 
 import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
-import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
