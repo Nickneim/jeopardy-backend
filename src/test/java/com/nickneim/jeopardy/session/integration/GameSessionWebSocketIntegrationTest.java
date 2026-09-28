@@ -1,8 +1,16 @@
 package com.nickneim.jeopardy.session.integration;
 
+import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.Clue;
+import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
+import com.nickneim.jeopardy.session.dto.BuzzRequest;
+import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
+import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
+import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.service.GameSessionService;
@@ -18,6 +26,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -61,64 +70,809 @@ class GameSessionWebSocketIntegrationTest {
         stompClient.stop();
     }
 
+    // -------------------------------------------------------------------------
+    // Joining
+    // -------------------------------------------------------------------------
+
     @Test
     void playerJoiningSession_broadcastsUpdatedSession()
             throws Exception {
 
+        GameSession session = createSession();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        joinSession(
+                stompSession,
+                session.getId(),
+                new JoinSessionRequest("Nico")
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                session.getId(),
+                response.id()
+        );
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_START,
+                response.state()
+        );
+
+        assertEquals(
+                1,
+                response.players().size()
+        );
+
+        assertEquals(
+                "Nico",
+                response.players().getFirst().name()
+        );
+
+        assertEquals(
+                0,
+                response.players().getFirst().score()
+        );
+    }
+
+    @Test
+    void joiningNonexistentSession_returnsError()
+            throws Exception {
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        joinSession(
+                stompSession,
+                UUID.randomUUID(),
+                new JoinSessionRequest("Nico")
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "SESSION_NOT_FOUND",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Starting
+    // -------------------------------------------------------------------------
+
+    @Test
+    void startingGame_broadcastsUpdatedSession()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        startGame(
+                stompSession,
+                session.getId()
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                session.getId(),
+                response.id()
+        );
+
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                response.state()
+        );
+
+        assertEquals(
+                1,
+                response.players().size()
+        );
+
+        assertEquals(
+                "Nico",
+                response.players().getFirst().name()
+        );
+
+        assertEquals(
+                0,
+                response.players().getFirst().score()
+        );
+    }
+
+    @Test
+    void startingAlreadyStartedGame_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        gameSessionService.startGame(session.getId());
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        startGame(
+                stompSession,
+                session.getId()
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void startingNonexistentSession_returnsError()
+            throws Exception {
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        startGame(
+                stompSession,
+                UUID.randomUUID()
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "SESSION_NOT_FOUND",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Choosing a clue
+    // -------------------------------------------------------------------------
+
+    @Test
+    void choosingClue_broadcastsUpdatedSession()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        gameSessionService.startGame(session.getId());
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        Long clueId = 10L;
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        playerId,
+                        clueId
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                session.getId(),
+                response.id()
+        );
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                response.state()
+        );
+    }
+
+    @Test
+    void choosingClueWithWrongPlayer_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        gameSessionService.startGame(session.getId());
+
+        Long actualPlayerId =
+                session.getPlayers().getFirst().getId();
+
+        Long wrongPlayerId = actualPlayerId + 1;
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        wrongPlayerId,
+                        10L
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "NOT_YOUR_TURN",
+                error.code()
+        );
+    }
+
+    @Test
+    void choosingAlreadySelectedClue_returnsError()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        // Choose the clue.
+        gameSessionService.chooseClue(
+                session.getId(),
+                playerId,
+                10L
+        );
+
+        // Clue reveal finishes.
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        // Player buzzes.
+        gameSessionService.buzz(
+                session.getId(),
+                playerId
+        );
+
+        // Player answers correctly.
+        gameSessionService.answerClue(
+                session.getId(),
+                playerId,
+                "Correct answer"
+        );
+
+        // Answer reveal finishes.
+        gameSessionService.finishRevealingAnswer(
+                session.getId()
+        );
+
+        // We're now back at CHOOSING_CLUE.
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                session.getState()
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        playerId,
+                        10L
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "CLUE_ALREADY_PLAYED",
+                error.code()
+        );
+    }
+
+    @Test
+    void choosingClueInWrongState_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        playerId,
+                        10L
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void choosingUnavailableClue_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        gameSessionService.startGame(session.getId());
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        playerId,
+                        999L
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "CLUE_NOT_FOUND",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Buzzing
+    // -------------------------------------------------------------------------
+
+    @Test
+    void playerBuzzing_broadcastsUpdatedSession()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                playerId,
+                10L
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        buzz(
+                stompSession,
+                session.getId(),
+                new BuzzRequest(playerId)
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_ANSWER,
+                response.state()
+        );
+    }
+
+    @Test
+    void buzzingInWrongState_returnsError()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        buzz(
+                stompSession,
+                session.getId(),
+                new BuzzRequest(playerId)
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void playerNotInSession_cannotBuzz()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long actualPlayerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                actualPlayerId,
+                10L
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        buzz(
+                stompSession,
+                session.getId(),
+                new BuzzRequest(actualPlayerId + 1)
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "PLAYER_NOT_IN_SESSION",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Answering
+    // -------------------------------------------------------------------------
+
+    @Test
+    void answeringCorrectly_broadcastsUpdatedSession()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                playerId,
+                10L
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        gameSessionService.buzz(
+                session.getId(),
+                playerId
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest(
+                        playerId,
+                        "Correct answer"
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                response.state()
+        );
+
+        assertEquals(
+                100,
+                response.players()
+                        .getFirst()
+                        .score()
+        );
+    }
+
+    @Test
+    void answeringIncorrectly_broadcastsUpdatedSession()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                playerId,
+                10L
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        gameSessionService.buzz(
+                session.getId(),
+                playerId
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest(
+                        playerId,
+                        "Wrong answer"
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                response.state()
+        );
+
+        assertEquals(
+                -100,
+                response.players()
+                        .getFirst()
+                        .score()
+        );
+    }
+
+    @Test
+    void answeringWithWrongPlayer_returnsError()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId()
+        );
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                playerId,
+                10L
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        gameSessionService.buzz(
+                session.getId(),
+                playerId
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest(
+                        playerId + 1,
+                        "Correct answer"
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "NOT_YOUR_TURN",
+                error.code()
+        );
+    }
+
+    @Test
+    void answeringInWrongState_returnsError()
+            throws Exception {
+
+        GameSession session =
+                createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest(
+                        playerId,
+                        "Correct answer"
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private GameSession createSession() {
+        return gameSessionService.createSession(
+                createGame()
+        );
+    }
+
+    private GameSession createSessionWithPlayer() {
+        GameSession session = createSession();
+
+        gameSessionService.joinSession(
+                session.getId(),
+                "Nico"
+        );
+
+        return session;
+    }
+
+    private Game createGame() {
         Game game = new Game(
                 "Show #123",
                 LocalDate.of(2025, 1, 1),
                 "40"
         );
 
-        GameSession session =
-                gameSessionService.createSession(game);
-
-        StompSession stompSession =
-                connect();
-
-        BlockingQueue<GameSessionResponse> receivedMessages =
-                new LinkedBlockingQueue<>();
-
-        subscribeToSession(
-                stompSession,
-                session.getId(),
-                receivedMessages
+        Category category = new Category(
+                "Category",
+                (short) 1,
+                null,
+                game
         );
 
-        JoinSessionRequest joinSessionRequest =
-                new JoinSessionRequest(
-                        "Nico"
-                );
-
-        joinSession(
-                stompSession,
-                session.getId(),
-                joinSessionRequest
+        Clue clue1 = new Clue(
+                "Question",
+                "Correct answer",
+                (short) 1,
+                ClueType.TEXT,
+                null,
+                category
         );
 
-        GameSessionResponse response =
-                receivedMessages.poll(
-                        5,
-                        TimeUnit.SECONDS
-                );
-
-        assertNotNull(response);
-        assertEquals(session.getId(), response.id());
-        assertEquals(
-                GameSessionState.CHOOSING_CLUE,
-                response.state()
+        Clue clue2 = new Clue(
+                "Question",
+                "Correct answer",
+                (short) 2,
+                ClueType.TEXT,
+                null,
+                category
         );
 
-        assertEquals(1, response.players().size());
-        assertEquals(
-                joinSessionRequest.playerName(),
-                response.players().getFirst().name()
-        );
-        assertEquals(
-                0,
-                response.players().getFirst().score()
-        );
+        ReflectionTestUtils.setField(game, "id",123L);
+        ReflectionTestUtils.setField(category, "id", 456L);
+        ReflectionTestUtils.setField(clue1, "id", 10L);
+        ReflectionTestUtils.setField(clue2, "id", 11L);
+
+        game.getCategories().add(category);
+        category.getClues().add(clue1);
+        category.getClues().add(clue2);
+
+        return game;
     }
 
     private StompSession connect()
@@ -129,16 +883,20 @@ class GameSessionWebSocketIntegrationTest {
                         "ws://localhost:" + port + "/ws",
                         new StompSessionHandlerAdapter() {}
                 )
-                .get(5, TimeUnit.SECONDS);
+                .get(
+                        5,
+                        TimeUnit.SECONDS
+                );
     }
 
-    private void subscribeToSession(
+    private BlockingQueue<GameSessionResponse>
+    subscribeToSession(
             StompSession stompSession,
-            UUID sessionId,
-            BlockingQueue<
-                    GameSessionResponse
-                    > receivedMessages
+            UUID sessionId
     ) {
+        BlockingQueue<GameSessionResponse> messages =
+                new LinkedBlockingQueue<>();
+
         stompSession.subscribe(
                 "/topic/sessions/" + sessionId,
                 new StompFrameHandler() {
@@ -155,22 +913,130 @@ class GameSessionWebSocketIntegrationTest {
                             StompHeaders headers,
                             Object payload
                     ) {
-                        receivedMessages.add(
+                        messages.add(
                                 (GameSessionResponse) payload
                         );
                     }
                 }
         );
+
+        return messages;
+    }
+
+    private BlockingQueue<GameSessionErrorResponse>
+    subscribeToErrors(
+            StompSession stompSession
+    ) {
+        BlockingQueue<GameSessionErrorResponse> errors =
+                new LinkedBlockingQueue<>();
+
+        stompSession.subscribe(
+                "/user/queue/errors",
+                new StompFrameHandler() {
+
+                    @Override
+                    public Type getPayloadType(
+                            StompHeaders headers
+                    ) {
+                        return GameSessionErrorResponse.class;
+                    }
+
+                    @Override
+                    public void handleFrame(
+                            StompHeaders headers,
+                            Object payload
+                    ) {
+                        errors.add(
+                                (GameSessionErrorResponse) payload
+                        );
+                    }
+                }
+        );
+
+        return errors;
+    }
+
+    private GameSessionResponse awaitMessage(
+            BlockingQueue<GameSessionResponse> messages
+    ) throws InterruptedException {
+
+        GameSessionResponse response =
+                messages.poll(
+                        5,
+                        TimeUnit.SECONDS
+                );
+
+        assertNotNull(response);
+
+        return response;
+    }
+
+    private GameSessionErrorResponse awaitError(
+            BlockingQueue<GameSessionErrorResponse> errors
+    ) throws InterruptedException {
+
+        GameSessionErrorResponse error =
+                errors.poll(
+                        5,
+                        TimeUnit.SECONDS
+                );
+
+        assertNotNull(error);
+
+        return error;
     }
 
     private void joinSession(
             StompSession stompSession,
             UUID sessionId,
-            JoinSessionRequest joinSessionRequest
+            JoinSessionRequest request
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/join",
-                joinSessionRequest
+                request
+        );
+    }
+
+    private void startGame(
+            StompSession stompSession,
+            UUID sessionId
+    ) {
+        stompSession.send(
+                "/app/sessions/" + sessionId + "/start",
+                new StartGameRequest()
+        );
+    }
+
+    private void chooseClue(
+            StompSession stompSession,
+            UUID sessionId,
+            ChooseClueRequest request
+    ) {
+        stompSession.send(
+                "/app/sessions/" + sessionId + "/choose-clue",
+                request
+        );
+    }
+
+    private void buzz(
+            StompSession stompSession,
+            UUID sessionId,
+            BuzzRequest request
+    ) {
+        stompSession.send(
+                "/app/sessions/" + sessionId + "/buzz",
+                request
+        );
+    }
+
+    private void answer(
+            StompSession stompSession,
+            UUID sessionId,
+            AnswerClueRequest request
+    ) {
+        stompSession.send(
+                "/app/sessions/" + sessionId + "/answer",
+                request
         );
     }
 }

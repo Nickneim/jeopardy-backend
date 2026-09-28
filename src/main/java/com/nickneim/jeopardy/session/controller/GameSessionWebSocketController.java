@@ -82,7 +82,7 @@ public class GameSessionWebSocketController {
     }
 
     @MessageExceptionHandler(InvalidGameActionException.class)
-    @SendToUser("/queue/errors")
+    @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleInvalidGameAction(
             InvalidGameActionException exception
     ) {
@@ -93,12 +93,26 @@ public class GameSessionWebSocketController {
     }
 
     @MessageExceptionHandler(GameSessionNotFoundException.class)
-    @SendToUser("/queue/errors")
+    @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleSessionNotFound(
             GameSessionNotFoundException exception
     ) {
+
         return new GameSessionErrorResponse(
                 exception.getCode().name(),
+                exception.getMessage()
+        );
+    }
+
+    @MessageExceptionHandler(Exception.class)
+    @SendToUser(
+            destinations = "/queue/errors",
+            broadcast = false
+    )
+    public GameSessionErrorResponse handleException(Exception exception) {
+        System.out.println("GENERIC HANDLER: " + exception);
+        return new GameSessionErrorResponse(
+                "UNKNOWN",
                 exception.getMessage()
         );
     }
