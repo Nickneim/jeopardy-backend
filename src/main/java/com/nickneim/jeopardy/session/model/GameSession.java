@@ -7,8 +7,6 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -17,6 +15,7 @@ public class GameSession {
     private final UUID id;
     private final Game game;
     private final List<GameSessionPlayer> players = new ArrayList<>();
+    private final GameSessionTimeouts timeouts;
 
     private GameRound round;
     private GameSessionState state;
@@ -29,12 +28,10 @@ public class GameSession {
     private final Set<Long> cluesAlreadySelected = new HashSet<>();
     private Long playerWhoBuzzed;
 
-    private Instant stateStartedAt;
-    private Duration stateTimeout;
-
     public GameSession(UUID id, Game game) {
         this.id = id;
         this.game = game;
+        this.timeouts = GameSessionTimeouts.defaults();
         this.round = GameRound.JEOPARDY;
         this.state = GameSessionState.WAITING_FOR_START;
     }
@@ -50,6 +47,8 @@ public class GameSession {
     public List<GameSessionPlayer> getPlayers() {
         return List.copyOf(players);
     }
+
+    public GameSessionTimeouts getTimeouts() { return timeouts; }
 
     public GameRound getRound() {
         return round;
@@ -75,21 +74,12 @@ public class GameSession {
         return Set.copyOf(availableClues);
     }
 
-
     public Set<Long> getCluesAlreadySelected() {
         return Set.copyOf(cluesAlreadySelected);
     }
 
     public Long getPlayerWhoBuzzed() {
         return playerWhoBuzzed;
-    }
-
-    public Instant getStateStartedAt() {
-        return stateStartedAt;
-    }
-
-    public Duration getStateTimeout() {
-        return stateTimeout;
     }
 
     public void addPlayer(GameSessionPlayer player) {
@@ -192,11 +182,11 @@ public class GameSession {
     }
 
     private Clue getClue(Long clueId) {
-        return game.getCategories().stream().flatMap(category -> category.getClues().stream()).filter(c -> c.getId().equals(clueId)).findFirst().get();
+        return game.getCategories().stream().flatMap(category -> category.getClues().stream()).filter(c -> c.getId().equals(clueId)).findFirst().orElse(null);
     }
 
     private GameSessionPlayer getPlayer(Long playerId) {
-        return players.stream().filter(player -> player.getId().equals(playerId)).findFirst().get();
+        return players.stream().filter(player -> player.getId().equals(playerId)).findFirst().orElse(null);
     }
 
     public synchronized void answerClue(Long playerId, String answer) {

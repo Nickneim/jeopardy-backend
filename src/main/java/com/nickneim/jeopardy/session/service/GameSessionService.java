@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -13,18 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GameSessionService {
-
-    private static final Duration REVEAL_CLUE_DURATION =
-            Duration.ofSeconds(3);
-
-    private static final Duration BUZZER_DURATION =
-            Duration.ofSeconds(10);
-
-    private static final Duration ANSWER_DURATION =
-            Duration.ofSeconds(5);
-
-    private static final Duration REVEAL_ANSWER_DURATION =
-            Duration.ofSeconds(3);
 
     private final Map<UUID, GameSession> sessions =
             new ConcurrentHashMap<>();
@@ -145,6 +134,7 @@ public class GameSessionService {
 
     private void scheduleTimeout(GameSession session) {
         UUID sessionId = session.getId();
+        GameSessionTimeouts timeouts = session.getTimeouts();
 
         timer.cancel(sessionId);
 
@@ -152,28 +142,28 @@ public class GameSessionService {
             case REVEALING_CLUE ->
                     timer.schedule(
                             sessionId,
-                            REVEAL_CLUE_DURATION,
+                            timeouts.clueReveal(),
                             () -> finishRevealingClue(sessionId)
                     );
 
             case WAITING_FOR_BUZZER ->
                     timer.schedule(
                             sessionId,
-                            BUZZER_DURATION,
+                            timeouts.buzzer(),
                             () -> timeoutBuzzer(sessionId)
                     );
 
             case WAITING_FOR_ANSWER ->
                     timer.schedule(
                             sessionId,
-                            ANSWER_DURATION,
+                            timeouts.answer(),
                             () -> timeoutAnswer(sessionId)
                     );
 
             case REVEALING_ANSWER ->
                     timer.schedule(
                             sessionId,
-                            REVEAL_ANSWER_DURATION,
+                            timeouts.answerReveal(),
                             () -> finishRevealingAnswer(sessionId)
                     );
         }
