@@ -88,7 +88,6 @@ class GameSessionWebSocketIntegrationTest {
 
         JoinSessionRequest joinSessionRequest =
                 new JoinSessionRequest(
-                        1L,
                         "Nico"
                 );
 
@@ -112,10 +111,6 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         assertEquals(1, response.players().size());
-        assertEquals(
-                joinSessionRequest.playerId(),
-                response.players().getFirst().id()
-        );
         assertEquals(
                 joinSessionRequest.playerName(),
                 response.players().getFirst().name()

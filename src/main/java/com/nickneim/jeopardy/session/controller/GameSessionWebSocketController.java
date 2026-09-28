@@ -1,13 +1,13 @@
 package com.nickneim.jeopardy.session.controller;
 
-import com.nickneim.jeopardy.session.dto.GameSessionResponse;
+import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
+import com.nickneim.jeopardy.session.dto.BuzzRequest;
+import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
-import com.nickneim.jeopardy.session.model.GameSession;
-import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.util.UUID;
@@ -16,36 +16,63 @@ import java.util.UUID;
 public class GameSessionWebSocketController {
 
     private final GameSessionService gameSessionService;
-    private final SimpMessagingTemplate messagingTemplate;
 
     public GameSessionWebSocketController(
-            GameSessionService gameSessionService,
-            SimpMessagingTemplate messagingTemplate
+            GameSessionService gameSessionService
     ) {
         this.gameSessionService = gameSessionService;
-        this.messagingTemplate = messagingTemplate;
     }
 
     @MessageMapping("/sessions/{sessionId}/join")
     public void joinSession(
             @DestinationVariable UUID sessionId,
-            JoinSessionRequest request
+            @Valid JoinSessionRequest request
     ) {
-        GameSession session =
-                gameSessionService.getSession(sessionId);
-
-        GameSessionPlayer player =
-                new GameSessionPlayer(
-                        request.playerId(),
-                        request.playerName()
-                );
-
-        session.addPlayer(player);
-
-        messagingTemplate.convertAndSend(
-                "/topic/sessions/" + sessionId,
-                GameSessionResponse.from(session)
+        gameSessionService.joinSession(
+                sessionId,
+                request.playerName()
         );
     }
 
+    @MessageMapping("/sessions/{sessionId}/start")
+    public void startGame(
+            @DestinationVariable UUID sessionId
+    ) {
+        gameSessionService.startGame(sessionId);
+    }
+
+    @MessageMapping("/sessions/{sessionId}/choose-clue")
+    public void chooseClue(
+            @DestinationVariable UUID sessionId,
+            @Valid ChooseClueRequest request
+    ) {
+        gameSessionService.chooseClue(
+                sessionId,
+                request.playerId(),
+                request.clueId()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/buzz")
+    public void buzz(
+            @DestinationVariable UUID sessionId,
+            @Valid BuzzRequest request
+    ) {
+        gameSessionService.buzz(
+                sessionId,
+                request.playerId()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/answer")
+    public void answerClue(
+            @DestinationVariable UUID sessionId,
+            @Valid AnswerClueRequest request
+    ) {
+        gameSessionService.answerClue(
+                sessionId,
+                request.playerId(),
+                request.answer()
+        );
+    }
 }

@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.service;
 
 
 import com.nickneim.jeopardy.game.entity.*;
+import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -23,11 +24,13 @@ class GameSessionServiceTest {
 
     private GameSessionService gameSessionService;
     private GameSessionTimer timer;
+    private GameSessionBroadcaster broadcaster;
 
     @BeforeEach
     void setUp() {
         timer = mock(GameSessionTimer.class);
-        gameSessionService = new GameSessionService(timer);
+        broadcaster = mock(GameSessionBroadcaster.class);
+        gameSessionService = new GameSessionService(timer, broadcaster);
     }
 
     @Test
@@ -87,6 +90,7 @@ class GameSessionServiceTest {
         gameSessionService.startGame(session.getId());
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.chooseClue(
                 session.getId(),
                 playerId,
@@ -103,6 +107,8 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(3)),
                 any(Runnable.class)
         );
+
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -123,6 +129,7 @@ class GameSessionServiceTest {
         );
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.finishRevealingClue(session.getId());
 
         assertEquals(
@@ -135,6 +142,8 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(10)),
                 any(Runnable.class)
         );
+
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -157,6 +166,7 @@ class GameSessionServiceTest {
         gameSessionService.finishRevealingClue(session.getId());
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.buzz(
                 session.getId(),
                 playerId
@@ -172,6 +182,7 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(5)),
                 any(Runnable.class)
         );
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -199,6 +210,7 @@ class GameSessionServiceTest {
         );
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.answerClue(
                 session.getId(),
                 playerId,
@@ -215,6 +227,7 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(3)),
                 any(Runnable.class)
         );
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -245,6 +258,7 @@ class GameSessionServiceTest {
         );
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.answerClue(
                 session.getId(),
                 player1Id,
@@ -261,6 +275,7 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(10)),
                 any(Runnable.class)
         );
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -295,6 +310,7 @@ class GameSessionServiceTest {
         );
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.finishRevealingAnswer(session.getId());
 
         assertEquals(
@@ -305,6 +321,7 @@ class GameSessionServiceTest {
         verify(timer).cancel(session.getId());
 
         verifyNoMoreInteractions(timer);
+        verify(broadcaster).broadcast(session);
     }
 
     @Test
@@ -319,6 +336,7 @@ class GameSessionServiceTest {
 
 
         clearInvocations(timer);
+        clearInvocations(broadcaster);
         gameSessionService.removeSession(session.getId());
 
         assertThrows(
@@ -327,6 +345,7 @@ class GameSessionServiceTest {
         );
 
         verify(timer).cancel(session.getId());
+        verifyNoInteractions(broadcaster);
     }
 
     private Game createGameWithClue(Long clueId) {

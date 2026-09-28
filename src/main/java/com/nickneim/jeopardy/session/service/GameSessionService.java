@@ -1,13 +1,13 @@
 package com.nickneim.jeopardy.session.service;
 
 import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.session.model.GameSession;
-import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
-import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
+import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.model.GameSessionPlayer;
+import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,34 +19,54 @@ public class GameSessionService {
             new ConcurrentHashMap<>();
 
     private final GameSessionTimer timer;
+    private final GameSessionBroadcaster broadcaster;
 
-    public GameSessionService(GameSessionTimer timer) {
+    public GameSessionService(
+            GameSessionTimer timer,
+            GameSessionBroadcaster broadcaster
+    ) {
         this.timer = timer;
+        this.broadcaster = broadcaster;
     }
 
     public GameSession createSession(Game game) {
         UUID id = UUID.randomUUID();
-
         GameSession session = new GameSession(id, game);
 
-        sessions.put(id, session);
+        sessions.put(session.getId(), session);
 
         return session;
     }
 
-    public GameSession getSession(UUID id) {
-        GameSession session = sessions.get(id);
+    public GameSession getSession(UUID sessionId) {
+        GameSession session = sessions.get(sessionId);
 
         if (session == null) {
-            throw new GameSessionNotFoundException(id);
+            throw new GameSessionNotFoundException(sessionId);
         }
 
         return session;
     }
 
-    public void removeSession(UUID id) {
-        timer.cancel(id);
-        sessions.remove(id);
+    public void removeSession(UUID sessionId) {
+        timer.cancel(sessionId);
+        sessions.remove(sessionId);
+    }
+
+    public void joinSession(
+            UUID sessionId,
+            String playerName
+    ) {
+        GameSession session = getSession(sessionId);
+
+        session.addPlayer(
+                new GameSessionPlayer(
+                        generatePlayerId(),
+                        playerName
+                )
+        );
+
+        broadcaster.broadcast(session);
     }
 
     public void startGame(UUID sessionId) {
@@ -55,6 +75,7 @@ public class GameSessionService {
         session.startGame();
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
     }
 
     public void chooseClue(
@@ -67,14 +88,22 @@ public class GameSessionService {
         session.chooseClue(playerId, clueId);
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
+
     }
 
     public void finishRevealingClue(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
+        if (session.getState() != GameSessionState.REVEALING_CLUE) {
+            return;
+        }
+
         session.finishRevealingClue();
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
+
     }
 
     public void buzz(
@@ -86,6 +115,8 @@ public class GameSessionService {
         session.buzz(playerId);
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
+
     }
 
     public void answerClue(
@@ -98,14 +129,21 @@ public class GameSessionService {
         session.answerClue(playerId, answer);
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
+
     }
 
     public void finishRevealingAnswer(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
+        if (session.getState() != GameSessionState.REVEALING_ANSWER) {
+            return;
+        }
+
         session.finishRevealingAnswer();
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
     }
 
     private void timeoutBuzzer(UUID sessionId) {
@@ -118,6 +156,7 @@ public class GameSessionService {
         session.timeoutBuzzer();
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
     }
 
     private void timeoutAnswer(UUID sessionId) {
@@ -130,11 +169,11 @@ public class GameSessionService {
         session.timeoutAnswer();
 
         scheduleTimeout(session);
+        broadcaster.broadcast(session);
     }
 
     private void scheduleTimeout(GameSession session) {
         UUID sessionId = session.getId();
-        GameSessionTimeouts timeouts = session.getTimeouts();
 
         timer.cancel(sessionId);
 
@@ -142,30 +181,38 @@ public class GameSessionService {
             case REVEALING_CLUE ->
                     timer.schedule(
                             sessionId,
-                            timeouts.clueReveal(),
+                            session.getTimeouts().clueReveal(),
                             () -> finishRevealingClue(sessionId)
                     );
 
             case WAITING_FOR_BUZZER ->
                     timer.schedule(
                             sessionId,
-                            timeouts.buzzer(),
+                            session.getTimeouts().buzzer(),
                             () -> timeoutBuzzer(sessionId)
                     );
 
             case WAITING_FOR_ANSWER ->
                     timer.schedule(
                             sessionId,
-                            timeouts.answer(),
+                            session.getTimeouts().answer(),
                             () -> timeoutAnswer(sessionId)
                     );
 
             case REVEALING_ANSWER ->
                     timer.schedule(
                             sessionId,
-                            timeouts.answerReveal(),
+                            session.getTimeouts().answerReveal(),
                             () -> finishRevealingAnswer(sessionId)
                     );
+
+            default -> {
+                // No timeout for this state.
+            }
         }
+    }
+
+    private Long generatePlayerId() {
+        return System.nanoTime();
     }
 }
