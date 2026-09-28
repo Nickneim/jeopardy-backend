@@ -3,11 +3,16 @@ package com.nickneim.jeopardy.session.controller;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
+import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
+import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
 import java.util.UUID;
@@ -73,6 +78,28 @@ public class GameSessionWebSocketController {
                 sessionId,
                 request.playerId(),
                 request.answer()
+        );
+    }
+
+    @MessageExceptionHandler(InvalidGameActionException.class)
+    @SendToUser("/queue/errors")
+    public GameSessionErrorResponse handleInvalidGameAction(
+            InvalidGameActionException exception
+    ) {
+        return new GameSessionErrorResponse(
+                exception.getCode().name(),
+                exception.getMessage()
+        );
+    }
+
+    @MessageExceptionHandler(GameSessionNotFoundException.class)
+    @SendToUser("/queue/errors")
+    public GameSessionErrorResponse handleSessionNotFound(
+            GameSessionNotFoundException exception
+    ) {
+        return new GameSessionErrorResponse(
+                exception.getCode().name(),
+                exception.getMessage()
         );
     }
 }

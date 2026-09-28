@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.exception;
 
 public enum GameErrorCode {
+    SESSION_NOT_FOUND,
     NOT_YOUR_TURN,
     INVALID_STATE,
     CLUE_NOT_FOUND,
