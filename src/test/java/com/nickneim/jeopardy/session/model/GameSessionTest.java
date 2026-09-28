@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -592,6 +593,21 @@ class GameSessionTest {
                 GameRound.DOUBLE_JEOPARDY,
                 session.getRound()
         );
+
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                session.getState()
+        );
+
+        assertEquals(
+                Set.of(doubleJeopardyClue1.getId()),
+                session.getAvailableClues()
+        );
+
+        assertTrue(
+                session.getCluesAlreadySelected().isEmpty()
+        );
+
     }
 
     @Test
@@ -665,6 +681,16 @@ class GameSessionTest {
                 GameRound.FINAL_JEOPARDY,
                 session.getRound()
         );
+
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                session.getState()
+        );
+
+        assertEquals(
+                Set.of(finalJeopardyClue.getId()),
+                session.getAvailableClues()
+        );
     }
 
 
@@ -709,6 +735,46 @@ class GameSessionTest {
         assertEquals(
                 GameSessionState.FINISHED_GAME,
                 session.getState()
+        );
+    }
+
+    @Test
+    void answerClue_correctAnswerInDoubleJeopardy_awardsDoubleValue() {
+        session.startGame();
+
+        // Finish Jeopardy.
+        session.chooseClue(
+                player1.getId(),
+                jeopardyClue1.getId()
+        );
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        session.chooseClue(
+                player1.getId(),
+                jeopardyClue2.getId()
+        );
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        // Start Double Jeopardy clue.
+        session.chooseClue(
+                player1.getId(),
+                doubleJeopardyClue1.getId()
+        );
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.answerClue(
+                player2.getId(),
+                "Mars"
+        );
+
+        assertEquals(
+                200,
+                player2.getScore()
         );
     }
 
