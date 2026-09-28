@@ -59,12 +59,15 @@ public class GameSessionService {
     ) {
         GameSession session = getSession(sessionId);
 
-        session.addPlayer(
-                new GameSessionPlayer(
-                        generatePlayerId(),
-                        playerName
-                )
-        );
+        synchronized (session) {
+
+            session.addPlayer(
+                    new GameSessionPlayer(
+                            generatePlayerId(),
+                            playerName
+                    )
+            );
+        }
 
         broadcaster.broadcast(session);
     }
@@ -72,10 +75,12 @@ public class GameSessionService {
     public void startGame(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
-        session.startGame();
+        synchronized (session) {
+            session.startGame();
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void chooseClue(
@@ -85,11 +90,12 @@ public class GameSessionService {
     ) {
         GameSession session = getSession(sessionId);
 
-        session.chooseClue(playerId, clueId);
+        synchronized (session) {
+            session.chooseClue(playerId, clueId);
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
-
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void finishRevealingClue(UUID sessionId) {
@@ -99,11 +105,12 @@ public class GameSessionService {
             return;
         }
 
-        session.finishRevealingClue();
+        synchronized (session) {
+            session.finishRevealingClue();
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
-
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void buzz(
@@ -112,11 +119,12 @@ public class GameSessionService {
     ) {
         GameSession session = getSession(sessionId);
 
-        session.buzz(playerId);
+        synchronized (session) {
+            session.buzz(playerId);
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
-
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void answerClue(
@@ -126,11 +134,12 @@ public class GameSessionService {
     ) {
         GameSession session = getSession(sessionId);
 
-        session.answerClue(playerId, answer);
+        synchronized (session) {
+            session.answerClue(playerId, answer);
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
-
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void finishRevealingAnswer(UUID sessionId) {
@@ -140,10 +149,12 @@ public class GameSessionService {
             return;
         }
 
-        session.finishRevealingAnswer();
+        synchronized (session) {
+            session.finishRevealingAnswer();
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     private void timeoutBuzzer(UUID sessionId) {
@@ -153,10 +164,12 @@ public class GameSessionService {
             return;
         }
 
-        session.timeoutBuzzer();
+        synchronized (session) {
+            session.timeoutBuzzer();
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     private void timeoutAnswer(UUID sessionId) {
@@ -166,10 +179,13 @@ public class GameSessionService {
             return;
         }
 
-        session.timeoutAnswer();
 
-        scheduleTimeout(session);
-        broadcaster.broadcast(session);
+        synchronized (session) {
+            session.timeoutAnswer();
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     private void scheduleTimeout(GameSession session) {

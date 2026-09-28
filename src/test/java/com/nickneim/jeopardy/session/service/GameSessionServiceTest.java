@@ -5,7 +5,9 @@ import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
+import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -15,11 +17,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -502,5 +504,82 @@ class GameSessionServiceTest {
         category.getClues().add(clue);
 
         return game;
+    }
+
+    @Test
+    void concurrentBuzzes_onlyOnePlayerCanBuzz() throws Exception {
+        GameSession session = createSessionWithPlayers(2);
+
+        gameSessionService.startGame(session.getId());
+
+        Long player1 = session.getPlayers().get(0).getId();
+        Long player2 = session.getPlayers().get(1).getId();
+        Long clueId = session.getAvailableClues().iterator().next();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                player1,
+                clueId
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch start = new CountDownLatch(1);
+
+            Future<?> first = executor.submit(() -> {
+                try {
+                    start.await();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(exception);
+                }
+
+                gameSessionService.buzz(
+                        session.getId(),
+                        player1
+                );
+            });
+
+            Future<?> second = executor.submit(() -> {
+                try {
+                    start.await();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(exception);
+                }
+
+                gameSessionService.buzz(
+                        session.getId(),
+                        player2
+                );
+            });
+
+            start.countDown();
+
+            int successfulBuzzes = 0;
+
+            for (Future<?> future : List.of(first, second)) {
+                try {
+                    future.get();
+                    successfulBuzzes++;
+                } catch (ExecutionException exception) {
+                    assertInstanceOf(
+                            InvalidGameActionException.class,
+                            exception.getCause()
+                    );
+                    assertEquals(GameErrorCode.INVALID_STATE, ((InvalidGameActionException)exception.getCause()).getCode());
+                }
+            }
+
+            assertEquals(1, successfulBuzzes);
+            assertEquals(
+                    GameSessionState.WAITING_FOR_ANSWER,
+                    session.getState()
+            );
+            assertNotNull(session.getPlayerWhoBuzzed());
+        }
     }
 }

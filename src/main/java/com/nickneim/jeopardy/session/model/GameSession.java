@@ -86,7 +86,7 @@ public class GameSession {
         players.add(player);
     }
 
-    public synchronized void startGame() {
+    public void startGame() {
         if (!state.equals(GameSessionState.WAITING_FOR_START)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Game has already started!");
         }
@@ -97,7 +97,7 @@ public class GameSession {
 
     }
 
-    public synchronized void chooseClue(Long playerId, Long clueId) {
+    public void chooseClue(Long playerId, Long clueId) {
         if (!state.equals(GameSessionState.CHOOSING_CLUE)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't choose a clue right now!");
         }
@@ -120,12 +120,12 @@ public class GameSession {
         state = GameSessionState.REVEALING_CLUE;
     }
 
-    public synchronized void finishRevealingClue() {
+    public void finishRevealingClue() {
         playersAlreadyBuzzed.clear();
         state = GameSessionState.WAITING_FOR_BUZZER;
     }
 
-    public synchronized void buzz(Long playerId) {
+    public void buzz(Long playerId) {
         if (!state.equals(GameSessionState.WAITING_FOR_BUZZER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't buzz right now!");
         }
@@ -144,7 +144,7 @@ public class GameSession {
         state = GameSessionState.REVEALING_ANSWER;
     }
 
-    public synchronized void finishRevealingAnswer() {
+    public void finishRevealingAnswer() {
         state = GameSessionState.CHOOSING_CLUE;
 
         if (availableClues.size() == cluesAlreadySelected.size()) {
@@ -162,11 +162,11 @@ public class GameSession {
         state = GameSessionState.WAITING_FOR_BUZZER;
     }
 
-    public synchronized void timeoutBuzzer() {
+    public void timeoutBuzzer() {
         startRevealingAnswer();
     }
 
-    public synchronized void timeoutAnswer() {
+    public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
         Clue clue = getClue(chosenClueId);
         player.addScore(-clue.getValue());
@@ -189,7 +189,7 @@ public class GameSession {
         return players.stream().filter(player -> player.getId().equals(playerId)).findFirst().orElse(null);
     }
 
-    public synchronized void answerClue(Long playerId, String answer) {
+    public void answerClue(Long playerId, String answer) {
         if (!state.equals(GameSessionState.WAITING_FOR_ANSWER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
