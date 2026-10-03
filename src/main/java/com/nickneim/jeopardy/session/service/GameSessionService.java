@@ -98,6 +98,21 @@ public class GameSessionService {
         }
     }
 
+    public void placeDailyDoubleWager(
+            UUID sessionId,
+            Long playerId,
+            int wager
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            session.placeDailyDoubleWager(playerId, wager);
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
+    }
+
     public void finishRevealingClue(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
@@ -188,6 +203,22 @@ public class GameSessionService {
         }
     }
 
+    private void timeoutDailyDoubleWager(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        if (session.getState() != GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER) {
+            return;
+        }
+
+
+        synchronized (session) {
+            session.timeoutDailyDoubleWager();
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
+    }
+
     private void scheduleTimeout(GameSession session) {
         UUID sessionId = session.getId();
 
@@ -220,6 +251,12 @@ public class GameSessionService {
                             sessionId,
                             session.getTimeouts().answerReveal(),
                             () -> finishRevealingAnswer(sessionId)
+                    );
+            case WAITING_FOR_DAILY_DOUBLE_WAGER ->
+                    timer.schedule(
+                            session.getId(),
+                            session.getTimeouts().dailyDoubleWager(),
+                            () -> timeoutDailyDoubleWager(session.getId())
                     );
 
             default -> {

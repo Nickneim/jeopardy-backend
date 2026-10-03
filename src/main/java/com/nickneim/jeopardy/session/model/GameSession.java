@@ -113,6 +113,40 @@ public class GameSession {
 
         chosenClueId = clueId;
         cluesAlreadySelected.add(clueId);
+        if (game.isDailyDouble(clueId)) {
+            startWaitingForDailyDoubleWager();
+        } else {
+            startRevealingClue();
+        }
+    }
+
+    private void startWaitingForDailyDoubleWager() {
+        state = GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER;
+    }
+
+    public void placeDailyDoubleWager(Long playerId, int wager) {
+        if (!state.equals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER)) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager a bet right now!");
+        }
+        if (!playerChoosingClue.equals(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
+        }
+
+            int maximumWager = Math.max(
+                    getPlayer(playerId).getScore(),
+                    round == GameRound.JEOPARDY ? 1000 : 2000
+            );
+
+        if (wager < 5 || wager > maximumWager) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
+        }
+
+        getPlayer(playerId).setWager(wager);
+        startRevealingClue();
+    }
+
+    public void timeoutDailyDoubleWager() {
+        getPlayer(playerChoosingClue).setWager(5);
         startRevealingClue();
     }
 
@@ -122,7 +156,12 @@ public class GameSession {
 
     public void finishRevealingClue() {
         playersAlreadyBuzzed.clear();
-        state = GameSessionState.WAITING_FOR_BUZZER;
+
+        if (game.isDailyDouble(chosenClueId)) {
+            state = GameSessionState.WAITING_FOR_ANSWER;
+        } else {
+            state = GameSessionState.WAITING_FOR_BUZZER;
+        }
     }
 
     public void buzz(Long playerId) {
@@ -193,18 +232,32 @@ public class GameSession {
         if (!state.equals(GameSessionState.WAITING_FOR_ANSWER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
-        if (!playerWhoBuzzed.equals(playerId)) {
-            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
+
+        Clue clue = getClue(chosenClueId);
+        int clueValue;
+        if (game.isDailyDouble(chosenClueId)) {
+            // player must be playerChoosingClue
+            // use dailyDoubleWager
+            if (!playerChoosingClue.equals(playerId)) {
+                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
+            }
+            clueValue = getPlayer(playerId).getWager();
+        } else {
+            if (!playerWhoBuzzed.equals(playerId)) {
+                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
+            }
+            clueValue = clue.getValue();
         }
         GameSessionPlayer player = getPlayer(playerId);
-        Clue clue = getClue(chosenClueId);
         if (isCorrectAnswer(clue, answer)) {
-            player.addScore(clue.getValue());
+            player.addScore(clueValue);
             playerChoosingClue = playerId;
             startRevealingAnswer();
         } else {
-            player.addScore(-clue.getValue());
-            if (players.size() == playersAlreadyBuzzed.size()) {
+            player.addScore(-clueValue);
+            if (game.isDailyDouble(chosenClueId)) {
+                startRevealingAnswer();
+            } else if (players.size() == playersAlreadyBuzzed.size()) {
                 startRevealingAnswer();
             } else {
                 startWaitingForBuzzer();

@@ -1,10 +1,6 @@
 package com.nickneim.jeopardy.session.controller;
 
-import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
-import com.nickneim.jeopardy.session.dto.BuzzRequest;
-import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
-import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
-import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
+import com.nickneim.jeopardy.session.dto.*;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.service.GameSessionService;
@@ -81,6 +77,19 @@ public class GameSessionWebSocketController {
         );
     }
 
+
+    @MessageMapping("/sessions/{sessionId}/place-daily-double-wager")
+    public void placeDailyDoubleWager(
+            @DestinationVariable UUID sessionId,
+            @Valid PlaceDailyDoubleWagerRequest request
+    ) {
+        gameSessionService.placeDailyDoubleWager(
+                sessionId,
+                request.playerId(),
+                request.wager()
+        );
+    }
+
     @MessageExceptionHandler(InvalidGameActionException.class)
     @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleInvalidGameAction(
@@ -104,16 +113,4 @@ public class GameSessionWebSocketController {
         );
     }
 
-    @MessageExceptionHandler(Exception.class)
-    @SendToUser(
-            destinations = "/queue/errors",
-            broadcast = false
-    )
-    public GameSessionErrorResponse handleException(Exception exception) {
-        System.out.println("GENERIC HANDLER: " + exception);
-        return new GameSessionErrorResponse(
-                "UNKNOWN",
-                exception.getMessage()
-        );
-    }
 }

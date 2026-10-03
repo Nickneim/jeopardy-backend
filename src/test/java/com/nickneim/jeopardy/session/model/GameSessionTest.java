@@ -23,6 +23,7 @@ class GameSessionTest {
 
     private Clue jeopardyClue1;
     private Clue jeopardyClue2;
+    private Clue dailyDoubleClue1;
     private Clue doubleJeopardyClue1;
     private Clue finalJeopardyClue;
 
@@ -776,6 +777,216 @@ class GameSessionTest {
                 200,
                 player2.getScore()
         );
+    }
+
+
+    private void addDailyDoubleClue() {
+        Category history = session.getGame().getCategories().getFirst();
+
+        dailyDoubleClue1 = new Clue(
+                "Who was the second president of the United States?",
+                "John Adams",
+                (short) 2,
+                ClueType.TEXT,
+                null,
+                history
+        );
+        ReflectionTestUtils.setField(dailyDoubleClue1, "id", 103L);
+
+        history.getClues().add(dailyDoubleClue1);
+
+        GameDailyDouble dailyDouble = new GameDailyDouble(session.getGame(), dailyDoubleClue1);
+
+        session.getGame().getDailyDoubles().add(dailyDouble);
+    }
+
+
+    @Test
+    void isDailyDouble_returnsTrueForDailyDoubleClue() {
+        addDailyDoubleClue();
+        assertTrue(session.getGame().isDailyDouble(dailyDoubleClue1.getId()));
+        assertFalse(session.getGame().isDailyDouble(jeopardyClue1.getId()));
+        assertFalse(session.getGame().isDailyDouble(jeopardyClue2.getId()));
+    }
+
+    @Test
+    void chooseClue_forDailyDouble_waitsForWagerBeforeRevealing() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
+                session.getState()
+        );
+    }
+
+    @Test
+    void placeDailyDoubleWager_rejectsPlayerWhoDidNotChooseClue() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(
+                        player2.getId(),
+                        500
+                )
+        );
+
+        assertEquals(GameErrorCode.NOT_YOUR_TURN, exception.getCode());
+    }
+
+    @Test
+    void placeDailyDoubleWager_rejectsWagerWithValueTooHigh() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(
+                        player1.getId(),
+                        3000
+                )
+        );
+
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
+    }
+
+    @Test
+    void placeDailyDoubleWager_rejectsWagerWithValueTooLow() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(
+                        player1.getId(),
+                        4
+                )
+        );
+
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
+    }
+
+    @Test
+    void placeDailyDoubleWager_acceptsValidWager() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        session.placeDailyDoubleWager(player1.getId(), 500);
+
+        assertEquals(500, session.getPlayers().getFirst().getWager());
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+    }
+
+    @Test
+    void finishRevealingClue_forDailyDouble_waitsForAnswer() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_ANSWER,
+                session.getState()
+        );
+    }
+
+    @Test
+    void answerClue_correctDailyDouble_addsWagerToScore() {
+        addDailyDoubleClue();
+
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        session.answerClue(player1.getId(), "John Adams");
+
+        assertEquals(500, session.getPlayers().getFirst().getScore());
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void answerClue_incorrectDailyDouble_deductsWager() {
+        addDailyDoubleClue();
+
+        session.startGame();
+        Long playerId = session.getPlayers().getFirst().getId();
+
+        session.chooseClue(
+                playerId,
+                dailyDoubleClue1.getId()
+        );
+
+        session.placeDailyDoubleWager(playerId, 500);
+        session.finishRevealingClue();
+
+        session.answerClue(playerId, "George Washington");
+
+        assertEquals(-500, player1.getScore());
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void timeoutWaitingForDailyDouble_revealsClue() {
+        addDailyDoubleClue();
+        session.startGame();
+
+        session.chooseClue(
+                player1.getId(),
+                dailyDoubleClue1.getId()
+        );
+        session.timeoutDailyDoubleWager();
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                session.getState()
+        );
+
+        assertEquals(5, player1.getWager());
     }
 
 }
