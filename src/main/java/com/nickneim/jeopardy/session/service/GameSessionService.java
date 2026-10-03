@@ -115,12 +115,10 @@ public class GameSessionService {
 
     public void finishRevealingClue(UUID sessionId) {
         GameSession session = getSession(sessionId);
-
-        if (session.getState() != GameSessionState.REVEALING_CLUE) {
-            return;
-        }
-
         synchronized (session) {
+            if (session.getState() != GameSessionState.REVEALING_CLUE) {
+                return;
+            }
             session.finishRevealingClue();
 
             scheduleTimeout(session);
@@ -160,11 +158,11 @@ public class GameSessionService {
     public void finishRevealingAnswer(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
-        if (session.getState() != GameSessionState.REVEALING_ANSWER) {
-            return;
-        }
-
         synchronized (session) {
+            if (session.getState() != GameSessionState.REVEALING_ANSWER) {
+                return;
+            }
+
             session.finishRevealingAnswer();
 
             scheduleTimeout(session);
@@ -175,11 +173,11 @@ public class GameSessionService {
     private void timeoutBuzzer(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
-        if (session.getState() != GameSessionState.WAITING_FOR_BUZZER) {
-            return;
-        }
-
         synchronized (session) {
+            if (session.getState() != GameSessionState.WAITING_FOR_BUZZER) {
+                return;
+            }
+
             session.timeoutBuzzer();
 
             scheduleTimeout(session);
@@ -190,12 +188,11 @@ public class GameSessionService {
     private void timeoutAnswer(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
-        if (session.getState() != GameSessionState.WAITING_FOR_ANSWER) {
-            return;
-        }
-
-
         synchronized (session) {
+            if (session.getState() != GameSessionState.WAITING_FOR_ANSWER) {
+                return;
+            }
+
             session.timeoutAnswer();
 
             scheduleTimeout(session);
@@ -206,12 +203,11 @@ public class GameSessionService {
     private void timeoutDailyDoubleWager(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
-        if (session.getState() != GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER) {
-            return;
-        }
-
-
         synchronized (session) {
+            if (session.getState() != GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER) {
+                return;
+            }
+
             session.timeoutDailyDoubleWager();
 
             scheduleTimeout(session);
