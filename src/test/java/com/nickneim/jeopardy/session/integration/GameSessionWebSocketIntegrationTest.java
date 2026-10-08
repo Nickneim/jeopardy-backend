@@ -738,7 +738,7 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         assertEquals(
-                100,
+                200,
                 response.players()
                         .getFirst()
                         .score()
@@ -801,7 +801,7 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         assertEquals(
-                -100,
+                -200,
                 response.players()
                         .getFirst()
                         .score()

@@ -791,7 +791,7 @@ class GameSessionServiceTest {
         answerTimeout.run();
 
         assertEquals(
-                -100,
+                -200,
                 session.getPlayers().getFirst().getScore()
         );
         assertEquals(

@@ -34,7 +34,7 @@ There are two top-level feature packages under `com.nickneim.jeopardy`. Each has
 ### `game`: persistent content (REST, read-only)
 
 - `Game` → `Category` → `Clue` JPA entities. `GameDailyDouble` is a join entity with a composite key (`GameDailyDoubleId`).
-- **The round is derived from `Category.columnNumber`, not stored:** columns 1–6 are Jeopardy, 7–12 are Double Jeopardy, and 13 is Final Jeopardy (`GameRound.fromColumn`). Clue value is also computed (`Clue.getValue()`): `100*row` in J!, `200*row` in DJ!, and a flat 2000 in Final.
+- **The round is derived from `Category.columnNumber`, not stored:** columns 1–6 are Jeopardy, 7–12 are Double Jeopardy, and 13 is Final Jeopardy (`GameRound.fromColumn`). Clue value is also computed (`Clue.getValue()`): `200*row` in J! ($200–$1000), `400*row` in DJ! ($400–$2000), and a flat 2000 in Final.
 - Endpoints: `GET /api/games` (paged, optional `season` filter), `GET /api/games/{id}`, and `GET /api/clues/{id}`. DTOs are records with static `from(entity)` factories. `GameResponse` splits categories into `jeopardyRound`, `doubleJeopardyRound` and `finalJeopardy`.
 - REST errors are mapped to `ApiErrorResponse` in `exception/ApiExceptionHandler`.
 

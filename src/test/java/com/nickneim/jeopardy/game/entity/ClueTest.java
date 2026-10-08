@@ -15,16 +15,16 @@ class ClueTest {
     );
 
     @Test
-    void getValue_inJeopardy_is100PerRow() {
-        assertEquals(100, clueAt(1, 1).getValue());
-        assertEquals(500, clueAt(6, 5).getValue());
+    void getValue_inJeopardy_is200PerRow() {
+        assertEquals(200, clueAt(1, 1).getValue());
+        assertEquals(1000, clueAt(6, 5).getValue());
     }
 
     @Test
-    void getValue_inDoubleJeopardy_is200PerRow() {
-        assertEquals(200, clueAt(7, 1).getValue());
-        assertEquals(400, clueAt(7, 2).getValue());
-        assertEquals(1000, clueAt(12, 5).getValue());
+    void getValue_inDoubleJeopardy_is400PerRow() {
+        assertEquals(400, clueAt(7, 1).getValue());
+        assertEquals(800, clueAt(7, 2).getValue());
+        assertEquals(2000, clueAt(12, 5).getValue());
     }
 
     @Test

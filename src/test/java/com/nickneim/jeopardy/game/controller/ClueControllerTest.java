@@ -69,7 +69,7 @@ class ClueControllerTest {
                     "answer": "Who is George Washington?",
                     "clueType": "TEXT",
                     "mediaUrl": null,
-                    "value": 300,
+                    "value": 600,
                     "isFinalClue": false,
                     "categoryId": 456,
                     "categoryName": "HISTORY",

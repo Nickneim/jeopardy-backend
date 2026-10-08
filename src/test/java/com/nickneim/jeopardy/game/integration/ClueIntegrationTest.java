@@ -43,7 +43,7 @@ class ClueIntegrationTest {
                             .isEqualTo("Who is George Washington?");
                     assertThat(body.clueType()).isEqualTo(ClueType.TEXT);
                     assertThat(body.mediaUrl()).isNull();
-                    assertThat(body.value()).isEqualTo(300);
+                    assertThat(body.value()).isEqualTo(600);
                     assertThat(body.isFinalClue()).isFalse();
                     assertThat(body.categoryName()).isEqualTo("HISTORY");
                     assertThat(body.categoryComments())

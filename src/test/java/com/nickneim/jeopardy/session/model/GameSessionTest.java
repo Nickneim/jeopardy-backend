@@ -471,7 +471,7 @@ class GameSessionTest {
         );
 
         assertEquals(
-                100,
+                200,
                 player2.getScore()
         );
         assertEquals(
@@ -501,7 +501,7 @@ class GameSessionTest {
         );
 
         assertEquals(
-                -100,
+                -200,
                 player2.getScore()
         );
     }
@@ -546,7 +546,7 @@ class GameSessionTest {
         session.timeoutAnswer();
 
         assertEquals(
-                -100,
+                -200,
                 player2.getScore()
         );
     }
@@ -705,7 +705,7 @@ class GameSessionTest {
         );
 
         assertEquals(
-                200,
+                400,
                 player2.getScore()
         );
     }
@@ -1048,8 +1048,8 @@ class GameSessionTest {
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "John Adams");
 
-        // The clue itself is worth 200, so the score must reflect the wager.
-        assertEquals(100 + 750, player2.getScore());
+        // The clue itself is worth 400, so the score must reflect the wager.
+        assertEquals(200 + 750, player2.getScore());
         assertEquals(0, player1.getScore());
         assertEquals(player2.getId(), session.getPlayerChoosingClue());
     }
@@ -1065,7 +1065,7 @@ class GameSessionTest {
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "Thomas Jefferson");
 
-        assertEquals(100 - 750, player2.getScore());
+        assertEquals(200 - 750, player2.getScore());
         assertEquals(0, player1.getScore());
         assertEquals(player2.getId(), session.getPlayerChoosingClue());
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
@@ -1115,7 +1115,7 @@ class GameSessionTest {
         session.timeoutAnswer();
 
         assertEquals(-500, player1.getScore());
-        assertEquals(-100, player2.getScore());
+        assertEquals(-200, player2.getScore());
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
     }
 
@@ -1213,8 +1213,8 @@ class GameSessionTest {
         session.answerClue(player1.getId(), "John Adams");
 
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
-        assertEquals(-100, player1.getScore());
-        assertEquals(-100, player2.getScore());
+        assertEquals(-200, player1.getScore());
+        assertEquals(-200, player2.getScore());
     }
 
     @Test
@@ -1253,7 +1253,7 @@ class GameSessionTest {
 
         session.answerClue(player1.getId(), "France");
 
-        assertEquals(200, player1.getScore());
+        assertEquals(400, player1.getScore());
     }
 
     // -------------------------------------------------------------------------
@@ -1272,7 +1272,7 @@ class GameSessionTest {
         session.finishRevealingAnswer();
     }
 
-    // Player 2 answers jeopardyClue1 correctly (+100) and takes control of the board.
+    // Player 2 answers jeopardyClue1 correctly (+200) and takes control of the board.
     private void givePlayer2Control() {
         session.chooseClue(player1.getId(), jeopardyClue1.getId());
         session.finishRevealingClue();

@@ -92,11 +92,11 @@ public class Clue {
         short column = category.getColumnNumber();
         short row = rowNumber;
         if (column <= 6) {
-            return 100 * row;
+            return 200 * row;
         }
 
         if (column <= 12) {
-            return 200 * row;
+            return 400 * row;
         }
 
         return 2000;
