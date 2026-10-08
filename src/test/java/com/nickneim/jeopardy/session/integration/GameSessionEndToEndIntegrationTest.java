@@ -147,7 +147,8 @@ class GameSessionEndToEndIntegrationTest {
                 stompSession,
                 sessionId,
                 "place-daily-double-wager",
-                new PlaceDailyDoubleWagerRequest(playerId, 500)
+                // The fixture's Daily Double is the round's highest clue (400).
+                new PlaceDailyDoubleWagerRequest(playerId, 300)
         );
 
         assertEquals(
@@ -175,7 +176,7 @@ class GameSessionEndToEndIntegrationTest {
                 answered.state()
         );
         assertEquals(
-                500,
+                300,
                 answered.players().getFirst().score()
         );
     }

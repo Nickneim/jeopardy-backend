@@ -1,10 +1,10 @@
 package com.nickneim.jeopardy.session.integration;
 
-import com.nickneim.jeopardy.game.entity.Category;
-import com.nickneim.jeopardy.game.entity.Clue;
-import com.nickneim.jeopardy.game.entity.ClueType;
-import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.entity.GameDailyDouble;
+import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.BoardRound;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
@@ -28,12 +28,11 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
-import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -1177,7 +1176,7 @@ class GameSessionWebSocketIntegrationTest {
 
     private GameSession createSession() {
         return gameSessionService.createSession(
-                createGame()
+                createBoard()
         );
     }
 
@@ -1192,53 +1191,35 @@ class GameSessionWebSocketIntegrationTest {
         return session;
     }
 
-    private Game createGame() {
-        Game game = new Game(
-                "Show #123",
-                LocalDate.of(2025, 1, 1),
-                "40"
+    private GameBoard createBoard() {
+        return board(
+                new BoardClue(10L, "Question", "Correct answer", 200, false),
+                new BoardClue(11L, "Question", "Correct answer", 400, false)
         );
+    }
 
-        Category category = new Category(
-                "Category",
-                (short) 1,
-                null,
-                game
+    // The Daily Double is worth 1000, the round's highest value, so wagers
+    // up to 1000 are valid.
+    private GameBoard createBoardWithDailyDouble() {
+        return board(
+                new BoardClue(10L, "Question", "Correct answer", 200, false),
+                new BoardClue(11L, "Question", "Correct answer", 400, false),
+                new BoardClue(DAILY_DOUBLE_CLUE_ID, "Daily Double question", "Daily Double answer", 1000, true)
         );
+    }
 
-        Clue clue1 = new Clue(
-                "Question",
-                "Correct answer",
-                (short) 1,
-                ClueType.TEXT,
-                null,
-                category
-        );
-
-        Clue clue2 = new Clue(
-                "Question",
-                "Correct answer",
-                (short) 2,
-                ClueType.TEXT,
-                null,
-                category
-        );
-
-        ReflectionTestUtils.setField(game, "id",123L);
-        ReflectionTestUtils.setField(category, "id", 456L);
-        ReflectionTestUtils.setField(clue1, "id", 10L);
-        ReflectionTestUtils.setField(clue2, "id", 11L);
-
-        game.getCategories().add(category);
-        category.getClues().add(clue1);
-        category.getClues().add(clue2);
-
-        return game;
+    private GameBoard board(BoardClue... clues) {
+        return new GameBoard(List.of(
+                new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory("Category", List.of(clues)))
+                )
+        ));
     }
 
     private GameSession createStartedSessionWithDailyDouble() {
         GameSession session = gameSessionService.createSession(
-                createGameWithDailyDouble()
+                createBoardWithDailyDouble()
         );
 
         gameSessionService.joinSession(
@@ -1264,29 +1245,6 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         return session;
-    }
-
-    private Game createGameWithDailyDouble() {
-        Game game = createGame();
-        Category category = game.getCategories().getFirst();
-
-        Clue dailyDouble = new Clue(
-                "Daily Double question",
-                "Daily Double answer",
-                (short) 3,
-                ClueType.TEXT,
-                null,
-                category
-        );
-
-        ReflectionTestUtils.setField(dailyDouble, "id", DAILY_DOUBLE_CLUE_ID);
-
-        category.getClues().add(dailyDouble);
-        game.getDailyDoubles().add(
-                new GameDailyDouble(game, dailyDouble)
-        );
-
-        return game;
     }
 
     private StompSession connect()

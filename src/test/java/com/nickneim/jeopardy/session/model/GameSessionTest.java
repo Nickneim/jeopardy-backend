@@ -1,13 +1,16 @@
 package com.nickneim.jeopardy.session.model;
 
-import com.nickneim.jeopardy.game.entity.*;
+import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.BoardRound;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,24 +24,19 @@ class GameSessionTest {
     private GameSessionPlayer player1;
     private GameSessionPlayer player2;
 
-    private Clue jeopardyClue1;
-    private Clue jeopardyClue2;
-    private Clue dailyDoubleClue1;
-    private Clue doubleJeopardyClue1;
-    private Clue doubleJeopardyDailyDouble;
-    private Clue finalJeopardyClue;
+    private BoardClue jeopardyClue1;
+    private BoardClue jeopardyClue2;
+    private BoardClue dailyDoubleClue1;
+    private BoardClue doubleJeopardyClue1;
+    private BoardClue doubleJeopardyDailyDouble;
+    private BoardClue finalJeopardyClue;
 
 
     @Test
     void addPlayer_addsPlayerToSession() {
-        Game game = new Game(
-                "Show #123",
-                LocalDate.of(2025, 1, 1),
-                "40"
-        );
         UUID sessionId = UUID.randomUUID();
         GameSession session =
-                new GameSession(sessionId, game);
+                new GameSession(sessionId, this.session.getBoard());
 
         GameSessionPlayer player =
                 new GameSessionPlayer(1L, "Nico");
@@ -76,102 +74,59 @@ class GameSessionTest {
 
     @BeforeEach
     void setUp() {
-        Game game = new Game(
-                "Show #123",
-                LocalDate.of(2025, 1, 1),
-                "40"
-        );
-
-        Category history = new Category(
-                "HISTORY",
-                (short) 1,
-                null,
-                game
-        );
-
-        Category science = new Category(
-                "SCIENCE",
-                (short) 2,
-                null,
-                game
-        );
-
-        Category doubleHistory = new Category(
-                "HISTORY",
-                (short) 7,
-                null,
-                game
-        );
-
-        Category finalCategory = new Category(
-                "FINAL HISTORY",
-                (short) 13,
-                null,
-                game
-        );
-
-        jeopardyClue1 = new Clue(
+        jeopardyClue1 = new BoardClue(
+                101L,
                 "Who was the first president of the United States?",
                 "George Washington",
-                (short) 1,
-                ClueType.TEXT,
-                null,
-                history
+                200,
+                false
         );
 
-        jeopardyClue2 = new Clue(
+        jeopardyClue2 = new BoardClue(
+                102L,
                 "This country has the city of Paris as its capital.",
                 "France",
-                (short) 2,
-                ClueType.TEXT,
-                null,
-                science
+                400,
+                false
         );
 
-        doubleJeopardyClue1 = new Clue(
+        // Daily Doubles sit on row 5, so they are each round's highest value.
+        dailyDoubleClue1 = new BoardClue(
+                103L,
+                "Who was the second president of the United States?",
+                "John Adams",
+                1000,
+                true
+        );
+
+        doubleJeopardyClue1 = new BoardClue(
+                201L,
                 "This planet is known as the Red Planet.",
                 "Mars",
-                (short) 1,
-                ClueType.TEXT,
-                null,
-                doubleHistory
+                400,
+                false
         );
 
-        finalJeopardyClue = new Clue(
+        doubleJeopardyDailyDouble = new BoardClue(
+                202L,
+                "He was the third president of the United States.",
+                "Thomas Jefferson",
+                2000,
+                true
+        );
+
+        finalJeopardyClue = new BoardClue(
+                301L,
                 "This historical event began in 1775.",
                 "The American Revolution",
-                (short) 1,
-                ClueType.TEXT,
-                null,
-                finalCategory
-        );
-
-        history.getClues().add(jeopardyClue1);
-        science.getClues().add(jeopardyClue2);
-        doubleHistory.getClues().add(doubleJeopardyClue1);
-        finalCategory.getClues().add(finalJeopardyClue);
-
-        game.getCategories().add(history);
-        game.getCategories().add(science);
-        game.getCategories().add(doubleHistory);
-        game.getCategories().add(finalCategory);
-
-        // Generated IDs don't exist when entities are constructed directly.
-        ReflectionTestUtils.setField(jeopardyClue1, "id", 101L);
-        ReflectionTestUtils.setField(jeopardyClue2, "id", 102L);
-        ReflectionTestUtils.setField(doubleJeopardyClue1, "id", 201L);
-        ReflectionTestUtils.setField(finalJeopardyClue, "id", 301L);
-
-        session = new GameSession(
-                UUID.randomUUID(),
-                game
+                2000,
+                false
         );
 
         player1 = new GameSessionPlayer(1L, "Nico");
         player2 = new GameSessionPlayer(2L, "John");
 
-        session.addPlayer(player1);
-        session.addPlayer(player2);
+        useBoard(false, false);
     }
 
     @Test
@@ -216,11 +171,11 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
 
         assertEquals(
-                jeopardyClue1.getId(),
+                jeopardyClue1.id(),
                 session.getChosenClueId()
         );
         assertEquals(
@@ -235,7 +190,7 @@ class GameSessionTest {
                 InvalidGameActionException.class,
                 () -> session.chooseClue(
                         player1.getId(),
-                        jeopardyClue1.getId()
+                        jeopardyClue1.id()
                 )
         );
     }
@@ -249,7 +204,7 @@ class GameSessionTest {
                         InvalidGameActionException.class,
                         () -> session.chooseClue(
                                 player2.getId(),
-                                jeopardyClue1.getId()
+                                jeopardyClue1.id()
                         )
                 );
 
@@ -265,7 +220,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
 
         session.finishRevealingClue();
@@ -278,7 +233,7 @@ class GameSessionTest {
                         InvalidGameActionException.class,
                         () -> session.chooseClue(
                                 player1.getId(),
-                                jeopardyClue1.getId()
+                                jeopardyClue1.id()
                         )
                 );
 
@@ -317,7 +272,7 @@ class GameSessionTest {
                         InvalidGameActionException.class,
                         () -> session.chooseClue(
                                 player1.getId(),
-                                doubleJeopardyClue1.getId()
+                                doubleJeopardyClue1.id()
                         )
                 );
 
@@ -333,7 +288,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
 
         session.finishRevealingClue();
@@ -350,7 +305,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
 
@@ -388,7 +343,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
 
@@ -410,7 +365,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
 
@@ -442,7 +397,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
 
@@ -460,7 +415,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -490,7 +445,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -512,7 +467,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -538,7 +493,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -557,7 +512,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                jeopardyClue1.getId()
+                jeopardyClue1.id()
         );
         session.finishRevealingClue();
 
@@ -588,7 +543,7 @@ class GameSessionTest {
         );
 
         assertEquals(
-                Set.of(doubleJeopardyClue1.getId()),
+                Set.of(doubleJeopardyClue1.id()),
                 session.getAvailableClues()
         );
 
@@ -612,11 +567,11 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                doubleJeopardyClue1.getId()
+                doubleJeopardyClue1.id()
         );
 
         assertEquals(
-                doubleJeopardyClue1.getId(),
+                doubleJeopardyClue1.id(),
                 session.getChosenClueId()
         );
     }
@@ -631,7 +586,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                doubleJeopardyClue1.getId()
+                doubleJeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.timeoutBuzzer();
@@ -648,7 +603,7 @@ class GameSessionTest {
         );
 
         assertEquals(
-                Set.of(finalJeopardyClue.getId()),
+                Set.of(finalJeopardyClue.id()),
                 session.getAvailableClues()
         );
     }
@@ -663,7 +618,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                doubleJeopardyClue1.getId()
+                doubleJeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.timeoutBuzzer();
@@ -672,7 +627,7 @@ class GameSessionTest {
         // This test needs to be updated when Final Jeopardy! works as it should (with betting)
         session.chooseClue(
                 player1.getId(),
-                finalJeopardyClue.getId()
+                finalJeopardyClue.id()
         );
         session.finishRevealingClue();
         session.timeoutBuzzer();
@@ -694,7 +649,7 @@ class GameSessionTest {
         // Start Double Jeopardy clue.
         session.chooseClue(
                 player1.getId(),
-                doubleJeopardyClue1.getId()
+                doubleJeopardyClue1.id()
         );
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -712,23 +667,7 @@ class GameSessionTest {
 
 
     private void addDailyDoubleClue() {
-        Category history = session.getGame().getCategories().getFirst();
-
-        dailyDoubleClue1 = new Clue(
-                "Who was the second president of the United States?",
-                "John Adams",
-                (short) 2,
-                ClueType.TEXT,
-                null,
-                history
-        );
-        ReflectionTestUtils.setField(dailyDoubleClue1, "id", 103L);
-
-        history.getClues().add(dailyDoubleClue1);
-
-        GameDailyDouble dailyDouble = new GameDailyDouble(session.getGame(), dailyDoubleClue1);
-
-        session.getGame().getDailyDoubles().add(dailyDouble);
+        useBoard(true, false);
     }
 
 
@@ -740,7 +679,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         assertEquals(
@@ -757,7 +696,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         InvalidGameActionException exception = assertThrows(
@@ -779,7 +718,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         InvalidGameActionException exception = assertThrows(
@@ -801,7 +740,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         InvalidGameActionException exception = assertThrows(
@@ -823,7 +762,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         session.placeDailyDoubleWager(player1.getId(), 500);
@@ -840,7 +779,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         session.placeDailyDoubleWager(player1.getId(), 500);
@@ -860,7 +799,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         session.placeDailyDoubleWager(player1.getId(), 500);
@@ -881,7 +820,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 playerId,
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
 
         session.placeDailyDoubleWager(playerId, 500);
@@ -900,7 +839,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                dailyDoubleClue1.getId()
+                dailyDoubleClue1.id()
         );
         session.timeoutDailyDoubleWager();
 
@@ -982,7 +921,7 @@ class GameSessionTest {
 
         session.chooseClue(
                 player1.getId(),
-                doubleJeopardyDailyDouble.getId()
+                doubleJeopardyDailyDouble.id()
         );
 
         assertInvalidWager(2001);
@@ -1043,12 +982,12 @@ class GameSessionTest {
         session.startGame(player1.getId());
         givePlayer2Control();
 
-        session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
+        session.chooseClue(player2.getId(), dailyDoubleClue1.id());
         session.placeDailyDoubleWager(player2.getId(), 750);
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "John Adams");
 
-        // The clue itself is worth 400, so the score must reflect the wager.
+        // The clue itself is worth 1000, so the score must reflect the wager.
         assertEquals(200 + 750, player2.getScore());
         assertEquals(0, player1.getScore());
         assertEquals(player2.getId(), session.getPlayerChoosingClue());
@@ -1060,7 +999,7 @@ class GameSessionTest {
         session.startGame(player1.getId());
         givePlayer2Control();
 
-        session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
+        session.chooseClue(player2.getId(), dailyDoubleClue1.id());
         session.placeDailyDoubleWager(player2.getId(), 750);
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "Thomas Jefferson");
@@ -1101,14 +1040,14 @@ class GameSessionTest {
         session.startGame(player1.getId());
 
         // Player 2 buzzes on a normal clue and misses, leaving player 1 in control.
-        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
         session.answerClue(player2.getId(), "Abraham Lincoln");
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
 
-        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+        session.chooseClue(player1.getId(), dailyDoubleClue1.id());
         session.placeDailyDoubleWager(player1.getId(), 500);
         session.finishRevealingClue();
 
@@ -1127,7 +1066,7 @@ class GameSessionTest {
 
         assertEquals(GameRound.JEOPARDY, session.getRound());
 
-        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+        session.chooseClue(player1.getId(), dailyDoubleClue1.id());
         session.placeDailyDoubleWager(player1.getId(), 5);
         session.finishRevealingClue();
         session.answerClue(player1.getId(), "John Adams");
@@ -1145,7 +1084,7 @@ class GameSessionTest {
     void startGame_withNoPlayers_rejectsPlayer() {
         GameSession emptySession = new GameSession(
                 UUID.randomUUID(),
-                session.getGame()
+                session.getBoard()
         );
 
         InvalidGameActionException exception = assertThrows(
@@ -1183,7 +1122,7 @@ class GameSessionTest {
     @Test
     void answerClue_wrongAnswer_withPlayersRemaining_reopensBuzzer() {
         session.startGame(player1.getId());
-        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
 
@@ -1204,7 +1143,7 @@ class GameSessionTest {
     @Test
     void answerClue_wrongAnswer_whenAllPlayersBuzzed_revealsAnswer() {
         session.startGame(player1.getId());
-        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
 
         session.buzz(player2.getId());
@@ -1220,7 +1159,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_withPlayersRemaining_reopensBuzzer() {
         session.startGame(player1.getId());
-        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
 
@@ -1234,7 +1173,7 @@ class GameSessionTest {
         session.startGame(player1.getId());
         givePlayer2Control();
 
-        session.chooseClue(player2.getId(), jeopardyClue2.getId());
+        session.chooseClue(player2.getId(), jeopardyClue2.id());
         session.finishRevealingClue();
 
         assertTrue(session.getPlayersAlreadyBuzzed().isEmpty());
@@ -1247,7 +1186,7 @@ class GameSessionTest {
     @Test
     void answerClue_correctAnswerOnSecondRow_awardsRowValue() {
         session.startGame(player1.getId());
-        session.chooseClue(player1.getId(), jeopardyClue2.getId());
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
 
@@ -1257,12 +1196,71 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Board-driven rules
+    // -------------------------------------------------------------------------
+
+    @Test
+    void placeDailyDoubleWager_limitIsHighestClueValueOnTheBoardsRound() {
+        BoardClue lowClue = new BoardClue(1L, "Question", "Answer", 100, false);
+        BoardClue dailyDouble = new BoardClue(2L, "DD question", "DD answer", 300, true);
+
+        GameSession smallSession = new GameSession(
+                UUID.randomUUID(),
+                new GameBoard(List.of(new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory("SMALL", List.of(lowClue, dailyDouble)))
+                )))
+        );
+        smallSession.addPlayer(player1);
+        smallSession.startGame(player1.getId());
+        smallSession.chooseClue(player1.getId(), dailyDouble.id());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> smallSession.placeDailyDoubleWager(player1.getId(), 301)
+        );
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
+
+        smallSession.placeDailyDoubleWager(player1.getId(), 300);
+
+        assertEquals(300, player1.getWager());
+    }
+
+    @Test
+    void finishRevealingAnswer_skipsRoundsWithoutClues() {
+        GameSession noDoubleJeopardy = new GameSession(
+                UUID.randomUUID(),
+                new GameBoard(List.of(
+                        new BoardRound(GameRound.JEOPARDY, List.of(
+                                new BoardCategory("HISTORY", List.of(jeopardyClue1))
+                        )),
+                        new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
+                                new BoardCategory("FINAL HISTORY", List.of(finalJeopardyClue))
+                        ))
+                ))
+        );
+        noDoubleJeopardy.addPlayer(player1);
+        noDoubleJeopardy.startGame(player1.getId());
+
+        noDoubleJeopardy.chooseClue(player1.getId(), jeopardyClue1.id());
+        noDoubleJeopardy.finishRevealingClue();
+        noDoubleJeopardy.timeoutBuzzer();
+        noDoubleJeopardy.finishRevealingAnswer();
+
+        assertEquals(GameRound.FINAL_JEOPARDY, noDoubleJeopardy.getRound());
+        assertEquals(
+                Set.of(finalJeopardyClue.id()),
+                noDoubleJeopardy.getAvailableClues()
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
     private void finishJeopardyRound() {
-        playClueWithoutBuzz(jeopardyClue1.getId());
-        playClueWithoutBuzz(jeopardyClue2.getId());
+        playClueWithoutBuzz(jeopardyClue1.id());
+        playClueWithoutBuzz(jeopardyClue2.id());
     }
 
     private void playClueWithoutBuzz(Long clueId) {
@@ -1274,7 +1272,7 @@ class GameSessionTest {
 
     // Player 2 answers jeopardyClue1 correctly (+200) and takes control of the board.
     private void givePlayer2Control() {
-        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
         session.answerClue(player2.getId(), "George Washington");
@@ -1284,7 +1282,7 @@ class GameSessionTest {
     private void startDailyDouble() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
-        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+        session.chooseClue(player1.getId(), dailyDoubleClue1.id());
     }
 
     private void assertInvalidWager(int wager) {
@@ -1297,23 +1295,39 @@ class GameSessionTest {
     }
 
     private void addDoubleJeopardyDailyDouble() {
-        Category doubleHistory = session.getGame().getCategories().get(2);
+        useBoard(false, true);
+    }
 
-        doubleJeopardyDailyDouble = new Clue(
-                "He was the third president of the United States.",
-                "Thomas Jefferson",
-                (short) 2,
-                ClueType.TEXT,
-                null,
-                doubleHistory
-        );
-        ReflectionTestUtils.setField(doubleJeopardyDailyDouble, "id", 202L);
+    // Boards are immutable, so adding a Daily Double means starting a new
+    // session (with the same players) on a board that already has it.
+    private void useBoard(
+            boolean withJeopardyDailyDouble,
+            boolean withDoubleJeopardyDailyDouble
+    ) {
+        List<BoardClue> historyClues = withJeopardyDailyDouble
+                ? List.of(jeopardyClue1, dailyDoubleClue1)
+                : List.of(jeopardyClue1);
 
-        doubleHistory.getClues().add(doubleJeopardyDailyDouble);
+        List<BoardClue> doubleHistoryClues = withDoubleJeopardyDailyDouble
+                ? List.of(doubleJeopardyClue1, doubleJeopardyDailyDouble)
+                : List.of(doubleJeopardyClue1);
 
-        session.getGame().getDailyDoubles().add(
-                new GameDailyDouble(session.getGame(), doubleJeopardyDailyDouble)
-        );
+        GameBoard board = new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("HISTORY", historyClues),
+                        new BoardCategory("SCIENCE", List.of(jeopardyClue2))
+                )),
+                new BoardRound(GameRound.DOUBLE_JEOPARDY, List.of(
+                        new BoardCategory("HISTORY", doubleHistoryClues)
+                )),
+                new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
+                        new BoardCategory("FINAL HISTORY", List.of(finalJeopardyClue))
+                ))
+        ));
+
+        session = new GameSession(UUID.randomUUID(), board);
+        session.addPlayer(player1);
+        session.addPlayer(player2);
     }
 
 }

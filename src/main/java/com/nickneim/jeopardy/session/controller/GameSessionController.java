@@ -1,10 +1,10 @@
 package com.nickneim.jeopardy.session.controller;
 
-import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.service.GameService;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionRequest;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionResponse;
 import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class GameSessionController {
 
     private final GameSessionService gameSessionService;
-    private final GameService gameService;
+    private final GameBoardService gameBoardService;
 
-    public GameSessionController(GameSessionService gameSessionService, GameService gameService) {
+    public GameSessionController(GameSessionService gameSessionService, GameBoardService gameBoardService) {
         this.gameSessionService = gameSessionService;
-        this.gameService = gameService;
+        this.gameBoardService = gameBoardService;
     }
 
     @PostMapping
@@ -27,8 +27,8 @@ public class GameSessionController {
     public CreateGameSessionResponse createSession(
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
-        Game game = gameService.getGameForPlay(request.gameId());
-        GameSession session = gameSessionService.createSession(game);
+        GameBoard board = gameBoardService.loadBoard(request.gameId());
+        GameSession session = gameSessionService.createSession(board);
 
         return new CreateGameSessionResponse(session.getId());
     }

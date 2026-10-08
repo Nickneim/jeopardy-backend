@@ -1,9 +1,13 @@
 package com.nickneim.jeopardy.session.controller;
 
-import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
-import com.nickneim.jeopardy.game.service.GameService;
+import com.nickneim.jeopardy.session.board.BoardCategory;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.BoardRound;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
@@ -30,25 +34,29 @@ class GameSessionControllerTest {
     private GameSessionService gameSessionService;
 
     @MockitoBean
-    private GameService gameService;
+    private GameBoardService gameBoardService;
 
     @Test
     void createSession_returnsCreatedSession() throws Exception {
         Long gameId = 123L;
         UUID sessionId = UUID.randomUUID();
 
-        Game game = new Game(
-                "Show #123",
-                LocalDate.of(2025, 1, 1),
-                "40"
-        );
+        GameBoard board = new GameBoard(List.of(
+                new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory(
+                                "HISTORY",
+                                List.of(new BoardClue(10L, "Question", "Answer", 200, false))
+                        ))
+                )
+        ));
 
-        GameSession session = new GameSession(sessionId, game);
+        GameSession session = new GameSession(sessionId, board);
 
-        when(gameService.getGameForPlay(gameId))
-                .thenReturn(game);
+        when(gameBoardService.loadBoard(gameId))
+                .thenReturn(board);
 
-        when(gameSessionService.createSession(game))
+        when(gameSessionService.createSession(board))
                 .thenReturn(session);
 
         mockMvc.perform(post("/api/game-sessions")
@@ -61,8 +69,8 @@ class GameSessionControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(sessionId.toString()));
 
-        verify(gameService).getGameForPlay(gameId);
-        verify(gameSessionService).createSession(game);
+        verify(gameBoardService).loadBoard(gameId);
+        verify(gameSessionService).createSession(board);
     }
 
     @Test
@@ -71,7 +79,7 @@ class GameSessionControllerTest {
 
         Long gameId = 999L;
 
-        when(gameService.getGameForPlay(gameId))
+        when(gameBoardService.loadBoard(gameId))
                 .thenThrow(new GameNotFoundException(gameId));
 
         mockMvc.perform(post("/api/game-sessions")
@@ -83,7 +91,7 @@ class GameSessionControllerTest {
                         """))
                 .andExpect(status().isNotFound());
 
-        verify(gameService).getGameForPlay(gameId);
+        verify(gameBoardService).loadBoard(gameId);
         verifyNoInteractions(gameSessionService);
     }
 }

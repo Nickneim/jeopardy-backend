@@ -1,10 +1,10 @@
 package com.nickneim.jeopardy.session.service;
 
-import com.nickneim.jeopardy.game.entity.Category;
-import com.nickneim.jeopardy.game.entity.Clue;
-import com.nickneim.jeopardy.game.entity.ClueType;
-import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.entity.GameDailyDouble;
+import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.BoardRound;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
@@ -15,10 +15,8 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -41,6 +39,9 @@ class GameSessionServiceTest {
 
     private static final Long CLUE_ID = 10L;
     private static final Long DAILY_DOUBLE_CLUE_ID = 11L;
+    // A second clue keeps the round going after CLUE_ID is played, so
+    // finishing an answer reveal returns to CHOOSING_CLUE.
+    private static final Long OTHER_CLUE_ID = 12L;
 
     @BeforeEach
     void setUp() {
@@ -59,9 +60,9 @@ class GameSessionServiceTest {
 
     @Test
     void createSession_createsAndStoresSession() {
-        Game game = createGame();
+        GameBoard board = createBoard();
 
-        GameSession session = gameSessionService.createSession(game);
+        GameSession session = gameSessionService.createSession(board);
 
         assertNotNull(session);
         assertNotNull(session.getId());
@@ -389,7 +390,7 @@ class GameSessionServiceTest {
     // -------------------------------------------------------------------------
 
     private GameSession createSession() {
-        return gameSessionService.createSession(createGame());
+        return gameSessionService.createSession(createBoard());
     }
 
     private GameSession createSessionWithPlayers(int playerCount) {
@@ -482,41 +483,30 @@ class GameSessionServiceTest {
         return session.getPlayers().getFirst().getId();
     }
 
-    private Game createGame() {
-        return createGameWithClue();
+    private GameBoard createBoard() {
+        return board(
+                new BoardClue(CLUE_ID, "Question", "Correct answer", 200, false),
+                new BoardClue(OTHER_CLUE_ID, "Other question", "Other answer", 400, false)
+        );
     }
 
-    private Game createGameWithClue() {
-        Game game = new Game(
-                "Show #123",
-                LocalDate.of(2025, 1, 1),
-                "40"
+    // The Daily Double is worth 1000, the round's highest value, so wagers
+    // up to 1000 are valid.
+    private GameBoard createBoardWithDailyDouble() {
+        return board(
+                new BoardClue(CLUE_ID, "Question", "Correct answer", 200, false),
+                new BoardClue(OTHER_CLUE_ID, "Other question", "Other answer", 400, false),
+                new BoardClue(DAILY_DOUBLE_CLUE_ID, "Daily Double question", "Daily Double answer", 1000, true)
         );
+    }
 
-        Category category = new Category(
-                "Category",
-                (short) 1,
-                null,
-                game
-        );
-
-        Clue clue = new Clue(
-                "Question",
-                "Correct answer",
-                (short) 1,
-                ClueType.TEXT,
-                null,
-                category
-        );
-
-        ReflectionTestUtils.setField(game, "id", 123L);
-        ReflectionTestUtils.setField(category, "id", 456L);
-        ReflectionTestUtils.setField(clue, "id", CLUE_ID);
-
-        game.getCategories().add(category);
-        category.getClues().add(clue);
-
-        return game;
+    private GameBoard board(BoardClue... clues) {
+        return new GameBoard(List.of(
+                new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory("Category", List.of(clues)))
+                )
+        ));
     }
 
     @Test
@@ -991,7 +981,7 @@ class GameSessionServiceTest {
 
     private GameSession createStartedSessionWithDailyDouble() {
         GameSession session = gameSessionService.createSession(
-                createGameWithDailyDouble()
+                createBoardWithDailyDouble()
         );
 
         session.addPlayer(
@@ -1016,28 +1006,5 @@ class GameSessionServiceTest {
         );
 
         return session;
-    }
-
-    private Game createGameWithDailyDouble() {
-        Game game = createGameWithClue();
-        Category category = game.getCategories().getFirst();
-
-        Clue dailyDouble = new Clue(
-                "Daily Double question",
-                "Daily Double answer",
-                (short) 2,
-                ClueType.TEXT,
-                null,
-                category
-        );
-
-        ReflectionTestUtils.setField(dailyDouble, "id", DAILY_DOUBLE_CLUE_ID);
-
-        category.getClues().add(dailyDouble);
-        game.getDailyDoubles().add(
-                new GameDailyDouble(game, dailyDouble)
-        );
-
-        return game;
     }
 }

@@ -1,19 +1,17 @@
 package com.nickneim.jeopardy.session.model;
 
-import com.nickneim.jeopardy.game.entity.Category;
-import com.nickneim.jeopardy.game.entity.Clue;
-import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
 import java.util.*;
-import java.util.function.Predicate;
 
 public class GameSession {
 
     private final UUID id;
-    private final Game game;
+    private final GameBoard board;
     private final List<GameSessionPlayer> players = new ArrayList<>();
     private final GameSessionTimeouts timeouts;
 
@@ -28,11 +26,11 @@ public class GameSession {
     private final Set<Long> cluesAlreadySelected = new HashSet<>();
     private Long playerWhoBuzzed;
 
-    public GameSession(UUID id, Game game) {
+    public GameSession(UUID id, GameBoard board) {
         this.id = id;
-        this.game = game;
+        this.board = board;
         this.timeouts = GameSessionTimeouts.defaults();
-        this.round = GameRound.JEOPARDY;
+        this.round = board.getFirstRound();
         this.state = GameSessionState.WAITING_FOR_START;
     }
 
@@ -40,8 +38,8 @@ public class GameSession {
         return id;
     }
 
-    public Game getGame() {
-        return game;
+    public GameBoard getBoard() {
+        return board;
     }
 
     public List<GameSessionPlayer> getPlayers() {
@@ -94,7 +92,7 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
         }
 
-        setUpNewRound(GameRound.JEOPARDY);
+        setUpNewRound(board.getFirstRound());
         playerChoosingClue = players.getFirst().getId();
         state = GameSessionState.CHOOSING_CLUE;
 
@@ -116,7 +114,7 @@ public class GameSession {
 
         chosenClueId = clueId;
         cluesAlreadySelected.add(clueId);
-        if (game.isDailyDouble(clueId)) {
+        if (board.isDailyDouble(clueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerId;
             startWaitingForDailyDoubleWager();
@@ -137,10 +135,11 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
         }
 
-            int maximumWager = Math.max(
-                    getPlayer(playerId).getScore(),
-                    round == GameRound.JEOPARDY ? 1000 : 2000
-            );
+        // A player may always wager up to the highest clue value in the round.
+        int maximumWager = Math.max(
+                getPlayer(playerId).getScore(),
+                board.getHighestValue(round)
+        );
 
         if (wager < 5 || wager > maximumWager) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
@@ -162,7 +161,7 @@ public class GameSession {
     public void finishRevealingClue() {
         playersAlreadyBuzzed.clear();
 
-        if (game.isDailyDouble(chosenClueId)) {
+        if (board.isDailyDouble(chosenClueId)) {
             state = GameSessionState.WAITING_FOR_ANSWER;
         } else {
             state = GameSessionState.WAITING_FOR_BUZZER;
@@ -192,13 +191,10 @@ public class GameSession {
         state = GameSessionState.CHOOSING_CLUE;
 
         if (availableClues.size() == cluesAlreadySelected.size()) {
-            if (round == GameRound.JEOPARDY) {
-                setUpNewRound(GameRound.DOUBLE_JEOPARDY);
-            } else if (round == GameRound.DOUBLE_JEOPARDY) {
-                setUpNewRound(GameRound.FINAL_JEOPARDY);
-            } else {
-                state = GameSessionState.FINISHED_GAME;
-            }
+            board.getNextRound(round).ifPresentOrElse(
+                    this::setUpNewRound,
+                    () -> state = GameSessionState.FINISHED_GAME
+            );
         }
     }
 
@@ -212,14 +208,14 @@ public class GameSession {
 
     public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
-        if (game.isDailyDouble(chosenClueId)) {
+        if (board.isDailyDouble(chosenClueId)) {
             player.addScore(-player.getWager());
             startRevealingAnswer();
             return;
         }
 
-        Clue clue = getClue(chosenClueId);
-        player.addScore(-clue.getValue());
+        BoardClue clue = board.getClue(chosenClueId);
+        player.addScore(-clue.value());
         if (players.size() == playersAlreadyBuzzed.size()) {
             startRevealingAnswer();
         } else {
@@ -227,12 +223,8 @@ public class GameSession {
         }
     }
 
-    private boolean isCorrectAnswer(Clue clue, String answer) {
-        return clue.getAnswer().equals(answer);
-    }
-
-    private Clue getClue(Long clueId) {
-        return game.getCategories().stream().flatMap(category -> category.getClues().stream()).filter(c -> c.getId().equals(clueId)).findFirst().orElse(null);
+    private boolean isCorrectAnswer(BoardClue clue, String answer) {
+        return clue.answer().equals(answer);
     }
 
     private GameSessionPlayer getPlayer(Long playerId) {
@@ -244,9 +236,9 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
 
-        Clue clue = getClue(chosenClueId);
+        BoardClue clue = board.getClue(chosenClueId);
         int clueValue;
-        if (game.isDailyDouble(chosenClueId)) {
+        if (board.isDailyDouble(chosenClueId)) {
             // player must be playerChoosingClue
             // use dailyDoubleWager
             if (!playerChoosingClue.equals(playerId)) {
@@ -257,7 +249,7 @@ public class GameSession {
             if (!playerWhoBuzzed.equals(playerId)) {
                 throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
             }
-            clueValue = clue.getValue();
+            clueValue = clue.value();
         }
         GameSessionPlayer player = getPlayer(playerId);
         if (isCorrectAnswer(clue, answer)) {
@@ -266,7 +258,7 @@ public class GameSession {
             startRevealingAnswer();
         } else {
             player.addScore(-clueValue);
-            if (game.isDailyDouble(chosenClueId)) {
+            if (board.isDailyDouble(chosenClueId)) {
                 startRevealingAnswer();
             } else if (players.size() == playersAlreadyBuzzed.size()) {
                 startRevealingAnswer();
@@ -280,18 +272,7 @@ public class GameSession {
         availableClues.clear();
         cluesAlreadySelected.clear();
         round = newRound;
-        Predicate<Category> categoryFilter = switch (newRound) {
-            case JEOPARDY -> Category::isJeopardyRound;
-            case DOUBLE_JEOPARDY -> Category::isDoubleJeopardyRound;
-            case FINAL_JEOPARDY -> Category::isFinalJeopardy;
-        };
-        game.getCategories()
-                .stream()
-                .filter(categoryFilter)
-                .flatMap(category -> category.getClues().stream())
-                .forEach(
-                        clue -> this.availableClues.add(clue.getId())
-                );
+        availableClues.addAll(board.getClueIds(newRound));
     }
 
 }

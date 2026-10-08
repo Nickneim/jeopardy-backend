@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.session.service;
 
-import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -29,9 +29,9 @@ public class GameSessionService {
         this.broadcaster = broadcaster;
     }
 
-    public GameSession createSession(Game game) {
+    public GameSession createSession(GameBoard board) {
         UUID id = UUID.randomUUID();
-        GameSession session = new GameSession(id, game);
+        GameSession session = new GameSession(id, board);
 
         sessions.put(session.getId(), session);
 
