@@ -147,6 +147,18 @@ class GameSessionEndToEndIntegrationTest {
                 started.playerChoosingClue()
         );
 
+        // A client catching up (e.g. after a refresh) fetches the same state.
+        GameSessionResponse fetched = restTestClient.get()
+                .uri("/api/game-sessions/" + sessionId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(GameSessionResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertEquals(started.version(), fetched.version());
+        assertEquals(GameSessionState.CHOOSING_CLUE, fetched.state());
+
         send(
                 stompSession,
                 sessionId,

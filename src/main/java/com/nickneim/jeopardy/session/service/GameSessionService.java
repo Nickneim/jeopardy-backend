@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.service;
 
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
+import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -54,6 +55,18 @@ public class GameSessionService {
         return session;
     }
 
+    /**
+     * The current state, exactly as a broadcast would show it. Built under
+     * the session's lock so it is never a half-applied change.
+     */
+    public GameSessionResponse getSessionState(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            return GameSessionResponse.from(session);
+        }
+    }
+
     public void removeSession(UUID sessionId) {
         timer.cancel(sessionId);
 
@@ -75,18 +88,13 @@ public class GameSessionService {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            GameSessionPlayer player = new GameSessionPlayer(
-                    generatePlayerId(),
-                    playerName
-            );
-
-            session.addPlayer(player);
+            GameSessionPlayer player = session.addPlayer(playerName);
             playerTokens.register(
                     player.getToken(),
                     new PlayerPrincipal(sessionId, player.getId())
             );
 
-            broadcaster.broadcast(session);
+            broadcast(session);
 
             return player;
         }
@@ -107,7 +115,7 @@ public class GameSessionService {
             session.startGame(playerId);
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -122,7 +130,7 @@ public class GameSessionService {
             session.chooseClue(playerId, clueId);
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -137,7 +145,7 @@ public class GameSessionService {
             session.placeDailyDoubleWager(playerId, wager);
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -153,7 +161,7 @@ public class GameSessionService {
         synchronized (session) {
             session.placeFinalJeopardyWager(playerId, wager);
 
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -167,7 +175,7 @@ public class GameSessionService {
         synchronized (session) {
             session.answerFinalJeopardy(playerId, answer);
 
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -180,7 +188,7 @@ public class GameSessionService {
             session.finishRevealingClue();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -194,7 +202,7 @@ public class GameSessionService {
             session.buzz(playerId);
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -209,7 +217,7 @@ public class GameSessionService {
             session.answerClue(playerId, answer);
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -224,7 +232,7 @@ public class GameSessionService {
             session.finishRevealingAnswer();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -239,7 +247,7 @@ public class GameSessionService {
             session.timeoutBuzzer();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -254,7 +262,7 @@ public class GameSessionService {
             session.timeoutAnswer();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -269,7 +277,7 @@ public class GameSessionService {
             session.timeoutDailyDoubleWager();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -284,7 +292,7 @@ public class GameSessionService {
             session.timeoutFinalJeopardyWagering();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -299,7 +307,7 @@ public class GameSessionService {
             session.timeoutFinalJeopardyAnswering();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
     }
 
@@ -314,8 +322,15 @@ public class GameSessionService {
             session.finishFinalJeopardyReveal();
 
             scheduleTimeout(session);
-            broadcaster.broadcast(session);
+            broadcast(session);
         }
+    }
+
+    // Every state change is broadcast through here, so the version can't be
+    // forgotten. Always called while holding the session's lock.
+    private void broadcast(GameSession session) {
+        session.incrementVersion();
+        broadcaster.broadcast(session);
     }
 
     private void scheduleTimeout(GameSession session) {
@@ -383,9 +398,5 @@ public class GameSessionService {
                 // No timeout for this state.
             }
         }
-    }
-
-    private Long generatePlayerId() {
-        return System.nanoTime();
     }
 }

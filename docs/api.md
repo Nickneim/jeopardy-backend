@@ -22,12 +22,14 @@ The contract between this backend and the React frontend. It covers the REST API
 3. STOMP CONNECT ws://localhost:8080/ws       header  player-token: <token>
 4. SUBSCRIBE /topic/sessions/{id}             ← full game state after every change
    SUBSCRIBE /user/queue/errors               ← errors caused by your own actions
-5. SEND /app/sessions/{id}/start | choose-clue | buzz | answer | ...
+5. GET  /api/game-sessions/{id}                                → current state      (catch up)
+6. SEND /app/sessions/{id}/start | choose-clue | buzz | answer | ...
 ```
 
 Key ideas:
 
 - **The server is authoritative and sends full snapshots.** After every state change (a player's action, a timer expiring, someone joining), every subscriber gets the complete `GameSessionResponse`. Render from the latest message; don't try to apply deltas.
+- **Catching up after connecting.** Subscribe first, then fetch `GET /api/game-sessions/{id}`. Every response carries a `version` that goes up with each change, so whether the fetch result or a broadcast arrives first, **keep whichever has the higher `version`** and ignore the other. Use the same approach after a refresh or reconnect.
 - **Who you are comes from your connection, not your messages.** You prove your identity once, with your token, when you connect. Action payloads never contain a player id, so a player can't act as someone else.
 - **Anyone can watch.** A connection without a token can subscribe to a session's topic but can't act.
 - **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. See §6.3 for the durations.
@@ -70,12 +72,16 @@ Creates a live session from a stored game.
 - `201 { "id": "8f6c…-uuid" }`
 - Unknown game: 404.
 
+#### `GET /api/game-sessions/{sessionId}`
+
+The session's current state: the same `GameSessionResponse` as the latest broadcast, including its `version`. Use it to catch up after connecting, refreshing or reconnecting (§2). No token is needed, because the state never contains secrets. Unknown session: 404.
+
 #### `POST /api/game-sessions/{sessionId}/players`
 
 Joins a session.
 
 - Request: `{ "playerName": "Nico" }` (must not be blank)
-- `201 { "playerId": 123456789, "token": "Xk3…43 chars" }`
+- `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session.
 - Unknown session: `404 { "status": 404, "message": "Game session not found: <id>" }`
 - Blank name: 400.
 
@@ -157,6 +163,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | Field | Meaning |
 |---|---|
 | `id` | Session id (UUID string) |
+| `version` | Goes up by one with every change (0 for a new session). Keep the response with the highest version (§2). |
 | `round` | `JEOPARDY` \| `DOUBLE_JEOPARDY` \| `FINAL_JEOPARDY`, the round being played (or about to be, before the start) |
 | `state` | See §6 |
 | `players` | `{ id, name, score }` in join order |
@@ -384,7 +391,7 @@ interface CreateGameSessionResponse { id: string; }
 
 interface JoinSessionRequest { playerName: string; }
 interface JoinSessionResponse {
-  playerId: number;      // see §9 about large ids
+  playerId: number;      // 1, 2, 3... within the session
   token: string;         // secret: only for the CONNECT header
 }
 
@@ -444,6 +451,7 @@ interface FinalJeopardyResponse {
 
 interface GameSessionResponse {
   id: string;
+  version: number;       // keep the highest one seen
   round: GameRound;
   state: GameSessionState;
   players: PlayerResponse[];
@@ -467,8 +475,6 @@ interface GameSessionErrorResponse {
 
 These are tracked on the backend roadmap. Work around them in the UI only where noted.
 
-- **No way to fetch the current state.** State only arrives in broadcasts, so after connecting, refreshing or reconnecting, the client sees nothing until the next change. Until a fetch endpoint exists, a lobby works fine (every join broadcasts), but a mid-game reconnect waits for the next event.
-- **Player ids can exceed JavaScript's safe integer range.** They're generated from `System.nanoTime()`, and on a machine with long uptime they can be larger than 2^53. `JSON.parse` then silently rounds them, so your own id won't match the broadcast. This is a backend bug to fix (for example by numbering players per session). Until then, ids are fine on a freshly started dev machine.
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Media clues aren't playable in sessions.** `currentClue` has no `clueType` or `mediaUrl` yet. Browsing (`GET /api/games/{id}`) does include them.
 - **Exact answer matching** (§6.2). Answers must match the stored text exactly, including capitalisation.

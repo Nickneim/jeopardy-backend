@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
+import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
@@ -1232,5 +1233,54 @@ class GameSessionServiceTest {
         gameSessionService.finishRevealingAnswer(session.getId());
 
         return session;
+    }
+
+    // -------------------------------------------------------------------------
+    // Player numbering, version and state reads
+    // -------------------------------------------------------------------------
+
+    @Test
+    void joinSession_numbersPlayersFromOneInEachSession() {
+        GameSession first = createSession();
+        GameSession second = createSession();
+
+        assertEquals(1L, gameSessionService.joinSession(first.getId(), "Nico").getId());
+        assertEquals(2L, gameSessionService.joinSession(first.getId(), "John").getId());
+        assertEquals(1L, gameSessionService.joinSession(second.getId(), "Ana").getId());
+    }
+
+    @Test
+    void everyBroadcast_increasesTheVersion() {
+        GameSession session = createSession();
+
+        assertEquals(0, session.getVersion());
+
+        gameSessionService.joinSession(session.getId(), "Nico");
+        assertEquals(1, session.getVersion());
+
+        gameSessionService.startGame(session.getId(), getFirstPlayerId(session));
+        assertEquals(2, session.getVersion());
+    }
+
+    @Test
+    void getSessionState_returnsTheCurrentState() {
+        GameSession session = createSession();
+        gameSessionService.joinSession(session.getId(), "Nico");
+
+        GameSessionResponse state =
+                gameSessionService.getSessionState(session.getId());
+
+        assertEquals(session.getId(), state.id());
+        assertEquals(1, state.version());
+        assertEquals(GameSessionState.WAITING_FOR_START, state.state());
+        assertEquals("Nico", state.players().getFirst().name());
+    }
+
+    @Test
+    void getSessionState_throwsWhenSessionDoesNotExist() {
+        assertThrows(
+                GameSessionNotFoundException.class,
+                () -> gameSessionService.getSessionState(UUID.randomUUID())
+        );
     }
 }

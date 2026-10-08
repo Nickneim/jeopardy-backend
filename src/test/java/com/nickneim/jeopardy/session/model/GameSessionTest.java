@@ -1621,6 +1621,41 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Player numbering and version
+    // -------------------------------------------------------------------------
+
+    @Test
+    void addPlayerByName_numbersAfterTheHighestId() {
+        // The fixture already has players 1 and 2.
+        GameSessionPlayer ana = session.addPlayer("Ana");
+
+        assertEquals(3L, ana.getId());
+        assertEquals("Ana", ana.getName());
+        assertEquals(List.of(player1, player2, ana), session.getPlayers());
+    }
+
+    @Test
+    void addPlayerByName_startsAtOneInAnEmptySession() {
+        GameSession emptySession = new GameSession(
+                UUID.randomUUID(),
+                session.getBoard()
+        );
+
+        assertEquals(1L, emptySession.addPlayer("Nico").getId());
+        assertEquals(2L, emptySession.addPlayer("John").getId());
+    }
+
+    @Test
+    void version_startsAtZeroAndGoesUpByOne() {
+        assertEquals(0, session.getVersion());
+
+        session.incrementVersion();
+        session.incrementVersion();
+
+        assertEquals(2, session.getVersion());
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

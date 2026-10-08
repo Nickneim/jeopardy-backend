@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public record GameSessionResponse(
         UUID id,
+        long version,
         GameRound round,
         GameSessionState state,
         List<PlayerResponse> players,
@@ -23,6 +24,7 @@ public record GameSessionResponse(
     static public GameSessionResponse from(GameSession session) {
         return new GameSessionResponse(
                 session.getId(),
+                session.getVersion(),
                 session.getRound(),
                 session.getState(),
                 session.getPlayers().stream()

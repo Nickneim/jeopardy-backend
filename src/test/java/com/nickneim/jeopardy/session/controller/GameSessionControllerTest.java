@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -152,5 +154,45 @@ class GameSessionControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Game session not found: " + sessionId));
+    }
+
+    @Test
+    void getSession_returnsTheCurrentState() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameSession session = new GameSession(sessionId, new GameBoard(List.of(
+                new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory(
+                                "HISTORY",
+                                List.of(new BoardClue(10L, 1, "Question", "Answer", 200, false))
+                        ))
+                )
+        )));
+        session.addPlayer("Nico");
+        session.incrementVersion();
+
+        when(gameSessionService.getSessionState(sessionId))
+                .thenReturn(GameSessionResponse.from(session));
+
+        mockMvc.perform(get("/api/game-sessions/" + sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(sessionId.toString()))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.state").value("WAITING_FOR_START"))
+                .andExpect(jsonPath("$.players[0].id").value(1))
+                .andExpect(jsonPath("$.players[0].name").value("Nico"))
+                .andExpect(jsonPath("$.board[0].name").value("HISTORY"));
+    }
+
+    @Test
+    void getSession_returnsNotFoundWhenSessionDoesNotExist() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        when(gameSessionService.getSessionState(sessionId))
+                .thenThrow(new GameSessionNotFoundException(sessionId));
+
+        mockMvc.perform(get("/api/game-sessions/" + sessionId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
     }
 }

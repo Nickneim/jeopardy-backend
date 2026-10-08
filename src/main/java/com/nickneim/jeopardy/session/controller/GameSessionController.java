@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.controller;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionRequest;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionResponse;
+import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -36,6 +37,18 @@ public class GameSessionController {
         GameSession session = gameSessionService.createSession(board);
 
         return new CreateGameSessionResponse(session.getId());
+    }
+
+    /**
+     * The session's current state, the same as the latest broadcast. Lets a
+     * client that just connected, refreshed or reconnected catch up without
+     * waiting for the next change. Contains no secrets, like the broadcast.
+     */
+    @GetMapping("/{sessionId}")
+    public GameSessionResponse getSession(
+            @PathVariable UUID sessionId
+    ) {
+        return gameSessionService.getSessionState(sessionId);
     }
 
     /**

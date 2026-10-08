@@ -18,6 +18,7 @@ public class GameSession {
 
     private GameRound round;
     private GameSessionState state;
+    private long version;
 
     private Long playerChoosingClue;
     private Long chosenClueId;
@@ -124,6 +125,36 @@ public class GameSession {
 
     public void addPlayer(GameSessionPlayer player) {
         players.add(player);
+    }
+
+    /**
+     * Adds a new player numbered after the highest id in this session
+     * (1, 2, 3, ...). Small ids are safe as JavaScript numbers; they are
+     * only unique within the session, which is fine because a player is
+     * always identified by their session and token, never their id alone.
+     */
+    public GameSessionPlayer addPlayer(String name) {
+        long nextId = players.stream()
+                .mapToLong(GameSessionPlayer::getId)
+                .max()
+                .orElse(0) + 1;
+
+        GameSessionPlayer player = new GameSessionPlayer(nextId, name);
+        players.add(player);
+
+        return player;
+    }
+
+    /**
+     * Goes up by one with every broadcast, so a client that both fetches the
+     * state and receives broadcasts can keep whichever is newest.
+     */
+    public long getVersion() {
+        return version;
+    }
+
+    public void incrementVersion() {
+        version++;
     }
 
     public void startGame(Long playerId) {
