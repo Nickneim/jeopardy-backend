@@ -273,4 +273,16 @@ class GameSessionResponseTest {
         assertEquals(player.getId(), answering.playerAnswering());
         assertEquals(Set.of(player.getId()), answering.playersLockedOut());
     }
+
+    @Test
+    void serializedResponse_neverContainsAPlayersToken() {
+        session.startGame(player.getId());
+
+        String json = JsonMapper.builder().build()
+                .writeValueAsString(GameSessionResponse.from(session));
+
+        // Guard against a vacuous pass: the player is in the JSON.
+        assertTrue(json.contains("\"Nico\""), json);
+        assertFalse(json.contains(player.getToken()), "leaked a player token: " + json);
+    }
 }

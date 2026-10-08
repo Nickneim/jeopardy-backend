@@ -6,9 +6,11 @@ import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,6 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameSessionService {
 
     private final Map<UUID, GameSession> sessions =
+            new ConcurrentHashMap<>();
+
+    // Secret player token -> who that player is.
+    private final Map<String, PlayerPrincipal> playersByToken =
             new ConcurrentHashMap<>();
 
     private final GameSessionTimer timer;
@@ -50,25 +56,49 @@ public class GameSessionService {
 
     public void removeSession(UUID sessionId) {
         timer.cancel(sessionId);
-        sessions.remove(sessionId);
+
+        GameSession session = sessions.remove(sessionId);
+
+        if (session != null) {
+            session.getPlayers().forEach(player -> playersByToken.remove(player.getToken()));
+        }
     }
 
-    public void joinSession(
+    /**
+     * Adds a player and returns them, including their secret token. The
+     * caller must hand the token only to the joining player.
+     */
+    public GameSessionPlayer joinSession(
             UUID sessionId,
             String playerName
     ) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            session.addPlayer(
-                    new GameSessionPlayer(
-                            generatePlayerId(),
-                            playerName
-                    )
+            GameSessionPlayer player = new GameSessionPlayer(
+                    generatePlayerId(),
+                    playerName
+            );
+
+            session.addPlayer(player);
+            playersByToken.put(
+                    player.getToken(),
+                    new PlayerPrincipal(sessionId, player.getId())
             );
 
             broadcaster.broadcast(session);
+
+            return player;
         }
+    }
+
+    /** The player a token belongs to, or empty if it's unknown (or null). */
+    public Optional<PlayerPrincipal> findPlayerByToken(String token) {
+        if (token == null) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(playersByToken.get(token));
     }
 
     public void startGame(

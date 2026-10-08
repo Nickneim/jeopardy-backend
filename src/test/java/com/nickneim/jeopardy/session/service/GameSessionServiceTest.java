@@ -12,12 +12,14 @@ import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -111,6 +113,74 @@ class GameSessionServiceTest {
 
         verify(timer).cancel(session.getId());
         verifyNoInteractions(broadcaster);
+    }
+
+    // -------------------------------------------------------------------------
+    // Player tokens
+    // -------------------------------------------------------------------------
+
+    @Test
+    void joinSession_returnsThePlayerWithTheirToken() {
+        GameSession session = createSession();
+
+        GameSessionPlayer player =
+                gameSessionService.joinSession(session.getId(), "Nico");
+
+        assertEquals(List.of(player), session.getPlayers());
+        assertEquals("Nico", player.getName());
+        assertNotNull(player.getToken());
+    }
+
+    @Test
+    void joinSession_givesEachPlayerADifferentToken() {
+        GameSession session = createSession();
+
+        GameSessionPlayer first =
+                gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer second =
+                gameSessionService.joinSession(session.getId(), "Nico");
+
+        assertNotEquals(first.getToken(), second.getToken());
+    }
+
+    @Test
+    void findPlayerByToken_returnsWhoTheTokenBelongsTo() {
+        GameSession session = createSession();
+
+        GameSessionPlayer player =
+                gameSessionService.joinSession(session.getId(), "Nico");
+
+        assertEquals(
+                Optional.of(new PlayerPrincipal(session.getId(), player.getId())),
+                gameSessionService.findPlayerByToken(player.getToken())
+        );
+    }
+
+    @Test
+    void findPlayerByToken_isEmptyForUnknownOrMissingToken() {
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken("not-a-token"));
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(null));
+    }
+
+    @Test
+    void removeSession_invalidatesOnlyThatSessionsTokens() {
+        GameSession removed = createSession();
+        GameSession kept = createSession();
+
+        GameSessionPlayer removedPlayer =
+                gameSessionService.joinSession(removed.getId(), "Nico");
+        GameSessionPlayer keptPlayer =
+                gameSessionService.joinSession(kept.getId(), "John");
+
+        gameSessionService.removeSession(removed.getId());
+
+        assertEquals(
+                Optional.empty(),
+                gameSessionService.findPlayerByToken(removedPlayer.getToken())
+        );
+        assertTrue(
+                gameSessionService.findPlayerByToken(keptPlayer.getToken()).isPresent()
+        );
     }
 
     // -------------------------------------------------------------------------
