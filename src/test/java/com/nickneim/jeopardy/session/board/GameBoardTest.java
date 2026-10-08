@@ -12,13 +12,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameBoardTest {
 
     private final BoardClue jeopardyClue =
-            new BoardClue(1L, "J question", "J answer", 200, false);
+            new BoardClue(1L, 1, "J question", "J answer", 200, false);
     private final BoardClue jeopardyDailyDouble =
-            new BoardClue(2L, "DD question", "DD answer", 1000, true);
+            new BoardClue(2L, 5, "DD question", "DD answer", 1000, true);
     private final BoardClue doubleJeopardyClue =
-            new BoardClue(3L, "DJ question", "DJ answer", 800, false);
+            new BoardClue(3L, 2, "DJ question", "DJ answer", 800, false);
     private final BoardClue finalClue =
-            new BoardClue(4L, "Final question", "Final answer", 2000, false);
+            new BoardClue(4L, 1, "Final question", "Final answer", 2000, false);
 
     private final GameBoard board = new GameBoard(List.of(
             round(GameRound.FINAL_JEOPARDY, finalClue),
@@ -101,7 +101,7 @@ class GameBoardTest {
     @Test
     void constructor_rejectsDuplicateClueIds() {
         BoardClue duplicate =
-                new BoardClue(1L, "Other question", "Other answer", 400, false);
+                new BoardClue(1L, 1, "Other question", "Other answer", 400, false);
 
         assertThrows(
                 IllegalArgumentException.class,
@@ -128,6 +128,36 @@ class GameBoardTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new GameBoard(List.of(round(GameRound.JEOPARDY)))
+        );
+    }
+
+    @Test
+    void category_sortsCluesByRowAndAllowsGaps() {
+        BoardClue rowFour = new BoardClue(5L, 4, "Q4", "A4", 800, false);
+        BoardClue rowOne = new BoardClue(6L, 1, "Q1", "A1", 200, false);
+
+        BoardCategory category =
+                new BoardCategory("GAPS", List.of(rowFour, rowOne));
+
+        assertEquals(List.of(rowOne, rowFour), category.clues());
+    }
+
+    @Test
+    void category_rejectsTwoCluesOnTheSameRow() {
+        BoardClue first = new BoardClue(5L, 2, "Q", "A", 400, false);
+        BoardClue second = new BoardClue(6L, 2, "Q", "A", 400, false);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BoardCategory("CLASH", List.of(first, second))
+        );
+    }
+
+    @Test
+    void clue_rejectsRowBelowOne() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BoardClue(5L, 0, "Q", "A", 200, false)
         );
     }
 

@@ -46,7 +46,7 @@ class GameSessionControllerTest {
                         GameRound.JEOPARDY,
                         List.of(new BoardCategory(
                                 "HISTORY",
-                                List.of(new BoardClue(10L, "Question", "Answer", 200, false))
+                                List.of(new BoardClue(10L, 1, "Question", "Answer", 200, false))
                         ))
                 )
         ));

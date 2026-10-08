@@ -485,8 +485,8 @@ class GameSessionServiceTest {
 
     private GameBoard createBoard() {
         return board(
-                new BoardClue(CLUE_ID, "Question", "Correct answer", 200, false),
-                new BoardClue(OTHER_CLUE_ID, "Other question", "Other answer", 400, false)
+                new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false),
+                new BoardClue(OTHER_CLUE_ID, 2, "Other question", "Other answer", 400, false)
         );
     }
 
@@ -494,9 +494,9 @@ class GameSessionServiceTest {
     // up to 1000 are valid.
     private GameBoard createBoardWithDailyDouble() {
         return board(
-                new BoardClue(CLUE_ID, "Question", "Correct answer", 200, false),
-                new BoardClue(OTHER_CLUE_ID, "Other question", "Other answer", 400, false),
-                new BoardClue(DAILY_DOUBLE_CLUE_ID, "Daily Double question", "Daily Double answer", 1000, true)
+                new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false),
+                new BoardClue(OTHER_CLUE_ID, 2, "Other question", "Other answer", 400, false),
+                new BoardClue(DAILY_DOUBLE_CLUE_ID, 5, "Daily Double question", "Daily Double answer", 1000, true)
         );
     }
 

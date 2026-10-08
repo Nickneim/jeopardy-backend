@@ -53,7 +53,7 @@ class GameBoardServiceTest {
         );
 
         assertEquals(
-                new BoardClue(101L, "Who was the first president?", "George Washington", 200, false),
+                new BoardClue(101L, 1, "Who was the first president?", "George Washington", 200, false),
                 board.getClue(101L)
         );
         assertEquals(Set.of(101L, 102L, 103L), board.getClueIds(GameRound.JEOPARDY));
@@ -68,6 +68,20 @@ class GameBoardServiceTest {
         assertEquals(400, board.getClue(102L).value());
         assertEquals(800, board.getClue(201L).value());
         assertEquals(2000, board.getClue(301L).value());
+    }
+
+    @Test
+    void loadBoard_keepsRowPositionsIncludingGaps() {
+        when(gameService.getGame(123L)).thenReturn(createGame());
+
+        GameBoard board = gameBoardService.loadBoard(123L);
+
+        // HISTORY only has clues on rows 1 and 5.
+        BoardCategory history = board.getRounds().getFirst().categories().getFirst();
+        assertEquals(
+                List.of(1, 5),
+                history.clues().stream().map(BoardClue::row).toList()
+        );
     }
 
     @Test

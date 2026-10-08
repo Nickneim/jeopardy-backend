@@ -76,6 +76,7 @@ class GameSessionTest {
     void setUp() {
         jeopardyClue1 = new BoardClue(
                 101L,
+                1,
                 "Who was the first president of the United States?",
                 "George Washington",
                 200,
@@ -84,6 +85,7 @@ class GameSessionTest {
 
         jeopardyClue2 = new BoardClue(
                 102L,
+                2,
                 "This country has the city of Paris as its capital.",
                 "France",
                 400,
@@ -93,6 +95,7 @@ class GameSessionTest {
         // Daily Doubles sit on row 5, so they are each round's highest value.
         dailyDoubleClue1 = new BoardClue(
                 103L,
+                5,
                 "Who was the second president of the United States?",
                 "John Adams",
                 1000,
@@ -101,6 +104,7 @@ class GameSessionTest {
 
         doubleJeopardyClue1 = new BoardClue(
                 201L,
+                1,
                 "This planet is known as the Red Planet.",
                 "Mars",
                 400,
@@ -109,6 +113,7 @@ class GameSessionTest {
 
         doubleJeopardyDailyDouble = new BoardClue(
                 202L,
+                5,
                 "He was the third president of the United States.",
                 "Thomas Jefferson",
                 2000,
@@ -117,6 +122,7 @@ class GameSessionTest {
 
         finalJeopardyClue = new BoardClue(
                 301L,
+                1,
                 "This historical event began in 1775.",
                 "The American Revolution",
                 2000,
@@ -547,8 +553,10 @@ class GameSessionTest {
                 session.getAvailableClues()
         );
 
-        assertTrue(
-                session.getCluesAlreadySelected().isEmpty()
+        // Played clues are remembered across rounds.
+        assertEquals(
+                Set.of(jeopardyClue1.id(), jeopardyClue2.id()),
+                session.getPlayedClues()
         );
 
     }
@@ -1200,9 +1208,39 @@ class GameSessionTest {
     // -------------------------------------------------------------------------
 
     @Test
+    void getAvailableClues_excludesPlayedCluesOfTheCurrentRound() {
+        session.startGame(player1.getId());
+
+        assertEquals(
+                Set.of(jeopardyClue1.id(), jeopardyClue2.id()),
+                session.getAvailableClues()
+        );
+
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+
+        assertEquals(
+                Set.of(jeopardyClue2.id()),
+                session.getAvailableClues()
+        );
+    }
+
+    @Test
+    void chooseClue_rejectsPlayedClueFromAnEarlierRound() {
+        session.startGame(player1.getId());
+        finishJeopardyRound();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.chooseClue(player1.getId(), jeopardyClue1.id())
+        );
+
+        assertEquals(GameErrorCode.CLUE_NOT_FOUND, exception.getCode());
+    }
+
+    @Test
     void placeDailyDoubleWager_limitIsHighestClueValueOnTheBoardsRound() {
-        BoardClue lowClue = new BoardClue(1L, "Question", "Answer", 100, false);
-        BoardClue dailyDouble = new BoardClue(2L, "DD question", "DD answer", 300, true);
+        BoardClue lowClue = new BoardClue(1L, 1, "Question", "Answer", 100, false);
+        BoardClue dailyDouble = new BoardClue(2L, 3, "DD question", "DD answer", 300, true);
 
         GameSession smallSession = new GameSession(
                 UUID.randomUUID(),

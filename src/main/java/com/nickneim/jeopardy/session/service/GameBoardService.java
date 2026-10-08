@@ -44,6 +44,7 @@ public class GameBoardService {
                     .stream()
                     .map(clue -> new BoardClue(
                             clue.getId(),
+                            clue.getRowNumber(),
                             clue.getQuestion(),
                             clue.getAnswer(),
                             clue.getValue(),

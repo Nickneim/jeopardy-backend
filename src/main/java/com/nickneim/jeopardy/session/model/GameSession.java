@@ -22,8 +22,9 @@ public class GameSession {
     private Long chosenClueId;
 
     private final Set<Long> playersAlreadyBuzzed = new HashSet<>();
-    private final Set<Long> availableClues = new HashSet<>();
-    private final Set<Long> cluesAlreadySelected = new HashSet<>();
+    // Every clue chosen so far, across all rounds. Which clues are still
+    // available is derived from this and the board, never stored.
+    private final Set<Long> playedClues = new HashSet<>();
     private Long playerWhoBuzzed;
 
     public GameSession(UUID id, GameBoard board) {
@@ -68,12 +69,15 @@ public class GameSession {
         return Set.copyOf(playersAlreadyBuzzed);
     }
 
+    /** Clues of the current round that haven't been played yet. */
     public Set<Long> getAvailableClues() {
-        return Set.copyOf(availableClues);
+        Set<Long> available = new HashSet<>(board.getClueIds(round));
+        available.removeAll(playedClues);
+        return Set.copyOf(available);
     }
 
-    public Set<Long> getCluesAlreadySelected() {
-        return Set.copyOf(cluesAlreadySelected);
+    public Set<Long> getPlayedClues() {
+        return Set.copyOf(playedClues);
     }
 
     public Long getPlayerWhoBuzzed() {
@@ -92,7 +96,7 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
         }
 
-        setUpNewRound(board.getFirstRound());
+        round = board.getFirstRound();
         playerChoosingClue = players.getFirst().getId();
         state = GameSessionState.CHOOSING_CLUE;
 
@@ -105,15 +109,15 @@ public class GameSession {
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't choose a clue right now!");
         }
-        if (cluesAlreadySelected.contains(clueId)) {
-            throw new InvalidGameActionException(GameErrorCode.CLUE_ALREADY_PLAYED, "That clue was already chosen!");
-        }
-        if (!availableClues.contains(clueId)) {
+        if (!board.getClueIds(round).contains(clueId)) {
             throw new InvalidGameActionException(GameErrorCode.CLUE_NOT_FOUND, "That's not one of the available clues!");
+        }
+        if (playedClues.contains(clueId)) {
+            throw new InvalidGameActionException(GameErrorCode.CLUE_ALREADY_PLAYED, "That clue was already chosen!");
         }
 
         chosenClueId = clueId;
-        cluesAlreadySelected.add(clueId);
+        playedClues.add(clueId);
         if (board.isDailyDouble(clueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerId;
@@ -190,9 +194,9 @@ public class GameSession {
     public void finishRevealingAnswer() {
         state = GameSessionState.CHOOSING_CLUE;
 
-        if (availableClues.size() == cluesAlreadySelected.size()) {
+        if (getAvailableClues().isEmpty()) {
             board.getNextRound(round).ifPresentOrElse(
-                    this::setUpNewRound,
+                    nextRound -> round = nextRound,
                     () -> state = GameSessionState.FINISHED_GAME
             );
         }
@@ -266,13 +270,6 @@ public class GameSession {
                 startWaitingForBuzzer();
             }
         }
-    }
-
-    private void setUpNewRound(GameRound newRound) {
-        availableClues.clear();
-        cluesAlreadySelected.clear();
-        round = newRound;
-        availableClues.addAll(board.getClueIds(newRound));
     }
 
 }

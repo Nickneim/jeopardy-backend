@@ -1193,8 +1193,8 @@ class GameSessionWebSocketIntegrationTest {
 
     private GameBoard createBoard() {
         return board(
-                new BoardClue(10L, "Question", "Correct answer", 200, false),
-                new BoardClue(11L, "Question", "Correct answer", 400, false)
+                new BoardClue(10L, 1, "Question", "Correct answer", 200, false),
+                new BoardClue(11L, 2, "Question", "Correct answer", 400, false)
         );
     }
 
@@ -1202,9 +1202,9 @@ class GameSessionWebSocketIntegrationTest {
     // up to 1000 are valid.
     private GameBoard createBoardWithDailyDouble() {
         return board(
-                new BoardClue(10L, "Question", "Correct answer", 200, false),
-                new BoardClue(11L, "Question", "Correct answer", 400, false),
-                new BoardClue(DAILY_DOUBLE_CLUE_ID, "Daily Double question", "Daily Double answer", 1000, true)
+                new BoardClue(10L, 1, "Question", "Correct answer", 200, false),
+                new BoardClue(11L, 2, "Question", "Correct answer", 400, false),
+                new BoardClue(DAILY_DOUBLE_CLUE_ID, 5, "Daily Double question", "Daily Double answer", 1000, true)
         );
     }
 
