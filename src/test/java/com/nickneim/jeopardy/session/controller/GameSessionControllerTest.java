@@ -6,7 +6,9 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
@@ -93,5 +95,62 @@ class GameSessionControllerTest {
 
         verify(gameBoardService).loadBoard(gameId);
         verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void joinSession_returnsPlayerIdAndToken() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameSessionPlayer player = new GameSessionPlayer(42L, "Nico");
+
+        when(gameSessionService.joinSession(sessionId, "Nico"))
+                .thenReturn(player);
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "playerName": "Nico"
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.playerId").value(42))
+                .andExpect(jsonPath("$.token").value(player.getToken()));
+
+        verify(gameSessionService).joinSession(sessionId, "Nico");
+    }
+
+    @Test
+    void joinSession_rejectsBlankName() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "playerName": "   "
+                        }
+                        """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void joinSession_returnsNotFoundWhenSessionDoesNotExist() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        when(gameSessionService.joinSession(sessionId, "Nico"))
+                .thenThrow(new GameSessionNotFoundException(sessionId));
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "playerName": "Nico"
+                        }
+                        """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Game session not found: " + sessionId));
     }
 }
