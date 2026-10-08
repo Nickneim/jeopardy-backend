@@ -150,4 +150,103 @@ class GameSessionResponseTest {
         }
         assertFalse(json.toLowerCase().contains("dailydouble"), "leaked Daily Double flag: " + json);
     }
+
+    // -------------------------------------------------------------------------
+    // Current clue
+    // -------------------------------------------------------------------------
+
+    @Test
+    void currentClue_isNullWhenNoClueIsBeingPlayed() {
+        assertNull(GameSessionResponse.from(session).currentClue());
+
+        session.startGame(player.getId());
+        assertNull(GameSessionResponse.from(session).currentClue());
+
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        assertNull(GameSessionResponse.from(session).currentClue());
+    }
+
+    @Test
+    void currentClue_showsQuestionButNotAnswerWhileClueIsInPlay() {
+        session.startGame(player.getId());
+
+        CurrentClueResponse expected = new CurrentClueResponse(
+                scienceRow1.id(),
+                200,
+                false,
+                "Symbol for gold?",
+                null
+        );
+
+        session.chooseClue(player.getId(), scienceRow1.id());
+        assertEquals(expected, GameSessionResponse.from(session).currentClue());
+
+        session.finishRevealingClue();
+        assertEquals(expected, GameSessionResponse.from(session).currentClue());
+
+        session.buzz(player.getId());
+        assertEquals(expected, GameSessionResponse.from(session).currentClue());
+    }
+
+    @Test
+    void currentClue_showsAnswerWhenRevealingAnswer() {
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+
+        assertEquals(
+                new CurrentClueResponse(scienceRow1.id(), 200, false, "Symbol for gold?", "Au"),
+                GameSessionResponse.from(session).currentClue()
+        );
+    }
+
+    @Test
+    void currentClue_hidesDailyDoubleQuestionUntilWagerIsPlaced() {
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), historyRow3.id());
+
+        assertEquals(
+                new CurrentClueResponse(historyRow3.id(), 600, true, null, null),
+                GameSessionResponse.from(session).currentClue()
+        );
+
+        // Also pins the JSON shape the leak checks rely on.
+        assertTrue(
+                JsonMapper.builder().build()
+                        .writeValueAsString(GameSessionResponse.from(session))
+                        .contains("\"dailyDouble\":true")
+        );
+
+        session.placeDailyDoubleWager(player.getId(), 500);
+
+        assertEquals(
+                new CurrentClueResponse(historyRow3.id(), 600, true, "Second president?", null),
+                GameSessionResponse.from(session).currentClue()
+        );
+    }
+
+    @Test
+    void serializedResponse_whileAnswering_onlyContainsTheCurrentQuestion() {
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.buzz(player.getId());
+
+        String json = JsonMapper.builder().build()
+                .writeValueAsString(GameSessionResponse.from(session));
+
+        assertTrue(json.contains(scienceRow1.question()), json);
+        assertFalse(json.contains(scienceRow1.answer()), "leaked current answer: " + json);
+
+        for (BoardClue clue : List.of(historyRow1, historyRow3, scienceRow2)) {
+            assertFalse(json.contains(clue.question()), "leaked question: " + clue.question());
+            assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
+        }
+        assertFalse(json.contains("\"dailyDouble\":true"), "leaked a Daily Double: " + json);
+    }
 }

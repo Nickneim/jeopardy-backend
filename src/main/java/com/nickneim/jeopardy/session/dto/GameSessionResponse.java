@@ -12,7 +12,8 @@ public record GameSessionResponse(
         GameRound round,
         GameSessionState state,
         List<PlayerResponse> players,
-        List<BoardCategoryResponse> board
+        List<BoardCategoryResponse> board,
+        CurrentClueResponse currentClue
 ) {
     static public GameSessionResponse from(GameSession session) {
         return new GameSessionResponse(
@@ -25,7 +26,8 @@ public record GameSessionResponse(
                 session.getBoard()
                         .getRound(session.getRound())
                         .map(round -> BoardCategoryResponse.fromRound(round, session.getPlayedClues()))
-                        .orElse(List.of())
+                        .orElse(List.of()),
+                CurrentClueResponse.from(session)
         );
     }
 }
