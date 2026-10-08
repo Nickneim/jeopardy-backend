@@ -11,6 +11,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -180,5 +182,142 @@ class GameIntegrationTest {
                     assertThat(body.content().get(2).title())
                             .isEqualTo("Game Integration Test Game 23");
                 });
+    }
+
+    @Test
+    void getGames_filtersByTitleCaseInsensitively() {
+        assertThat(titlesOf("/api/games?title=tEsT gAmE 2"))
+                .containsExactly(
+                        "Game Integration Test Game 25",
+                        "Game Integration Test Game 24",
+                        "Game Integration Test Game 23",
+                        "Game Integration Test Game 22",
+                        "Game Integration Test Game 21",
+                        "Game Integration Test Game 20"
+                );
+    }
+
+    @Test
+    void getGames_treatsLikeWildcardsInTitleLiterally() {
+        // As wildcards, both would match every game.
+        assertThat(titlesOf("/api/games?title={title}", "Game%Test")).isEmpty();
+        assertThat(titlesOf("/api/games?title={title}", "Game_Integration")).isEmpty();
+    }
+
+    @Test
+    void getGames_ignoresBlankTitle() {
+        restTestClient.get()
+                .uri("/api/games?title=")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .value(body -> assertThat(body.totalElements()).isEqualTo(25));
+    }
+
+    @Test
+    void getGames_filtersByInclusiveDateRange() {
+        // Games 11 and 12 share a date, so the id breaks the tie.
+        assertThat(titlesOf("/api/games?from=2025-02-10&to=2025-02-12"))
+                .containsExactly(
+                        "Game Integration Test Game 13",
+                        "Game Integration Test Game 12",
+                        "Game Integration Test Game 11",
+                        "Game Integration Test Game 10"
+                );
+    }
+
+    @Test
+    void getGames_filtersByOneSidedDateRange() {
+        assertThat(titlesOf("/api/games?from=2025-02-23"))
+                .containsExactly(
+                        "Game Integration Test Game 25",
+                        "Game Integration Test Game 24"
+                );
+
+        assertThat(titlesOf("/api/games?to=2025-02-02"))
+                .containsExactly(
+                        "Game Integration Test Game 02",
+                        "Game Integration Test Game"
+                );
+    }
+
+    @Test
+    void getGames_combinesSeasonTitleAndDateFilters() {
+        assertThat(titlesOf("/api/games?season=40&title=game 2&from=2025-02-20"))
+                .containsExactly(
+                        "Game Integration Test Game 22",
+                        "Game Integration Test Game 21"
+                );
+    }
+
+    @Test
+    void getGames_pagesFilteredGames() {
+        restTestClient.get()
+                .uri("/api/games?title=game 2&page=1&size=4")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .value(body -> {
+                    assertThat(body.page()).isEqualTo(1);
+                    assertThat(body.size()).isEqualTo(4);
+                    assertThat(body.totalElements()).isEqualTo(6);
+                    assertThat(body.totalPages()).isEqualTo(2);
+                    assertThat(body.content())
+                            .extracting(GameSummaryResponse::title)
+                            .containsExactly(
+                                    "Game Integration Test Game 21",
+                                    "Game Integration Test Game 20"
+                            );
+                });
+    }
+
+    @Test
+    void getGames_returnsBadRequestForInvalidDate() {
+        restTestClient.get()
+                .uri("/api/games?from=2025-02-30")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .json("""
+                    {
+                        "status": 400,
+                        "message": "Invalid date for 'from': expected YYYY-MM-DD"
+                    }
+                    """);
+    }
+
+    @Test
+    void getGames_returnsBadRequestWhenFromIsAfterTo() {
+        restTestClient.get()
+                .uri("/api/games?from=2025-02-10&to=2025-02-09")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .json("""
+                    {
+                        "status": 400,
+                        "message": "'from' must not be after 'to'"
+                    }
+                    """);
+    }
+
+    private List<String> titlesOf(String uri, Object... uriVariables) {
+        PageResponse<GameSummaryResponse> body = restTestClient.get()
+                .uri(uri, uriVariables)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(body).isNotNull();
+
+        return body.content()
+                .stream()
+                .map(GameSummaryResponse::title)
+                .toList();
     }
 }

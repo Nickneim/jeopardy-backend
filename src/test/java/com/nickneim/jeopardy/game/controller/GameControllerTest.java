@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.game.controller;
 import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
+import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -226,7 +227,7 @@ class GameControllerTest {
                 42
         );
 
-        when(gameService.getGames(1, 20, null))
+        when(gameService.getGames(1, 20, GameFilter.NONE))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -256,7 +257,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(1, 20, null);
+        verify(gameService).getGames(1, 20, GameFilter.NONE);
     }
 
     @Test
@@ -267,7 +268,7 @@ class GameControllerTest {
                 0
         );
 
-        when(gameService.getGames(0, 20, null))
+        when(gameService.getGames(0, 20, GameFilter.NONE))
                 .thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/games"))
@@ -282,7 +283,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(0, 20, null);
+        verify(gameService).getGames(0, 20, GameFilter.NONE);
     }
 
     @Test
@@ -356,7 +357,7 @@ class GameControllerTest {
                 42
         );
 
-        when(gameService.getGames(1, 20, "39"))
+        when(gameService.getGames(1, 20, new GameFilter("39", null, null, null)))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -387,7 +388,99 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(1, 20, "39");
+        verify(gameService).getGames(1, 20, new GameFilter("39", null, null, null));
+    }
+
+    @Test
+    void getGames_passesTitleAndDateFiltersCombinedWithSeason() throws Exception {
+        GameFilter filter = new GameFilter(
+                "40",
+                "show",
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 1, 31)
+        );
+
+        when(gameService.getGames(0, 20, filter))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/games")
+                        .param("season", "40")
+                        .param("title", "show")
+                        .param("from", "2025-01-01")
+                        .param("to", "2025-01-31"))
+                .andExpect(status().isOk());
+
+        verify(gameService).getGames(0, 20, filter);
+    }
+
+    @Test
+    void getGames_treatsBlankTitleAsNoFilter() throws Exception {
+        when(gameService.getGames(0, 20, GameFilter.NONE))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/games")
+                        .param("title", "  "))
+                .andExpect(status().isOk());
+
+        verify(gameService).getGames(0, 20, GameFilter.NONE);
+    }
+
+    @Test
+    void getGames_returnsBadRequestForInvalidFromDate() throws Exception {
+        mockMvc.perform(get("/api/games")
+                        .param("from", "2025-13-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "Invalid date for 'from': expected YYYY-MM-DD"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_returnsBadRequestForNonIsoToDate() throws Exception {
+        mockMvc.perform(get("/api/games")
+                        .param("to", "01/31/2025"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "Invalid date for 'to': expected YYYY-MM-DD"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_returnsBadRequestWhenFromIsAfterTo() throws Exception {
+        mockMvc.perform(get("/api/games")
+                        .param("from", "2025-02-01")
+                        .param("to", "2025-01-31"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "'from' must not be after 'to'"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_leavesNonDateTypeMismatchesToSpringDefaults() throws Exception {
+        // A non-numeric page kept Spring's default 400 (no ApiErrorResponse
+        // body) before the date filters were added, and still does.
+        mockMvc.perform(get("/api/games")
+                        .param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(""));
+
+        verifyNoInteractions(gameService);
     }
 
     @Test

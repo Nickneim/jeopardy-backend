@@ -1,16 +1,13 @@
 package com.nickneim.jeopardy.game.repository;
 
 import com.nickneim.jeopardy.game.entity.Game;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface GameRepository extends JpaRepository<Game, Long> {
-
-    Page<Game> findBySeason(String season, Pageable page);
+public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificationExecutor<Game> {
 
     @Query("""
             SELECT new com.nickneim.jeopardy.game.repository.SeasonGameCount(

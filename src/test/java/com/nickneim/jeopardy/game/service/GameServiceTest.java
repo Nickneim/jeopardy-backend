@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -149,11 +150,11 @@ class GameServiceTest {
                 2
         );
 
-        when(gameRepository.findAll(any(Pageable.class)))
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(gamePage);
 
         Page<Game> returnedPage =
-                gameService.getGames(0, 20, null);
+                gameService.getGames(0, 20, GameFilter.NONE);
 
         assertEquals(gamePage, returnedPage);
 
@@ -161,7 +162,7 @@ class GameServiceTest {
         assertEquals(game2, returnedPage.getContent().get(0));
         assertEquals(game1, returnedPage.getContent().get(1));
 
-        verify(gameRepository).findAll(any(Pageable.class));
+        verify(gameRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -172,11 +173,11 @@ class GameServiceTest {
                 0
         );
 
-        when(gameRepository.findAll(any(Pageable.class)))
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(emptyPage);
 
         Page<Game> returnedPage =
-                gameService.getGames(0, 20, null);
+                gameService.getGames(0, 20, GameFilter.NONE);
 
         assertTrue(returnedPage.isEmpty());
         assertEquals(0, returnedPage.getNumber());
@@ -184,7 +185,7 @@ class GameServiceTest {
         assertEquals(0, returnedPage.getTotalElements());
         assertEquals(0, returnedPage.getTotalPages());
 
-        verify(gameRepository).findAll(any(Pageable.class));
+        verify(gameRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -195,12 +196,13 @@ class GameServiceTest {
                 25
         );
 
-        when(gameRepository.findAll(any(Pageable.class)))
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        gameService.getGames(2, 10, null);
+        gameService.getGames(2, 10, GameFilter.NONE);
 
         verify(gameRepository).findAll(
+                any(Specification.class),
                 argThat((Pageable pageable) ->
                         pageable.getPageNumber() == 2
                                 && pageable.getPageSize() == 10
@@ -216,12 +218,13 @@ class GameServiceTest {
                 0
         );
 
-        when(gameRepository.findAll(any(Pageable.class)))
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        gameService.getGames(0, 20, null);
+        gameService.getGames(0, 20, GameFilter.NONE);
 
         verify(gameRepository).findAll(
+                any(Specification.class),
                 argThat((Pageable pageable) -> {
                     var orders = pageable.getSort().toList();
 
@@ -234,8 +237,10 @@ class GameServiceTest {
         );
     }
 
+    // Which games each filter matches is checked against the database in
+    // GameIntegrationTest.
     @Test
-    void getGames_filtersBySeason() {
+    void getGames_returnsFilteredGames() {
         Game game = new Game(
                 "Show #123",
                 LocalDate.of(2025, 1, 1),
@@ -248,20 +253,18 @@ class GameServiceTest {
                 1
         );
 
-        when(gameRepository.findBySeason(eq("39"), any(Pageable.class)))
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        Page<Game> returnedPage =
-                gameService.getGames(0, 20, "39");
+        Page<Game> returnedPage = gameService.getGames(
+                0,
+                20,
+                new GameFilter("39", "show", LocalDate.of(2025, 1, 1), null)
+        );
 
         assertEquals(1, returnedPage.getContent().size());
         assertEquals(game, returnedPage.getContent().getFirst());
         assertEquals(1, returnedPage.getTotalElements());
-
-        verify(gameRepository).findBySeason(
-                eq("39"),
-                any(Pageable.class)
-        );
     }
 
     @Test

@@ -42,7 +42,7 @@ public class GameService {
                 .orElseThrow(() -> new GameNotFoundException(id));
     }
 
-    public Page<Game> getGames(int page, int size, String season) {
+    public Page<Game> getGames(int page, int size, GameFilter filter) {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -52,11 +52,7 @@ public class GameService {
                 )
         );
 
-        if (season == null) {
-            return gameRepository.findAll(pageable);
-        }
-
-        return gameRepository.findBySeason(season, pageable);
+        return gameRepository.findAll(GameSpecifications.matching(filter), pageable);
     }
 
     public List<SeasonGameCount> getSeasons() {

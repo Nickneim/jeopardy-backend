@@ -50,9 +50,20 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 |---|---|---|
 | `page` | `0` | ≥ 0 (0-based) |
 | `size` | `20` | 1–100 |
-| `season` | (none) | Optional exact filter, for example `"40"` |
+| `season` | (none) | Optional exact filter, for example `"40"` (values from `GET /api/games/seasons`) |
+| `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Empty or blank means no filter. |
+| `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
+| `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
 
-Response: `PageResponse<GameSummaryResponse>`. An invalid `page` or `size` returns 400 with the message `"Invalid request parameters"`.
+All filters are optional and combine with AND. Ordering and paging stay the same when filtering, and `totalElements` / `totalPages` count only the matching games.
+
+Response: `PageResponse<GameSummaryResponse>`. Errors (all `400` with an `ApiErrorResponse`):
+
+| Cause | `message` |
+|---|---|
+| Invalid `page` or `size` | `"Invalid request parameters"` |
+| `from` or `to` isn't a valid `YYYY-MM-DD` date (for example `2025-02-30` or `02/01/2025`) | `"Invalid date for 'from': expected YYYY-MM-DD"` (or `'to'`) |
+| `from` is after `to` | `"'from' must not be after 'to'"` |
 
 #### `GET /api/games/seasons`
 
@@ -338,6 +349,16 @@ type GameErrorCode =
 interface ApiErrorResponse {
   status: number;
   message: string;
+}
+
+// Query params of GET /api/games (all optional)
+interface GameListParams {
+  page?: number;         // default 0
+  size?: number;         // default 20, max 100
+  season?: string;
+  title?: string;        // case-insensitive substring
+  from?: string;         // "YYYY-MM-DD", inclusive
+  to?: string;           // "YYYY-MM-DD", inclusive
 }
 
 interface PageResponse<T> {
