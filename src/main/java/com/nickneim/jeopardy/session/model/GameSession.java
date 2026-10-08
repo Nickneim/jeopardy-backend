@@ -84,6 +84,38 @@ public class GameSession {
         return playerWhoBuzzed;
     }
 
+    /** The player who must answer right now, or null if nobody is answering. */
+    public Long getPlayerAnswering() {
+        return state == GameSessionState.WAITING_FOR_ANSWER ? playerWhoBuzzed : null;
+    }
+
+    /**
+     * Players who already buzzed on the clue in play and can't buzz again.
+     * Empty outside the buzzing and answering phases, because the underlying
+     * set is only reset when the next clue's reveal finishes.
+     */
+    public Set<Long> getPlayersLockedOut() {
+        if (state == GameSessionState.WAITING_FOR_BUZZER
+                || state == GameSessionState.WAITING_FOR_ANSWER) {
+            return Set.copyOf(playersAlreadyBuzzed);
+        }
+
+        return Set.of();
+    }
+
+    /** The wager on the Daily Double in play once it is placed, otherwise null. */
+    public Integer getDailyDoubleWager() {
+        if (chosenClueId == null || !board.isDailyDouble(chosenClueId)) {
+            return null;
+        }
+
+        return switch (state) {
+            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER ->
+                    getPlayer(playerWhoBuzzed).getWager();
+            default -> null;
+        };
+    }
+
     public void addPlayer(GameSessionPlayer player) {
         players.add(player);
     }

@@ -1293,6 +1293,93 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Turn, buzzer and wager info for clients
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getPlayerAnswering_isOnlySetWhileWaitingForAnswer() {
+        session.startGame(player1.getId());
+        assertNull(session.getPlayerAnswering());
+
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        assertNull(session.getPlayerAnswering());
+
+        session.buzz(player2.getId());
+        assertEquals(player2.getId(), session.getPlayerAnswering());
+
+        session.answerClue(player2.getId(), "Abraham Lincoln");
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        assertNull(session.getPlayerAnswering());
+    }
+
+    @Test
+    void getPlayerAnswering_isNotLeftOverFromAPreviousClue() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "George Washington");
+        session.finishRevealingAnswer();
+
+        session.chooseClue(player2.getId(), jeopardyClue2.id());
+        session.finishRevealingClue();
+
+        assertNull(session.getPlayerAnswering());
+    }
+
+    @Test
+    void getPlayerAnswering_onDailyDouble_isTheChooser() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        assertEquals(player1.getId(), session.getPlayerAnswering());
+    }
+
+    @Test
+    void getPlayersLockedOut_coversOnlyTheClueInPlay() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Abraham Lincoln");
+
+        assertEquals(Set.of(player2.getId()), session.getPlayersLockedOut());
+
+        session.timeoutBuzzer();
+        assertEquals(Set.of(), session.getPlayersLockedOut());
+
+        session.finishRevealingAnswer();
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
+
+        // The underlying set still holds player 2 until this reveal finishes.
+        assertEquals(Set.of(), session.getPlayersLockedOut());
+    }
+
+    @Test
+    void getDailyDoubleWager_isOnlySetOncePlacedAndWhileTheDailyDoubleIsInPlay() {
+        startDailyDouble();
+        assertNull(session.getDailyDoubleWager());
+
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        assertEquals(500, session.getDailyDoubleWager());
+
+        session.finishRevealingClue();
+        assertEquals(500, session.getDailyDoubleWager());
+
+        session.answerClue(player1.getId(), "John Adams");
+        assertEquals(500, session.getDailyDoubleWager());
+
+        session.finishRevealingAnswer();
+        assertNull(session.getDailyDoubleWager());
+
+        // Player 1 still has a stored wager, but this clue isn't a Daily Double.
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        assertNull(session.getDailyDoubleWager());
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

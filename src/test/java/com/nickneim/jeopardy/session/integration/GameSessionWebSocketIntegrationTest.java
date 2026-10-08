@@ -36,6 +36,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -609,6 +610,16 @@ class GameSessionWebSocketIntegrationTest {
         assertEquals(
                 GameSessionState.WAITING_FOR_ANSWER,
                 response.state()
+        );
+
+        assertEquals(
+                playerId,
+                response.playerAnswering()
+        );
+
+        assertEquals(
+                Set.of(playerId),
+                response.playersLockedOut()
         );
     }
 

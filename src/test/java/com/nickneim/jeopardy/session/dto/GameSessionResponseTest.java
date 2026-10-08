@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -178,6 +179,7 @@ class GameSessionResponseTest {
                 scienceRow1.id(),
                 200,
                 false,
+                null,
                 "Symbol for gold?",
                 null
         );
@@ -200,7 +202,7 @@ class GameSessionResponseTest {
         session.timeoutBuzzer();
 
         assertEquals(
-                new CurrentClueResponse(scienceRow1.id(), 200, false, "Symbol for gold?", "Au"),
+                new CurrentClueResponse(scienceRow1.id(), 200, false, null, "Symbol for gold?", "Au"),
                 GameSessionResponse.from(session).currentClue()
         );
     }
@@ -211,7 +213,7 @@ class GameSessionResponseTest {
         session.chooseClue(player.getId(), historyRow3.id());
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, null, null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null),
                 GameSessionResponse.from(session).currentClue()
         );
 
@@ -225,7 +227,7 @@ class GameSessionResponseTest {
         session.placeDailyDoubleWager(player.getId(), 500);
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, "Second president?", null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, 500, "Second president?", null),
                 GameSessionResponse.from(session).currentClue()
         );
     }
@@ -248,5 +250,27 @@ class GameSessionResponseTest {
             assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
         }
         assertFalse(json.contains("\"dailyDouble\":true"), "leaked a Daily Double: " + json);
+    }
+
+    // -------------------------------------------------------------------------
+    // Turn and buzzer
+    // -------------------------------------------------------------------------
+
+    @Test
+    void response_includesTurnAndBuzzerInfo() {
+        GameSessionResponse beforeStart = GameSessionResponse.from(session);
+        assertNull(beforeStart.playerChoosingClue());
+        assertNull(beforeStart.playerAnswering());
+        assertEquals(Set.of(), beforeStart.playersLockedOut());
+
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.buzz(player.getId());
+
+        GameSessionResponse answering = GameSessionResponse.from(session);
+        assertEquals(player.getId(), answering.playerChoosingClue());
+        assertEquals(player.getId(), answering.playerAnswering());
+        assertEquals(Set.of(player.getId()), answering.playersLockedOut());
     }
 }
