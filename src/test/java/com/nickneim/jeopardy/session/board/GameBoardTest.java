@@ -124,6 +124,19 @@ class GameBoardTest {
     }
 
     @Test
+    void constructor_rejectsFinalJeopardyWithMoreThanOneClue() {
+        BoardClue secondFinal =
+                new BoardClue(5L, 2, "Another final", "Another answer", 2000, false);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new GameBoard(List.of(
+                        round(GameRound.FINAL_JEOPARDY, finalClue, secondFinal)
+                ))
+        );
+    }
+
+    @Test
     void constructor_rejectsBoardWithoutClues() {
         assertThrows(
                 IllegalArgumentException.class,

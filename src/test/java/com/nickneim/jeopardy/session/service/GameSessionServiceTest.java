@@ -44,6 +44,8 @@ class GameSessionServiceTest {
     // A second clue keeps the round going after CLUE_ID is played, so
     // finishing an answer reveal returns to CHOOSING_CLUE.
     private static final Long OTHER_CLUE_ID = 12L;
+    private static final Long FINAL_CLUE_ID = 20L;
+    private static final Long PLAYER_ID = 1L;
 
     @BeforeEach
     void setUp() {
@@ -1026,6 +1028,136 @@ class GameSessionServiceTest {
                 getFirstPlayerId(session),
                 DAILY_DOUBLE_CLUE_ID
         );
+
+        return session;
+    }
+
+    // -------------------------------------------------------------------------
+    // Final Jeopardy
+    // -------------------------------------------------------------------------
+
+    @Test
+    void finishingLastClue_startsFinalJeopardyAndSchedulesWagerTimeout() {
+        GameSession session = createSessionInFinalJeopardy();
+
+        assertEquals(
+                GameSessionState.FINAL_JEOPARDY_WAGERING,
+                session.getState()
+        );
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(30)),
+                any(Runnable.class)
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void placeFinalJeopardyWager_broadcastsWithoutTouchingTheTimer() {
+        GameSession session = createSessionInFinalJeopardy();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.placeFinalJeopardyWager(session.getId(), PLAYER_ID, 100);
+
+        assertEquals(100, session.getFinalJeopardyWager(PLAYER_ID));
+        verify(broadcaster).broadcast(session);
+        verifyNoInteractions(timer);
+    }
+
+    @Test
+    void answerFinalJeopardy_broadcastsWithoutTouchingTheTimer() {
+        GameSession session = createSessionInFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "Final answer");
+
+        assertEquals("Final answer", session.getFinalJeopardyAnswer(PLAYER_ID));
+        verify(broadcaster).broadcast(session);
+        verifyNoInteractions(timer);
+    }
+
+    @Test
+    void finalJeopardyTimeouts_runThroughEveryPhaseAndApplyScores() {
+        GameSession session = createSessionInFinalJeopardy();
+        Runnable wagerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        gameSessionService.placeFinalJeopardyWager(session.getId(), PLAYER_ID, 150);
+        clearInvocations(timer, broadcaster);
+
+        wagerTimeout.run();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_ANSWERING, session.getState());
+        verify(broadcaster).broadcast(session);
+        Runnable answerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "Final answer");
+        clearInvocations(timer, broadcaster);
+
+        answerTimeout.run();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
+        verify(broadcaster).broadcast(session);
+        Runnable revealTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(10));
+
+        clearInvocations(timer, broadcaster);
+
+        revealTimeout.run();
+
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+        assertEquals(200 + 150, session.getPlayers().getFirst().getScore());
+        verify(broadcaster).broadcast(session);
+        verify(timer).cancel(session.getId());
+        verifyNoMoreInteractions(timer);
+    }
+
+    @Test
+    void staleFinalJeopardyWagerTimeout_doesNothing() {
+        GameSession session = createSessionInFinalJeopardy();
+        Runnable staleWagerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        session.timeoutFinalJeopardyWagering();
+        clearInvocations(timer, broadcaster);
+
+        staleWagerTimeout.run();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_ANSWERING, session.getState());
+        verifyNoInteractions(timer, broadcaster);
+    }
+
+    // Plays the only Jeopardy clue (answered correctly, so the player has 200)
+    // and leaves the session at the start of Final Jeopardy, with the timer
+    // and broadcaster mocks only holding what entering Final Jeopardy did.
+    private GameSession createSessionInFinalJeopardy() {
+        GameBoard board = new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory(
+                        "Category",
+                        List.of(new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false))
+                ))),
+                new BoardRound(GameRound.FINAL_JEOPARDY, List.of(new BoardCategory(
+                        "Final category",
+                        List.of(new BoardClue(FINAL_CLUE_ID, 1, "Final question", "Final answer", 2000, false))
+                )))
+        ));
+
+        GameSession session = gameSessionService.createSession(board);
+        session.addPlayer(new GameSessionPlayer(PLAYER_ID, "Player 1"));
+
+        gameSessionService.startGame(session.getId(), PLAYER_ID);
+        gameSessionService.chooseClue(session.getId(), PLAYER_ID, CLUE_ID);
+        gameSessionService.finishRevealingClue(session.getId());
+        gameSessionService.buzz(session.getId(), PLAYER_ID);
+        gameSessionService.answerClue(session.getId(), PLAYER_ID, "Correct answer");
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.finishRevealingAnswer(session.getId());
 
         return session;
     }

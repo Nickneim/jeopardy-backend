@@ -39,6 +39,10 @@ public final class GameBoard {
                     throw new IllegalArgumentException("Duplicate clue id: " + clue.id());
                 }
             });
+
+            if (boardRound.round() == GameRound.FINAL_JEOPARDY && boardRound.clues().count() > 1) {
+                throw new IllegalArgumentException("Final Jeopardy can only have one clue");
+            }
         }
 
         if (byId.isEmpty()) {

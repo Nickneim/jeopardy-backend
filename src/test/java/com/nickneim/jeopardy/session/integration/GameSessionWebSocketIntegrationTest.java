@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
+import com.nickneim.jeopardy.session.dto.AnswerFinalJeopardyRequest;
 import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
 import com.nickneim.jeopardy.session.dto.ClueSlotResponse;
@@ -14,6 +15,7 @@ import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
+import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -44,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
@@ -1192,6 +1196,210 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
+    // Final Jeopardy
+    // -------------------------------------------------------------------------
+
+    @Test
+    void placingFinalJeopardyWager_broadcastsThatThePlayerWagered()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
+                new PlaceFinalJeopardyWagerRequest(playerId, 150)
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.FINAL_JEOPARDY_WAGERING,
+                response.state()
+        );
+
+        assertTrue(
+                response.finalJeopardy().players().getFirst().hasWagered()
+        );
+
+        // The amount itself stays secret until the reveal.
+        assertNull(
+                response.finalJeopardy().players().getFirst().wager()
+        );
+    }
+
+    @Test
+    void placingFinalJeopardyWagerAboveScore_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
+                new PlaceFinalJeopardyWagerRequest(playerId, 201)
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_WAGER",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingFinalJeopardyWagerBeforeFinalJeopardy_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
+                new PlaceFinalJeopardyWagerRequest(
+                        session.getPlayers().getFirst().getId(),
+                        0
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void answeringFinalJeopardy_broadcastsThatThePlayerAnswered()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        session.timeoutFinalJeopardyWagering();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/answer-final-jeopardy",
+                new AnswerFinalJeopardyRequest(playerId, "Final answer")
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.FINAL_JEOPARDY_ANSWERING,
+                response.state()
+        );
+
+        assertEquals(
+                "Final question",
+                response.finalJeopardy().question()
+        );
+
+        assertTrue(
+                response.finalJeopardy().players().getFirst().hasAnswered()
+        );
+
+        assertNull(
+                response.finalJeopardy().players().getFirst().answer()
+        );
+    }
+
+    @Test
+    void answeringFinalJeopardyWhileWagering_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/answer-final-jeopardy",
+                new AnswerFinalJeopardyRequest(
+                        session.getPlayers().getFirst().getId(),
+                        "Final answer"
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingFinalJeopardyWagerWithMissingWager_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
+                Map.of("playerId", session.getPlayers().getFirst().getId())
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_REQUEST",
+                error.code()
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -1263,6 +1471,42 @@ class GameSessionWebSocketIntegrationTest {
                 session.getId(),
                 session.getPlayers().getFirst().getId(),
                 DAILY_DOUBLE_CLUE_ID
+        );
+
+        return session;
+    }
+
+    // The player answers the only Jeopardy clue correctly (200 points), which
+    // starts Final Jeopardy with its real 30-second wagering timer running.
+    private GameSession createSessionInFinalJeopardy() {
+        GameSession session = gameSessionService.createSession(
+                new GameBoard(List.of(
+                        new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory(
+                                "Category",
+                                List.of(new BoardClue(10L, 1, "Question", "Correct answer", 200, false))
+                        ))),
+                        new BoardRound(GameRound.FINAL_JEOPARDY, List.of(new BoardCategory(
+                                "Final category",
+                                List.of(new BoardClue(30L, 1, "Final question", "Final answer", 2000, false))
+                        )))
+                ))
+        );
+
+        gameSessionService.joinSession(session.getId(), "Nico");
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.startGame(session.getId(), playerId);
+        gameSessionService.chooseClue(session.getId(), playerId, 10L);
+        gameSessionService.finishRevealingClue(session.getId());
+        gameSessionService.buzz(session.getId(), playerId);
+        gameSessionService.answerClue(session.getId(), playerId, "Correct answer");
+        gameSessionService.finishRevealingAnswer(session.getId());
+
+        assertEquals(
+                GameSessionState.FINAL_JEOPARDY_WAGERING,
+                session.getState()
         );
 
         return session;

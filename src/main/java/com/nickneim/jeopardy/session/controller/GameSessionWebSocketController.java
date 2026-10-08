@@ -98,6 +98,30 @@ public class GameSessionWebSocketController {
         );
     }
 
+    @MessageMapping("/sessions/{sessionId}/place-final-jeopardy-wager")
+    public void placeFinalJeopardyWager(
+            @DestinationVariable UUID sessionId,
+            @Valid PlaceFinalJeopardyWagerRequest request
+    ) {
+        gameSessionService.placeFinalJeopardyWager(
+                sessionId,
+                request.playerId(),
+                request.wager()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/answer-final-jeopardy")
+    public void answerFinalJeopardy(
+            @DestinationVariable UUID sessionId,
+            @Valid AnswerFinalJeopardyRequest request
+    ) {
+        gameSessionService.answerFinalJeopardy(
+                sessionId,
+                request.playerId(),
+                request.answer()
+        );
+    }
+
     @MessageExceptionHandler(InvalidGameActionException.class)
     @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleInvalidGameAction(

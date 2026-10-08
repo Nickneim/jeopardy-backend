@@ -606,12 +606,13 @@ class GameSessionTest {
         );
 
         assertEquals(
-                GameSessionState.CHOOSING_CLUE,
+                GameSessionState.FINAL_JEOPARDY_WAGERING,
                 session.getState()
         );
 
+        // The Final clue isn't chosen from the board; it is played at once.
         assertEquals(
-                Set.of(finalJeopardyClue.id()),
+                Set.of(),
                 session.getAvailableClues()
         );
     }
@@ -632,14 +633,9 @@ class GameSessionTest {
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
 
-        // This test needs to be updated when Final Jeopardy! works as it should (with betting)
-        session.chooseClue(
-                player1.getId(),
-                finalJeopardyClue.id()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        session.timeoutFinalJeopardyWagering();
+        session.timeoutFinalJeopardyAnswering();
+        session.finishFinalJeopardyReveal();
 
         assertEquals(
                 GameSessionState.FINISHED_GAME,
@@ -1287,8 +1283,8 @@ class GameSessionTest {
 
         assertEquals(GameRound.FINAL_JEOPARDY, noDoubleJeopardy.getRound());
         assertEquals(
-                Set.of(finalJeopardyClue.id()),
-                noDoubleJeopardy.getAvailableClues()
+                GameSessionState.FINAL_JEOPARDY_WAGERING,
+                noDoubleJeopardy.getState()
         );
     }
 
@@ -1380,12 +1376,274 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Final Jeopardy
+    // -------------------------------------------------------------------------
+
+    @Test
+    void finalJeopardy_showsCategoryAndClueFromTheBoard() {
+        reachFinalJeopardy();
+
+        assertEquals("FINAL HISTORY", session.getFinalJeopardyCategory().name());
+        assertEquals(finalJeopardyClue, session.getFinalJeopardyClue());
+    }
+
+    @Test
+    void finalJeopardy_startsAtOnceWhenItIsTheFirstRound() {
+        GameSession onlyFinal = new GameSession(
+                UUID.randomUUID(),
+                new GameBoard(List.of(new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
+                        new BoardCategory("FINAL HISTORY", List.of(finalJeopardyClue))
+                ))))
+        );
+        onlyFinal.addPlayer(player1);
+
+        onlyFinal.startGame(player1.getId());
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, onlyFinal.getState());
+    }
+
+    @Test
+    void finishRevealingAnswer_finishesGameWhenThereIsNoFinalJeopardy() {
+        GameSession noFinal = new GameSession(
+                UUID.randomUUID(),
+                new GameBoard(List.of(new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("HISTORY", List.of(jeopardyClue1))
+                ))))
+        );
+        noFinal.addPlayer(player1);
+        noFinal.startGame(player1.getId());
+
+        noFinal.chooseClue(player1.getId(), jeopardyClue1.id());
+        noFinal.finishRevealingClue();
+        noFinal.timeoutBuzzer();
+        noFinal.finishRevealingAnswer();
+
+        assertEquals(GameSessionState.FINISHED_GAME, noFinal.getState());
+    }
+
+    @Test
+    void placeFinalJeopardyWager_allowsZeroUpToScore() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+
+        assertInvalidFinalWager(player1, -1);
+        assertInvalidFinalWager(player1, 1001);
+
+        session.placeFinalJeopardyWager(player1.getId(), 0);
+        assertEquals(0, session.getFinalJeopardyWager(player1.getId()));
+
+        session.placeFinalJeopardyWager(player1.getId(), 1000);
+        assertEquals(1000, session.getFinalJeopardyWager(player1.getId()));
+    }
+
+    @Test
+    void placeFinalJeopardyWager_withZeroOrNegativeScore_onlyAllowsZero() {
+        reachFinalJeopardy();
+        player2.addScore(-400);
+
+        assertInvalidFinalWager(player1, 1);
+        assertInvalidFinalWager(player2, 1);
+
+        session.placeFinalJeopardyWager(player1.getId(), 0);
+        session.placeFinalJeopardyWager(player2.getId(), 0);
+
+        assertTrue(session.hasFinalJeopardyWager(player1.getId()));
+        assertTrue(session.hasFinalJeopardyWager(player2.getId()));
+    }
+
+    @Test
+    void placeFinalJeopardyWager_canBeChangedUntilWageringEnds() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+
+        session.placeFinalJeopardyWager(player1.getId(), 300);
+        session.placeFinalJeopardyWager(player1.getId(), 500);
+
+        assertEquals(500, session.getFinalJeopardyWager(player1.getId()));
+    }
+
+    @Test
+    void placeFinalJeopardyWager_rejectsPlayerNotInSession() {
+        reachFinalJeopardy();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeFinalJeopardyWager(999L, 0)
+        );
+
+        assertEquals(GameErrorCode.PLAYER_NOT_IN_SESSION, exception.getCode());
+    }
+
+    @Test
+    void placeFinalJeopardyWager_rejectsWhenNotWagering() {
+        session.startGame(player1.getId());
+
+        InvalidGameActionException beforeFinal = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeFinalJeopardyWager(player1.getId(), 0)
+        );
+        assertEquals(GameErrorCode.INVALID_STATE, beforeFinal.getCode());
+
+        finishJeopardyRound();
+        playClueWithoutBuzz(doubleJeopardyClue1.id());
+        session.timeoutFinalJeopardyWagering();
+
+        InvalidGameActionException whileAnswering = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeFinalJeopardyWager(player1.getId(), 0)
+        );
+        assertEquals(GameErrorCode.INVALID_STATE, whileAnswering.getCode());
+    }
+
+    @Test
+    void timeoutFinalJeopardyWagering_givesMissingWagersZeroAndRevealsClue() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+        session.placeFinalJeopardyWager(player1.getId(), 600);
+
+        session.timeoutFinalJeopardyWagering();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_ANSWERING, session.getState());
+        assertEquals(600, session.getFinalJeopardyWager(player1.getId()));
+        assertTrue(session.hasFinalJeopardyWager(player2.getId()));
+        assertEquals(0, session.getFinalJeopardyWager(player2.getId()));
+    }
+
+    @Test
+    void answerFinalJeopardy_rejectsWhileWagering() {
+        reachFinalJeopardy();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.answerFinalJeopardy(player1.getId(), "The American Revolution")
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void answerFinalJeopardy_rejectsPlayerNotInSession() {
+        reachFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.answerFinalJeopardy(999L, "The American Revolution")
+        );
+
+        assertEquals(GameErrorCode.PLAYER_NOT_IN_SESSION, exception.getCode());
+    }
+
+    @Test
+    void answerFinalJeopardy_canBeChangedUntilAnsweringEnds() {
+        reachFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+
+        session.answerFinalJeopardy(player1.getId(), "The Civil War");
+        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+
+        assertEquals("The American Revolution", session.getFinalJeopardyAnswer(player1.getId()));
+        assertTrue(session.isFinalJeopardyAnswerCorrect(player1.getId()));
+    }
+
+    @Test
+    void timeoutFinalJeopardyAnswering_revealsWithoutChangingScores() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+        session.placeFinalJeopardyWager(player1.getId(), 500);
+        session.timeoutFinalJeopardyWagering();
+        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+
+        session.timeoutFinalJeopardyAnswering();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
+        assertEquals(1000, player1.getScore());
+    }
+
+    @Test
+    void finishFinalJeopardyReveal_appliesWagersAndFinishesGame() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+        player2.addScore(800);
+        GameSessionPlayer player3 = new GameSessionPlayer(3L, "Ana");
+        session.addPlayer(player3);
+        player3.addScore(600);
+
+        session.placeFinalJeopardyWager(player1.getId(), 500);
+        session.placeFinalJeopardyWager(player2.getId(), 300);
+        session.placeFinalJeopardyWager(player3.getId(), 200);
+        session.timeoutFinalJeopardyWagering();
+
+        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+        session.answerFinalJeopardy(player2.getId(), "The Civil War");
+        // Player 3 never answers, which counts as wrong.
+        session.timeoutFinalJeopardyAnswering();
+
+        session.finishFinalJeopardyReveal();
+
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+        assertEquals(1500, player1.getScore());
+        assertEquals(500, player2.getScore());
+        assertEquals(400, player3.getScore());
+    }
+
+    @Test
+    void finishFinalJeopardyReveal_withZeroWager_leavesScoreUnchanged() {
+        reachFinalJeopardy();
+        player1.addScore(-200);
+        session.timeoutFinalJeopardyWagering();
+        session.answerFinalJeopardy(player1.getId(), "The Civil War");
+        session.timeoutFinalJeopardyAnswering();
+
+        session.finishFinalJeopardyReveal();
+
+        assertEquals(-200, player1.getScore());
+    }
+
+    @Test
+    void regularActions_areRejectedDuringFinalJeopardy() {
+        reachFinalJeopardy();
+
+        assertEquals(
+                GameErrorCode.INVALID_STATE,
+                assertThrows(
+                        InvalidGameActionException.class,
+                        () -> session.buzz(player1.getId())
+                ).getCode()
+        );
+        assertEquals(
+                GameErrorCode.INVALID_STATE,
+                assertThrows(
+                        InvalidGameActionException.class,
+                        () -> session.chooseClue(player1.getId(), finalJeopardyClue.id())
+                ).getCode()
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
     private void finishJeopardyRound() {
         playClueWithoutBuzz(jeopardyClue1.id());
         playClueWithoutBuzz(jeopardyClue2.id());
+    }
+
+    private void reachFinalJeopardy() {
+        session.startGame(player1.getId());
+        finishJeopardyRound();
+        playClueWithoutBuzz(doubleJeopardyClue1.id());
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+    }
+
+    private void assertInvalidFinalWager(GameSessionPlayer player, int wager) {
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeFinalJeopardyWager(player.getId(), wager)
+        );
+
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
     }
 
     private void playClueWithoutBuzz(Long clueId) {

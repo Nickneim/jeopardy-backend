@@ -115,6 +115,36 @@ public class GameSessionService {
         }
     }
 
+    // Final Jeopardy submissions don't change the state, so they deliberately
+    // skip scheduleTimeout: re-arming the timer would restart the phase.
+    public void placeFinalJeopardyWager(
+            UUID sessionId,
+            Long playerId,
+            int wager
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            session.placeFinalJeopardyWager(playerId, wager);
+
+            broadcaster.broadcast(session);
+        }
+    }
+
+    public void answerFinalJeopardy(
+            UUID sessionId,
+            Long playerId,
+            String answer
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            session.answerFinalJeopardy(playerId, answer);
+
+            broadcaster.broadcast(session);
+        }
+    }
+
     public void finishRevealingClue(UUID sessionId) {
         GameSession session = getSession(sessionId);
         synchronized (session) {
@@ -217,6 +247,51 @@ public class GameSessionService {
         }
     }
 
+    private void timeoutFinalJeopardyWagering(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            if (session.getState() != GameSessionState.FINAL_JEOPARDY_WAGERING) {
+                return;
+            }
+
+            session.timeoutFinalJeopardyWagering();
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
+    }
+
+    private void timeoutFinalJeopardyAnswering(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            if (session.getState() != GameSessionState.FINAL_JEOPARDY_ANSWERING) {
+                return;
+            }
+
+            session.timeoutFinalJeopardyAnswering();
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
+    }
+
+    private void finishFinalJeopardyReveal(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            if (session.getState() != GameSessionState.FINAL_JEOPARDY_REVEALING) {
+                return;
+            }
+
+            session.finishFinalJeopardyReveal();
+
+            scheduleTimeout(session);
+            broadcaster.broadcast(session);
+        }
+    }
+
     private void scheduleTimeout(GameSession session) {
         UUID sessionId = session.getId();
 
@@ -255,6 +330,27 @@ public class GameSessionService {
                             session.getId(),
                             session.getTimeouts().dailyDoubleWager(),
                             () -> timeoutDailyDoubleWager(session.getId())
+                    );
+
+            case FINAL_JEOPARDY_WAGERING ->
+                    timer.schedule(
+                            sessionId,
+                            session.getTimeouts().finalJeopardyWager(),
+                            () -> timeoutFinalJeopardyWagering(sessionId)
+                    );
+
+            case FINAL_JEOPARDY_ANSWERING ->
+                    timer.schedule(
+                            sessionId,
+                            session.getTimeouts().finalJeopardyAnswer(),
+                            () -> timeoutFinalJeopardyAnswering(sessionId)
+                    );
+
+            case FINAL_JEOPARDY_REVEALING ->
+                    timer.schedule(
+                            sessionId,
+                            session.getTimeouts().finalJeopardyReveal(),
+                            () -> finishFinalJeopardyReveal(sessionId)
                     );
 
             default -> {

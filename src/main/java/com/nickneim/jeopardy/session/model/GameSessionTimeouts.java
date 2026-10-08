@@ -7,7 +7,10 @@ public record GameSessionTimeouts(
         Duration dailyDoubleWager,
         Duration buzzer,
         Duration answer,
-        Duration answerReveal
+        Duration answerReveal,
+        Duration finalJeopardyWager,
+        Duration finalJeopardyAnswer,
+        Duration finalJeopardyReveal
 ) {
     public static GameSessionTimeouts defaults() {
         return new GameSessionTimeouts(
@@ -15,7 +18,10 @@ public record GameSessionTimeouts(
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(10),
                 Duration.ofSeconds(5),
-                Duration.ofSeconds(3)
+                Duration.ofSeconds(3),
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(10)
         );
     }
 }

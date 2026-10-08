@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.model;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
@@ -26,6 +27,11 @@ public class GameSession {
     // available is derived from this and the board, never stored.
     private final Set<Long> playedClues = new HashSet<>();
     private Long playerWhoBuzzed;
+
+    // Final Jeopardy submissions, keyed by player id. They stay secret until
+    // FINAL_JEOPARDY_REVEALING; see GameSessionResponse.
+    private final Map<Long, Integer> finalJeopardyWagers = new HashMap<>();
+    private final Map<Long, String> finalJeopardyAnswers = new HashMap<>();
 
     public GameSession(UUID id, GameBoard board) {
         this.id = id;
@@ -128,10 +134,18 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
         }
 
-        round = board.getFirstRound();
         playerChoosingClue = players.getFirst().getId();
-        state = GameSessionState.CHOOSING_CLUE;
+        enterRound(board.getFirstRound());
+    }
 
+    private void enterRound(GameRound newRound) {
+        round = newRound;
+
+        if (newRound == GameRound.FINAL_JEOPARDY) {
+            startFinalJeopardy();
+        } else {
+            state = GameSessionState.CHOOSING_CLUE;
+        }
     }
 
     public void chooseClue(Long playerId, Long clueId) {
@@ -224,14 +238,126 @@ public class GameSession {
     }
 
     public void finishRevealingAnswer() {
-        state = GameSessionState.CHOOSING_CLUE;
-
-        if (getAvailableClues().isEmpty()) {
-            board.getNextRound(round).ifPresentOrElse(
-                    nextRound -> round = nextRound,
-                    () -> state = GameSessionState.FINISHED_GAME
-            );
+        if (!getAvailableClues().isEmpty()) {
+            state = GameSessionState.CHOOSING_CLUE;
+            return;
         }
+
+        board.getNextRound(round).ifPresentOrElse(
+                this::enterRound,
+                () -> state = GameSessionState.FINISHED_GAME
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Final Jeopardy
+    // -------------------------------------------------------------------------
+
+    private void startFinalJeopardy() {
+        BoardClue clue = getFinalJeopardyClue();
+
+        chosenClueId = clue.id();
+        playedClues.add(clue.id());
+        finalJeopardyWagers.clear();
+        finalJeopardyAnswers.clear();
+        state = GameSessionState.FINAL_JEOPARDY_WAGERING;
+    }
+
+    /**
+     * Wagers go from 0 up to the player's score, so a player with a score of
+     * 0 or less can only wager 0 but still plays. A player may change their
+     * wager until the wagering phase ends.
+     */
+    public void placeFinalJeopardyWager(Long playerId, int wager) {
+        if (state != GameSessionState.FINAL_JEOPARDY_WAGERING) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager on Final Jeopardy right now!");
+        }
+
+        GameSessionPlayer player = getPlayer(playerId);
+        if (player == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
+        }
+
+        int maximumWager = Math.max(0, player.getScore());
+        if (wager < 0 || wager > maximumWager) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
+        }
+
+        finalJeopardyWagers.put(playerId, wager);
+    }
+
+    /** Players who didn't wager in time wager 0. */
+    public void timeoutFinalJeopardyWagering() {
+        for (GameSessionPlayer player : players) {
+            finalJeopardyWagers.putIfAbsent(player.getId(), 0);
+        }
+
+        state = GameSessionState.FINAL_JEOPARDY_ANSWERING;
+    }
+
+    /** A player may change their answer until the answering phase ends. */
+    public void answerFinalJeopardy(Long playerId, String answer) {
+        if (state != GameSessionState.FINAL_JEOPARDY_ANSWERING) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer Final Jeopardy right now!");
+        }
+        if (getPlayer(playerId) == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
+        }
+
+        finalJeopardyAnswers.put(playerId, answer);
+    }
+
+    public void timeoutFinalJeopardyAnswering() {
+        state = GameSessionState.FINAL_JEOPARDY_REVEALING;
+    }
+
+    /** Applies every wager (no answer counts as wrong) and ends the game. */
+    public void finishFinalJeopardyReveal() {
+        for (GameSessionPlayer player : players) {
+            int wager = getFinalJeopardyWager(player.getId());
+
+            player.addScore(isFinalJeopardyAnswerCorrect(player.getId()) ? wager : -wager);
+        }
+
+        state = GameSessionState.FINISHED_GAME;
+    }
+
+    /** The Final Jeopardy category, or null if the board has none. */
+    public BoardCategory getFinalJeopardyCategory() {
+        return board.getRound(GameRound.FINAL_JEOPARDY)
+                .flatMap(finalRound -> finalRound.categories()
+                        .stream()
+                        .filter(category -> !category.clues().isEmpty())
+                        .findFirst())
+                .orElse(null);
+    }
+
+    public BoardClue getFinalJeopardyClue() {
+        BoardCategory category = getFinalJeopardyCategory();
+
+        return category == null ? null : category.clues().getFirst();
+    }
+
+    public boolean hasFinalJeopardyWager(Long playerId) {
+        return finalJeopardyWagers.containsKey(playerId);
+    }
+
+    public boolean hasFinalJeopardyAnswer(Long playerId) {
+        return finalJeopardyAnswers.containsKey(playerId);
+    }
+
+    public int getFinalJeopardyWager(Long playerId) {
+        return finalJeopardyWagers.getOrDefault(playerId, 0);
+    }
+
+    public String getFinalJeopardyAnswer(Long playerId) {
+        return finalJeopardyAnswers.get(playerId);
+    }
+
+    public boolean isFinalJeopardyAnswerCorrect(Long playerId) {
+        String answer = finalJeopardyAnswers.get(playerId);
+
+        return answer != null && isCorrectAnswer(getFinalJeopardyClue(), answer);
     }
 
     private void startWaitingForBuzzer() {
