@@ -129,6 +129,35 @@ class GameServiceTest {
     }
 
     @Test
+    void getGameForPlay_returnsGame() {
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+
+        when(gameRepository.findById(123L))
+                .thenReturn(Optional.of(game));
+
+        Game returnedGame = gameService.getGameForPlay(123L);
+
+        assertEquals(game, returnedGame);
+
+        verify(gameRepository).findById(123L);
+    }
+
+    @Test
+    void getGameForPlay_throwsWhenGameDoesNotExist() {
+        when(gameRepository.findById(123L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                GameNotFoundException.class,
+                () -> gameService.getGameForPlay(123L)
+        );
+    }
+
+    @Test
     void getGames_returnsGames() {
         Game game1 = new Game(
                 "Show #100",

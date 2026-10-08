@@ -27,7 +27,7 @@ public class GameSessionController {
     public CreateGameSessionResponse createSession(
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
-        Game game = gameService.getGame(request.gameId());
+        Game game = gameService.getGameForPlay(request.gameId());
         GameSession session = gameSessionService.createSession(game);
 
         return new CreateGameSessionResponse(session.getId());

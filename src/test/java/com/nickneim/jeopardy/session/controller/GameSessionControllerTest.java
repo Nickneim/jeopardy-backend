@@ -45,7 +45,7 @@ class GameSessionControllerTest {
 
         GameSession session = new GameSession(sessionId, game);
 
-        when(gameService.getGame(gameId))
+        when(gameService.getGameForPlay(gameId))
                 .thenReturn(game);
 
         when(gameSessionService.createSession(game))
@@ -61,7 +61,7 @@ class GameSessionControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(sessionId.toString()));
 
-        verify(gameService).getGame(gameId);
+        verify(gameService).getGameForPlay(gameId);
         verify(gameSessionService).createSession(game);
     }
 
@@ -71,7 +71,7 @@ class GameSessionControllerTest {
 
         Long gameId = 999L;
 
-        when(gameService.getGame(gameId))
+        when(gameService.getGameForPlay(gameId))
                 .thenThrow(new GameNotFoundException(gameId));
 
         mockMvc.perform(post("/api/game-sessions")
@@ -83,7 +83,7 @@ class GameSessionControllerTest {
                         """))
                 .andExpect(status().isNotFound());
 
-        verify(gameService).getGame(gameId);
+        verify(gameService).getGameForPlay(gameId);
         verifyNoInteractions(gameSessionService);
     }
 }
