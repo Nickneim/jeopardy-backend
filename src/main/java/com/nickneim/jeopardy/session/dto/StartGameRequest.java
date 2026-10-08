@@ -1,4 +1,8 @@
 package com.nickneim.jeopardy.session.dto;
 
-public record StartGameRequest() {
+import jakarta.validation.constraints.NotNull;
+
+public record StartGameRequest(
+        @NotNull Long playerId
+) {
 }

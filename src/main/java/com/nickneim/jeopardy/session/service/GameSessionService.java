@@ -72,11 +72,14 @@ public class GameSessionService {
         broadcaster.broadcast(session);
     }
 
-    public void startGame(UUID sessionId) {
+    public void startGame(
+            UUID sessionId,
+            Long playerId
+    ) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            session.startGame();
+            session.startGame(playerId);
 
             scheduleTimeout(session);
             broadcaster.broadcast(session);

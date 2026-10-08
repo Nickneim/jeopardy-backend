@@ -276,7 +276,10 @@ class GameSessionServiceTest {
 
         clearInvocations(timer, broadcaster);
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
 
         verify(broadcaster).broadcast(session);
     }
@@ -407,7 +410,10 @@ class GameSessionServiceTest {
     private GameSession createStartedSession() {
         GameSession session = createSessionWithPlayers(1);
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
 
         return session;
     }
@@ -439,7 +445,10 @@ class GameSessionServiceTest {
     private GameSession createSessionWaitingForAnswer(int playerCount) {
         GameSession session = createSessionWithPlayers(playerCount);
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
 
         gameSessionService.chooseClue(
                 session.getId(),
@@ -514,7 +523,10 @@ class GameSessionServiceTest {
     void concurrentBuzzes_onlyOnePlayerCanBuzz() throws Exception {
         GameSession session = createSessionWithPlayers(2);
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
 
         Long player1 = session.getPlayers().get(0).getId();
         Long player2 = session.getPlayers().get(1).getId();
@@ -986,7 +998,10 @@ class GameSessionServiceTest {
                 new GameSessionPlayer(1L, "Player 1")
         );
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
 
         return session;
     }

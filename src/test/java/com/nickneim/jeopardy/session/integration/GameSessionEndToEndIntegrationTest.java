@@ -124,7 +124,7 @@ class GameSessionEndToEndIntegrationTest {
         GameSessionResponse joined = awaitMessage(messages);
         Long playerId = joined.players().getFirst().id();
 
-        send(stompSession, sessionId, "start", new StartGameRequest());
+        send(stompSession, sessionId, "start", new StartGameRequest(playerId));
 
         assertEquals(
                 GameSessionState.CHOOSING_CLUE,

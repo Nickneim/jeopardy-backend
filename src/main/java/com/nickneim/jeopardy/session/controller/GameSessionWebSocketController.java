@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.controller;
 
 import com.nickneim.jeopardy.session.dto.*;
+import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.service.GameSessionService;
@@ -8,10 +9,13 @@ import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Controller
 public class GameSessionWebSocketController {
@@ -37,9 +41,13 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/start")
     public void startGame(
-            @DestinationVariable UUID sessionId
+            @DestinationVariable UUID sessionId,
+            @Valid StartGameRequest request
     ) {
-        gameSessionService.startGame(sessionId);
+        gameSessionService.startGame(
+                sessionId,
+                request.playerId()
+        );
     }
 
     @MessageMapping("/sessions/{sessionId}/choose-clue")
@@ -110,6 +118,26 @@ public class GameSessionWebSocketController {
         return new GameSessionErrorResponse(
                 exception.getCode().name(),
                 exception.getMessage()
+        );
+    }
+
+    @MessageExceptionHandler(MethodArgumentNotValidException.class)
+    @SendToUser(value = "/queue/errors", broadcast = false)
+    public GameSessionErrorResponse handleInvalidRequest(
+            MethodArgumentNotValidException exception
+    ) {
+        BindingResult bindingResult = exception.getBindingResult();
+
+        String message = bindingResult == null
+                ? "Invalid request!"
+                : bindingResult.getFieldErrors()
+                        .stream()
+                        .map(error -> error.getField() + " " + error.getDefaultMessage())
+                        .collect(Collectors.joining(", "));
+
+        return new GameSessionErrorResponse(
+                GameErrorCode.INVALID_REQUEST.name(),
+                message
         );
     }
 

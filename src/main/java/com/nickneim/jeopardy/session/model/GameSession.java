@@ -86,9 +86,12 @@ public class GameSession {
         players.add(player);
     }
 
-    public void startGame() {
+    public void startGame(Long playerId) {
         if (!state.equals(GameSessionState.WAITING_FOR_START)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Game has already started!");
+        }
+        if (getPlayer(playerId) == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
         }
 
         setUpNewRound(GameRound.JEOPARDY);
@@ -114,6 +117,8 @@ public class GameSession {
         chosenClueId = clueId;
         cluesAlreadySelected.add(clueId);
         if (game.isDailyDouble(clueId)) {
+            // Only the chooser can answer a Daily Double, so they count as the buzzer.
+            playerWhoBuzzed = playerId;
             startWaitingForDailyDoubleWager();
         } else {
             startRevealingClue();
@@ -207,6 +212,12 @@ public class GameSession {
 
     public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
+        if (game.isDailyDouble(chosenClueId)) {
+            player.addScore(-player.getWager());
+            startRevealingAnswer();
+            return;
+        }
+
         Clue clue = getClue(chosenClueId);
         player.addScore(-clue.getValue());
         if (players.size() == playersAlreadyBuzzed.size()) {

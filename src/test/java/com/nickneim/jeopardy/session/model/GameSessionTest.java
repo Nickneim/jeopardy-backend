@@ -184,7 +184,7 @@ class GameSessionTest {
 
     @Test
     void startGame_startsJeopardyRound() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         assertEquals(
                 GameRound.JEOPARDY,
@@ -202,17 +202,17 @@ class GameSessionTest {
 
     @Test
     void startGame_cannotBeCalledAfterGameHasStarted() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         assertThrows(
                 InvalidGameActionException.class,
-                session::startGame
+                () -> session.startGame(player1.getId())
         );
     }
 
     @Test
     void chooseClue_selectsAvailableClue() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -242,7 +242,7 @@ class GameSessionTest {
 
     @Test
     void chooseClue_rejectsPlayerWhoIsNotChoosing() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -261,7 +261,7 @@ class GameSessionTest {
 
     @Test
     void chooseClue_rejectsAlreadySelectedClue() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -291,7 +291,7 @@ class GameSessionTest {
 
     @Test
     void chooseClue_rejectsUnknownClue() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -310,7 +310,7 @@ class GameSessionTest {
 
     @Test
     void chooseClue_rejectsClueFromDifferentRound() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -329,7 +329,7 @@ class GameSessionTest {
 
     @Test
     void finishRevealingClue_startsBuzzerPhase() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -346,7 +346,7 @@ class GameSessionTest {
 
     @Test
     void buzz_movesPlayerToAnswerPhase() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -368,7 +368,7 @@ class GameSessionTest {
 
     @Test
     void buzz_rejectsWhenNotWaitingForBuzzer() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -384,7 +384,7 @@ class GameSessionTest {
 
     @Test
     void buzz_rejectsPlayerNotInSession() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -406,7 +406,7 @@ class GameSessionTest {
 
     @Test
     void buzz_rejectsPlayerWhoAlreadyBuzzed() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -438,7 +438,7 @@ class GameSessionTest {
 
     @Test
     void timeoutBuzzer_revealsAnswer() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -456,7 +456,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_correctAnswer_awardsPoints() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -486,7 +486,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_wrongAnswer_deductsPoints() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -508,7 +508,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_rejectsPlayerWhoDidNotBuzz() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -534,7 +534,7 @@ class GameSessionTest {
 
     @Test
     void timeoutAnswer_deductsPoints() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -553,7 +553,7 @@ class GameSessionTest {
 
     @Test
     void timeoutAnswer_whenAllPlayersBuzzed_revealsAnswer() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -572,7 +572,7 @@ class GameSessionTest {
 
     @Test
     void finishRevealingAnswer_startsNextRoundWhenJeopardyIsFinished() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -600,7 +600,7 @@ class GameSessionTest {
 
     @Test
     void setUpNewRound_makesDoubleJeopardyCluesAvailable() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Finish Jeopardy round.
         finishJeopardyRound();
@@ -624,7 +624,7 @@ class GameSessionTest {
 
     @Test
     void finishRevealingAnswer_startsFinalRoundWhenDoubleJeopardyIsFinished() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -656,7 +656,7 @@ class GameSessionTest {
 
     @Test
     void finishRevealingAnswer_finishesGameWhenFinalJeopardyIsFinished() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -686,7 +686,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_correctAnswerInDoubleJeopardy_awardsDoubleValue() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Finish Jeopardy.
         finishJeopardyRound();
@@ -736,7 +736,7 @@ class GameSessionTest {
     void chooseClue_forDailyDouble_waitsForWagerBeforeRevealing() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -753,7 +753,7 @@ class GameSessionTest {
     void placeDailyDoubleWager_rejectsPlayerWhoDidNotChooseClue() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -775,7 +775,7 @@ class GameSessionTest {
     void placeDailyDoubleWager_rejectsWagerWithValueTooHigh() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -797,7 +797,7 @@ class GameSessionTest {
     void placeDailyDoubleWager_rejectsWagerWithValueTooLow() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -819,7 +819,7 @@ class GameSessionTest {
     void placeDailyDoubleWager_acceptsValidWager() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -836,7 +836,7 @@ class GameSessionTest {
     void finishRevealingClue_forDailyDouble_waitsForAnswer() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -856,7 +856,7 @@ class GameSessionTest {
     void answerClue_correctDailyDouble_addsWagerToScore() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -876,7 +876,7 @@ class GameSessionTest {
     void answerClue_incorrectDailyDouble_deductsWager() {
         addDailyDoubleClue();
 
-        session.startGame();
+        session.startGame(player1.getId());
         Long playerId = session.getPlayers().getFirst().getId();
 
         session.chooseClue(
@@ -896,7 +896,7 @@ class GameSessionTest {
     @Test
     void timeoutWaitingForDailyDouble_revealsClue() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
 
         session.chooseClue(
                 player1.getId(),
@@ -919,7 +919,7 @@ class GameSessionTest {
     @Test
     void placeDailyDoubleWager_rejectsWhenNotWaitingForWager() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -977,7 +977,7 @@ class GameSessionTest {
     @Test
     void placeDailyDoubleWager_inDoubleJeopardy_allowsUpTo2000() {
         addDoubleJeopardyDailyDouble();
-        session.startGame();
+        session.startGame(player1.getId());
         finishJeopardyRound();
 
         session.chooseClue(
@@ -1040,7 +1040,7 @@ class GameSessionTest {
     @Test
     void answerClue_correctDailyDouble_addsWagerAndChooserKeepsControl() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
@@ -1057,7 +1057,7 @@ class GameSessionTest {
     @Test
     void answerClue_incorrectDailyDouble_deductsWagerAndChooserKeepsControl() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
@@ -1098,7 +1098,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_onDailyDoubleAfterBuzzedClue_deductsWagerFromChooserOnly() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
 
         // Player 2 buzzes on a normal clue and misses, leaving player 1 in control.
         session.chooseClue(player1.getId(), jeopardyClue1.getId());
@@ -1122,7 +1122,7 @@ class GameSessionTest {
     @Test
     void dailyDouble_countsTowardRoundCompletion() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
         finishJeopardyRound();
 
         assertEquals(GameRound.JEOPARDY, session.getRound());
@@ -1142,21 +1142,35 @@ class GameSessionTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void startGame_withNoPlayers_throwsInvalidGameAction() {
+    void startGame_withNoPlayers_rejectsPlayer() {
         GameSession emptySession = new GameSession(
                 UUID.randomUUID(),
                 session.getGame()
         );
 
-        assertThrows(
+        InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
-                emptySession::startGame
+                () -> emptySession.startGame(player1.getId())
         );
+
+        assertEquals(GameErrorCode.PLAYER_NOT_IN_SESSION, exception.getCode());
+        assertEquals(GameSessionState.WAITING_FOR_START, emptySession.getState());
+    }
+
+    @Test
+    void startGame_rejectsPlayerNotInSession() {
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.startGame(999L)
+        );
+
+        assertEquals(GameErrorCode.PLAYER_NOT_IN_SESSION, exception.getCode());
+        assertEquals(GameSessionState.WAITING_FOR_START, session.getState());
     }
 
     @Test
     void answerClue_rejectsWhenNotWaitingForAnswer() {
-        session.startGame();
+        session.startGame(player1.getId());
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1168,7 +1182,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_wrongAnswer_withPlayersRemaining_reopensBuzzer() {
-        session.startGame();
+        session.startGame(player1.getId());
         session.chooseClue(player1.getId(), jeopardyClue1.getId());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1189,7 +1203,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_wrongAnswer_whenAllPlayersBuzzed_revealsAnswer() {
-        session.startGame();
+        session.startGame(player1.getId());
         session.chooseClue(player1.getId(), jeopardyClue1.getId());
         session.finishRevealingClue();
 
@@ -1205,7 +1219,7 @@ class GameSessionTest {
 
     @Test
     void timeoutAnswer_withPlayersRemaining_reopensBuzzer() {
-        session.startGame();
+        session.startGame(player1.getId());
         session.chooseClue(player1.getId(), jeopardyClue1.getId());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1217,7 +1231,7 @@ class GameSessionTest {
 
     @Test
     void finishRevealingClue_resetsPlayersAlreadyBuzzedForNextClue() {
-        session.startGame();
+        session.startGame(player1.getId());
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), jeopardyClue2.getId());
@@ -1232,7 +1246,7 @@ class GameSessionTest {
 
     @Test
     void answerClue_correctAnswerOnSecondRow_awardsRowValue() {
-        session.startGame();
+        session.startGame(player1.getId());
         session.chooseClue(player1.getId(), jeopardyClue2.getId());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -1269,7 +1283,7 @@ class GameSessionTest {
 
     private void startDailyDouble() {
         addDailyDoubleClue();
-        session.startGame();
+        session.startGame(player1.getId());
         session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
     }
 

@@ -172,7 +172,10 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(
                 stompSession,
-                session.getId()
+                session.getId(),
+                new StartGameRequest(
+                        session.getPlayers().getFirst().getId()
+                )
         );
 
         GameSessionResponse response =
@@ -210,7 +213,10 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
 
         StompSession stompSession = connect();
 
@@ -219,7 +225,10 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(
                 stompSession,
-                session.getId()
+                session.getId(),
+                new StartGameRequest(
+                        session.getPlayers().getFirst().getId()
+                )
         );
 
         GameSessionErrorResponse error =
@@ -242,7 +251,8 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(
                 stompSession,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                new StartGameRequest(1L)
         );
 
         GameSessionErrorResponse error =
@@ -250,6 +260,60 @@ class GameSessionWebSocketIntegrationTest {
 
         assertEquals(
                 "SESSION_NOT_FOUND",
+                error.code()
+        );
+    }
+
+    @Test
+    void startingGameWithPlayerNotInSession_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        startGame(
+                stompSession,
+                session.getId(),
+                new StartGameRequest(
+                        session.getPlayers().getFirst().getId() + 1
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "PLAYER_NOT_IN_SESSION",
+                error.code()
+        );
+    }
+
+    @Test
+    void startingGameWithoutPlayerId_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        startGame(
+                stompSession,
+                session.getId(),
+                new StartGameRequest(null)
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_REQUEST",
                 error.code()
         );
     }
@@ -264,7 +328,10 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
@@ -308,7 +375,10 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
 
         Long actualPlayerId =
                 session.getPlayers().getFirst().getId();
@@ -346,7 +416,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long playerId =
@@ -449,7 +520,10 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
@@ -489,7 +563,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long playerId =
@@ -566,7 +641,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long actualPlayerId =
@@ -614,7 +690,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long playerId =
@@ -676,7 +753,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long playerId =
@@ -738,7 +816,8 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId()
+                session.getId(),
+                session.getPlayers().getFirst().getId()
         );
 
         Long playerId =
@@ -1026,14 +1105,18 @@ class GameSessionWebSocketIntegrationTest {
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
-        // No @MessageExceptionHandler covers validation failures yet,
-        // so the client currently gets no error at all.
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-daily-double-wager",
                 Map.of("playerId", playerId)
         );
 
-        awaitError(errors);
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_REQUEST",
+                error.code()
+        );
     }
 
     @Test
@@ -1163,7 +1246,10 @@ class GameSessionWebSocketIntegrationTest {
                 "Nico"
         );
 
-        gameSessionService.startGame(session.getId());
+        gameSessionService.startGame(
+                session.getId(),
+                session.getPlayers().getFirst().getId()
+        );
 
         return session;
     }
@@ -1327,11 +1413,12 @@ class GameSessionWebSocketIntegrationTest {
 
     private void startGame(
             StompSession stompSession,
-            UUID sessionId
+            UUID sessionId,
+            StartGameRequest request
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/start",
-                new StartGameRequest()
+                request
         );
     }
 
