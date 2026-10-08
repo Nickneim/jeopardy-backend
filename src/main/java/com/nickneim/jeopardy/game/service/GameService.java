@@ -5,14 +5,30 @@ import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.dto.*;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.repository.GameRepository;
+import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
+import java.util.Comparator;
+import java.util.List;
+import java.util.regex.Pattern;
+
 @Service
 public class GameService {
+
+    private static final Pattern NUMBERED_SEASON = Pattern.compile("\\d+");
+
+    // Numbered seasons first, highest number first (numerically, so "9" comes
+    // after "40"). Then special seasons ("jm", "pcj"...), most recent game first.
+    private static final Comparator<SeasonGameCount> NEWEST_SEASON_FIRST =
+            Comparator.comparing((SeasonGameCount season) -> !isNumbered(season))
+                    .thenComparing(GameService::seasonNumber, Comparator.reverseOrder())
+                    .thenComparing(SeasonGameCount::latestGameDate, Comparator.reverseOrder())
+                    .thenComparing(SeasonGameCount::season);
 
     private final GameRepository gameRepository;
 
@@ -41,6 +57,21 @@ public class GameService {
         }
 
         return gameRepository.findBySeason(season, pageable);
+    }
+
+    public List<SeasonGameCount> getSeasons() {
+        return gameRepository.findSeasonGameCounts()
+                .stream()
+                .sorted(NEWEST_SEASON_FIRST)
+                .toList();
+    }
+
+    private static boolean isNumbered(SeasonGameCount season) {
+        return NUMBERED_SEASON.matcher(season.season()).matches();
+    }
+
+    private static BigInteger seasonNumber(SeasonGameCount season) {
+        return isNumbered(season) ? new BigInteger(season.season()) : BigInteger.ZERO;
     }
 
 

@@ -54,6 +54,17 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 
 Response: `PageResponse<GameSummaryResponse>`. An invalid `page` or `size` returns 400 with the message `"Invalid request parameters"`.
 
+#### `GET /api/games/seasons`
+
+Every season that has at least one game, with its game count, for example to fill a season filter. Not paged. Response: `SeasonResponse[]`, for example `[{ "season": "42", "gameCount": 230 }, …]`.
+
+Order, newest first:
+
+1. Numbered seasons (`season` is all digits), by number from highest to lowest. They're compared as numbers, so `"10"` comes before `"9"`.
+2. Then special seasons whose `season` isn't a number (such as `"jm"` or `"pcj"`: tournaments and other specials), by their most recent `gameDate`, newest first, then by name.
+
+Pass a `season` value unchanged as the `season` filter of `GET /api/games`.
+
 #### `GET /api/games/{id}`
 
 A full game with every category and clue. **It includes answers and Daily Double locations**, which is fine for browsing and single-player use, but never send it to other players in a multiplayer game. Response: `GameResponse`. Unknown id: `404 { "status": 404, "message": "Game not found: 999" }`.
@@ -342,6 +353,11 @@ interface GameSummaryResponse {
   title: string;
   gameDate: string;      // "YYYY-MM-DD"
   season: string;
+}
+
+interface SeasonResponse {
+  season: string;        // usually a number ("42"), sometimes a special ("jm")
+  gameCount: number;
 }
 
 interface GameClueResponse {

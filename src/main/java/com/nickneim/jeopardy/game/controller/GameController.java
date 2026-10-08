@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.game.controller;
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.game.dto.SeasonResponse;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameService;
 import jakarta.validation.constraints.Max;
@@ -27,6 +28,14 @@ public class GameController {
     @GetMapping("/{id}")
     public GameResponse getClue(@PathVariable Long id) {
         return GameResponse.from(gameService.getGame(id));
+    }
+
+    @GetMapping("/seasons")
+    public List<SeasonResponse> getSeasons() {
+        return gameService.getSeasons()
+                .stream()
+                .map(SeasonResponse::from)
+                .toList();
     }
 
     @GetMapping

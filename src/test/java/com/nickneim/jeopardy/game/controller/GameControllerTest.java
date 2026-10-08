@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.game.controller;
 
 import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
+import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -386,6 +388,38 @@ class GameControllerTest {
                 """));
 
         verify(gameService).getGames(1, 20, "39");
+    }
+
+    @Test
+    void getSeasons_returnsSeasonsWithGameCounts() throws Exception {
+        when(gameService.getSeasons())
+                .thenReturn(List.of(
+                        new SeasonGameCount("40", 230L, LocalDate.of(2024, 7, 26)),
+                        new SeasonGameCount("9", 229L, LocalDate.of(1993, 6, 4)),
+                        new SeasonGameCount("jm", 72L, LocalDate.of(2026, 9, 4))
+                ));
+
+        mockMvc.perform(get("/api/games/seasons"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                [
+                    { "season": "40", "gameCount": 230 },
+                    { "season": "9", "gameCount": 229 },
+                    { "season": "jm", "gameCount": 72 }
+                ]
+                """, JsonCompareMode.STRICT));
+
+        verify(gameService).getSeasons();
+    }
+
+    @Test
+    void getSeasons_returnsEmptyListWhenNoGamesExist() throws Exception {
+        when(gameService.getSeasons())
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/games/seasons"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]", JsonCompareMode.STRICT));
     }
 
 }

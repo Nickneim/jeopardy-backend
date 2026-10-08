@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.repository.GameRepository;
+import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -261,6 +262,39 @@ class GameServiceTest {
                 eq("39"),
                 any(Pageable.class)
         );
+    }
+
+    @Test
+    void getSeasons_ordersNumberedSeasonsNumericallyNewestFirstThenSpecialSeasons() {
+        when(gameRepository.findSeasonGameCounts())
+                .thenReturn(List.of(
+                        new SeasonGameCount("9", 229L, LocalDate.of(1993, 6, 4)),
+                        new SeasonGameCount("pcj", 49L, LocalDate.of(2026, 5, 15)),
+                        new SeasonGameCount("40", 230L, LocalDate.of(2024, 7, 26)),
+                        new SeasonGameCount("jm", 72L, LocalDate.of(2026, 9, 4)),
+                        new SeasonGameCount("10", 230L, LocalDate.of(1994, 6, 3)),
+                        new SeasonGameCount("espn", 10L, LocalDate.of(2026, 9, 4)),
+                        new SeasonGameCount("41", 230L, LocalDate.of(2025, 7, 25))
+                ));
+
+        List<String> seasons = gameService.getSeasons()
+                .stream()
+                .map(SeasonGameCount::season)
+                .toList();
+
+        // Special seasons with the same latest game date are ordered by name.
+        assertEquals(
+                List.of("41", "40", "10", "9", "espn", "jm", "pcj"),
+                seasons
+        );
+    }
+
+    @Test
+    void getSeasons_returnsEmptyListWhenNoGamesExist() {
+        when(gameRepository.findSeasonGameCounts())
+                .thenReturn(List.of());
+
+        assertTrue(gameService.getSeasons().isEmpty());
     }
 
 }
