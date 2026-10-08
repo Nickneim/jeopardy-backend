@@ -6,9 +6,10 @@ import com.nickneim.jeopardy.session.dto.CreateGameSessionRequest;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
+import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
-import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,12 @@ import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -114,28 +117,41 @@ class GameSessionEndToEndIntegrationTest {
                 .getResponseBody()
                 .id();
 
-        StompSession stompSession = connect();
+        // Joining returns the player's id and their secret token...
+        JoinSessionResponse joined = restTestClient.post()
+                .uri("/api/game-sessions/" + sessionId + "/players")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new JoinSessionRequest("Nico"))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(JoinSessionResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        // ...which identifies the player for the rest of the game.
+        StompSession stompSession = connect(joined.token());
 
         BlockingQueue<GameSessionResponse> messages =
                 subscribeToSession(stompSession, sessionId);
 
-        send(stompSession, sessionId, "join", new JoinSessionRequest("Nico"));
+        send(stompSession, sessionId, "start", Map.of());
 
-        GameSessionResponse joined = awaitMessage(messages);
-        Long playerId = joined.players().getFirst().id();
-
-        send(stompSession, sessionId, "start", new StartGameRequest(playerId));
+        GameSessionResponse started = awaitMessage(messages);
 
         assertEquals(
                 GameSessionState.CHOOSING_CLUE,
-                awaitMessage(messages).state()
+                started.state()
+        );
+        assertEquals(
+                joined.playerId(),
+                started.playerChoosingClue()
         );
 
         send(
                 stompSession,
                 sessionId,
                 "choose-clue",
-                new ChooseClueRequest(playerId, dailyDoubleClueId)
+                new ChooseClueRequest(dailyDoubleClueId)
         );
 
         assertEquals(
@@ -148,7 +164,7 @@ class GameSessionEndToEndIntegrationTest {
                 sessionId,
                 "place-daily-double-wager",
                 // The fixture's Daily Double is the round's highest clue (400).
-                new PlaceDailyDoubleWagerRequest(playerId, 300)
+                new PlaceDailyDoubleWagerRequest(300)
         );
 
         assertEquals(
@@ -166,7 +182,7 @@ class GameSessionEndToEndIntegrationTest {
                 stompSession,
                 sessionId,
                 "answer",
-                new AnswerClueRequest(playerId, "John Adams")
+                new AnswerClueRequest("John Adams")
         );
 
         GameSessionResponse answered = awaitMessage(messages);
@@ -181,12 +197,20 @@ class GameSessionEndToEndIntegrationTest {
         );
     }
 
-    private StompSession connect()
+    private StompSession connect(String playerToken)
             throws Exception {
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add(
+                PlayerAuthenticationInterceptor.TOKEN_HEADER,
+                playerToken
+        );
 
         return stompClient
                 .connectAsync(
                         "ws://localhost:" + port + "/ws",
+                        new WebSocketHttpHeaders(),
+                        connectHeaders,
                         new StompSessionHandlerAdapter() {}
                 )
                 .get(

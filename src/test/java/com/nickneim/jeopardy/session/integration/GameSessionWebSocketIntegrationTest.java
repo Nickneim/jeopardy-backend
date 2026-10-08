@@ -7,16 +7,13 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.AnswerFinalJeopardyRequest;
-import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
 import com.nickneim.jeopardy.session.dto.ClueSlotResponse;
 import com.nickneim.jeopardy.session.dto.ClueSlotStatus;
 import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
-import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
-import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -122,6 +119,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSession();
 
+        // Anyone can watch a session; no token needed to subscribe.
         StompSession stompSession = connect();
 
         BlockingQueue<GameSessionResponse> receivedMessages =
@@ -130,10 +128,9 @@ class GameSessionWebSocketIntegrationTest {
                         session.getId()
                 );
 
-        joinSession(
-                stompSession,
+        gameSessionService.joinSession(
                 session.getId(),
-                new JoinSessionRequest("Nico")
+                "Nico"
         );
 
         GameSessionResponse response =
@@ -165,30 +162,6 @@ class GameSessionWebSocketIntegrationTest {
         );
     }
 
-    @Test
-    void joiningNonexistentSession_returnsError()
-            throws Exception {
-
-        StompSession stompSession = connect();
-
-        BlockingQueue<GameSessionErrorResponse> errors =
-                subscribeToErrors(stompSession);
-
-        joinSession(
-                stompSession,
-                UUID.randomUUID(),
-                new JoinSessionRequest("Nico")
-        );
-
-        GameSessionErrorResponse error =
-                awaitError(errors);
-
-        assertEquals(
-                "SESSION_NOT_FOUND",
-                error.code()
-        );
-    }
-
     // -------------------------------------------------------------------------
     // Starting
     // -------------------------------------------------------------------------
@@ -199,7 +172,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -209,10 +182,7 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(
                 stompSession,
-                session.getId(),
-                new StartGameRequest(
-                        session.getPlayers().getFirst().getId()
-                )
+                session.getId()
         );
 
         GameSessionResponse response =
@@ -255,17 +225,14 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId()
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         startGame(
                 stompSession,
-                session.getId(),
-                new StartGameRequest(
-                        session.getPlayers().getFirst().getId()
-                )
+                session.getId()
         );
 
         GameSessionErrorResponse error =
@@ -278,18 +245,21 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void startingNonexistentSession_returnsError()
+    void actingInARemovedSession_returnsError()
             throws Exception {
 
-        StompSession stompSession = connect();
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
+        gameSessionService.removeSession(session.getId());
+
         startGame(
                 stompSession,
-                UUID.randomUUID(),
-                new StartGameRequest(1L)
+                session.getId()
         );
 
         GameSessionErrorResponse error =
@@ -302,22 +272,20 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void startingGameWithPlayerNotInSession_returnsError()
+    void startingGameWithTokenFromAnotherSession_returnsError()
             throws Exception {
 
         GameSession session = createSessionWithPlayer();
+        GameSession otherSession = createSessionWithPlayer();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(otherSession));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         startGame(
                 stompSession,
-                session.getId(),
-                new StartGameRequest(
-                        session.getPlayers().getFirst().getId() + 1
-                )
+                session.getId()
         );
 
         GameSessionErrorResponse error =
@@ -330,7 +298,7 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void startingGameWithoutPlayerId_returnsError()
+    void startingGameWithoutToken_returnsError()
             throws Exception {
 
         GameSession session = createSessionWithPlayer();
@@ -342,16 +310,45 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(
                 stompSession,
-                session.getId(),
-                new StartGameRequest(null)
+                session.getId()
         );
 
         GameSessionErrorResponse error =
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_REQUEST",
+                "UNAUTHENTICATED",
                 error.code()
+        );
+    }
+
+    @Test
+    void reconnectingWithTheSameToken_keepsThePlayersIdentity()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        connect(tokenOf(session)).disconnect();
+
+        StompSession stompSession = connect(tokenOf(session));
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        startGame(
+                stompSession,
+                session.getId()
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                response.state()
         );
     }
 
@@ -370,12 +367,9 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId()
         );
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
         Long clueId = 10L;
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -386,9 +380,7 @@ class GameSessionWebSocketIntegrationTest {
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        playerId,
-                        clueId
+                new ChooseClueRequest(clueId
                 )
         );
 
@@ -415,22 +407,21 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void choosingClueWithWrongPlayer_returnsError()
+    void choosingClueAsAnotherPlayer_returnsError()
             throws Exception {
 
         GameSession session = createSessionWithPlayer();
+
+        GameSessionPlayer secondPlayer =
+                gameSessionService.joinSession(session.getId(), "John");
 
         gameSessionService.startGame(
                 session.getId(),
                 session.getPlayers().getFirst().getId()
         );
 
-        Long actualPlayerId =
-                session.getPlayers().getFirst().getId();
-
-        Long wrongPlayerId = actualPlayerId + 1;
-
-        StompSession stompSession = connect();
+        // The first player chooses; the second connects with their own token.
+        StompSession stompSession = connect(secondPlayer.getToken());
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -438,10 +429,7 @@ class GameSessionWebSocketIntegrationTest {
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        wrongPlayerId,
-                        10L
-                )
+                new ChooseClueRequest(10L)
         );
 
         GameSessionErrorResponse error =
@@ -504,7 +492,7 @@ class GameSessionWebSocketIntegrationTest {
                 session.getState()
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -512,9 +500,7 @@ class GameSessionWebSocketIntegrationTest {
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        playerId,
-                        10L
+                new ChooseClueRequest(10L
                 )
         );
 
@@ -533,20 +519,15 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWithPlayer();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        playerId,
-                        10L
+                new ChooseClueRequest(10L
                 )
         );
 
@@ -570,10 +551,7 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId()
         );
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -581,9 +559,7 @@ class GameSessionWebSocketIntegrationTest {
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        playerId,
-                        999L
+                new ChooseClueRequest(999L
                 )
         );
 
@@ -625,7 +601,7 @@ class GameSessionWebSocketIntegrationTest {
                 session.getId()
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -635,8 +611,7 @@ class GameSessionWebSocketIntegrationTest {
 
         buzz(
                 stompSession,
-                session.getId(),
-                new BuzzRequest(playerId)
+                session.getId()
         );
 
         GameSessionResponse response =
@@ -665,18 +640,14 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session =
                 createSessionWithPlayer();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
         buzz(
                 stompSession,
-                session.getId(),
-                new BuzzRequest(playerId)
+                session.getId()
         );
 
         GameSessionErrorResponse error =
@@ -689,7 +660,7 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void playerNotInSession_cannotBuzz()
+    void playerFromAnotherSession_cannotBuzz()
             throws Exception {
 
         GameSession session =
@@ -700,12 +671,9 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId()
         );
 
-        Long actualPlayerId =
-                session.getPlayers().getFirst().getId();
-
         gameSessionService.chooseClue(
                 session.getId(),
-                actualPlayerId,
+                session.getPlayers().getFirst().getId(),
                 10L
         );
 
@@ -713,15 +681,16 @@ class GameSessionWebSocketIntegrationTest {
                 session.getId()
         );
 
-        StompSession stompSession = connect();
+        GameSession otherSession = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(otherSession));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         buzz(
                 stompSession,
-                session.getId(),
-                new BuzzRequest(actualPlayerId + 1)
+                session.getId()
         );
 
         GameSessionErrorResponse error =
@@ -767,7 +736,7 @@ class GameSessionWebSocketIntegrationTest {
                 playerId
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -778,9 +747,7 @@ class GameSessionWebSocketIntegrationTest {
         answer(
                 stompSession,
                 session.getId(),
-                new AnswerClueRequest(
-                        playerId,
-                        "Correct answer"
+                new AnswerClueRequest("Correct answer"
                 )
         );
 
@@ -830,7 +797,7 @@ class GameSessionWebSocketIntegrationTest {
                 playerId
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -841,9 +808,7 @@ class GameSessionWebSocketIntegrationTest {
         answer(
                 stompSession,
                 session.getId(),
-                new AnswerClueRequest(
-                        playerId,
-                        "Wrong answer"
+                new AnswerClueRequest("Wrong answer"
                 )
         );
 
@@ -864,19 +829,22 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void answeringWithWrongPlayer_returnsError()
+    void answeringForThePlayerWhoBuzzed_returnsError()
             throws Exception {
 
         GameSession session =
                 createSessionWithPlayer();
 
-        gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
-        );
+        GameSessionPlayer secondPlayer =
+                gameSessionService.joinSession(session.getId(), "John");
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
+
+        gameSessionService.startGame(
+                session.getId(),
+                playerId
+        );
 
         gameSessionService.chooseClue(
                 session.getId(),
@@ -893,7 +861,9 @@ class GameSessionWebSocketIntegrationTest {
                 playerId
         );
 
-        StompSession stompSession = connect();
+        // The second player tries to answer the first player's buzz. The
+        // server knows who they are from their token, whatever they send.
+        StompSession stompSession = connect(secondPlayer.getToken());
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -901,10 +871,7 @@ class GameSessionWebSocketIntegrationTest {
         answer(
                 stompSession,
                 session.getId(),
-                new AnswerClueRequest(
-                        playerId + 1,
-                        "Correct answer"
-                )
+                new AnswerClueRequest("Correct answer")
         );
 
         GameSessionErrorResponse error =
@@ -923,20 +890,15 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session =
                 createSessionWithPlayer();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
         answer(
                 stompSession,
                 session.getId(),
-                new AnswerClueRequest(
-                        playerId,
-                        "Correct answer"
+                new AnswerClueRequest("Correct answer"
                 )
         );
 
@@ -959,10 +921,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createStartedSessionWithDailyDouble();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -973,9 +932,7 @@ class GameSessionWebSocketIntegrationTest {
         chooseClue(
                 stompSession,
                 session.getId(),
-                new ChooseClueRequest(
-                        playerId,
-                        DAILY_DOUBLE_CLUE_ID
+                new ChooseClueRequest(DAILY_DOUBLE_CLUE_ID
                 )
         );
 
@@ -994,10 +951,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWaitingForWager();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -1008,9 +962,7 @@ class GameSessionWebSocketIntegrationTest {
         placeWager(
                 stompSession,
                 session.getId(),
-                new PlaceDailyDoubleWagerRequest(
-                        playerId,
-                        500
+                new PlaceDailyDoubleWagerRequest(500
                 )
         );
 
@@ -1029,10 +981,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionWaitingForWager();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -1040,9 +989,7 @@ class GameSessionWebSocketIntegrationTest {
         placeWager(
                 stompSession,
                 session.getId(),
-                new PlaceDailyDoubleWagerRequest(
-                        playerId,
-                        5000
+                new PlaceDailyDoubleWagerRequest(5000
                 )
         );
 
@@ -1056,15 +1003,15 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void placingWagerWithWrongPlayer_returnsError()
+    void placingWagerAsAnotherPlayer_returnsError()
             throws Exception {
 
         GameSession session = createSessionWaitingForWager();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
+        GameSessionPlayer secondPlayer =
+                gameSessionService.joinSession(session.getId(), "John");
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(secondPlayer.getToken());
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -1072,10 +1019,7 @@ class GameSessionWebSocketIntegrationTest {
         placeWager(
                 stompSession,
                 session.getId(),
-                new PlaceDailyDoubleWagerRequest(
-                        playerId + 1,
-                        500
-                )
+                new PlaceDailyDoubleWagerRequest(500)
         );
 
         GameSessionErrorResponse error =
@@ -1093,10 +1037,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createStartedSessionWithDailyDouble();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
@@ -1104,9 +1045,7 @@ class GameSessionWebSocketIntegrationTest {
         placeWager(
                 stompSession,
                 session.getId(),
-                new PlaceDailyDoubleWagerRequest(
-                        playerId,
-                        500
+                new PlaceDailyDoubleWagerRequest(500
                 )
         );
 
@@ -1120,49 +1059,19 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void placingWagerOnNonexistentSession_returnsError()
-            throws Exception {
-
-        StompSession stompSession = connect();
-
-        BlockingQueue<GameSessionErrorResponse> errors =
-                subscribeToErrors(stompSession);
-
-        placeWager(
-                stompSession,
-                UUID.randomUUID(),
-                new PlaceDailyDoubleWagerRequest(
-                        1L,
-                        500
-                )
-        );
-
-        GameSessionErrorResponse error =
-                awaitError(errors);
-
-        assertEquals(
-                "SESSION_NOT_FOUND",
-                error.code()
-        );
-    }
-
-    @Test
     void placingWagerWithMissingWager_returnsError()
             throws Exception {
 
         GameSession session = createSessionWaitingForWager();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-daily-double-wager",
-                Map.of("playerId", playerId)
+                Map.of()
         );
 
         GameSessionErrorResponse error =
@@ -1193,7 +1102,7 @@ class GameSessionWebSocketIntegrationTest {
                 session.getId()
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -1204,9 +1113,7 @@ class GameSessionWebSocketIntegrationTest {
         answer(
                 stompSession,
                 session.getId(),
-                new AnswerClueRequest(
-                        playerId,
-                        "Daily Double answer"
+                new AnswerClueRequest("Daily Double answer"
                 )
         );
 
@@ -1236,10 +1143,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionInFinalJeopardy();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -1249,7 +1153,7 @@ class GameSessionWebSocketIntegrationTest {
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
-                new PlaceFinalJeopardyWagerRequest(playerId, 150)
+                new PlaceFinalJeopardyWagerRequest(150)
         );
 
         GameSessionResponse response =
@@ -1276,17 +1180,14 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionInFinalJeopardy();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
-                new PlaceFinalJeopardyWagerRequest(playerId, 201)
+                new PlaceFinalJeopardyWagerRequest(201)
         );
 
         GameSessionErrorResponse error =
@@ -1309,16 +1210,14 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId()
         );
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
-                new PlaceFinalJeopardyWagerRequest(
-                        session.getPlayers().getFirst().getId(),
-                        0
+                new PlaceFinalJeopardyWagerRequest(0
                 )
         );
 
@@ -1337,12 +1236,9 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionInFinalJeopardy();
 
-        Long playerId =
-                session.getPlayers().getFirst().getId();
-
         session.timeoutFinalJeopardyWagering();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionResponse> receivedMessages =
                 subscribeToSession(
@@ -1352,7 +1248,7 @@ class GameSessionWebSocketIntegrationTest {
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/answer-final-jeopardy",
-                new AnswerFinalJeopardyRequest(playerId, "Final answer")
+                new AnswerFinalJeopardyRequest("Final answer")
         );
 
         GameSessionResponse response =
@@ -1383,16 +1279,14 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionInFinalJeopardy();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/answer-final-jeopardy",
-                new AnswerFinalJeopardyRequest(
-                        session.getPlayers().getFirst().getId(),
-                        "Final answer"
+                new AnswerFinalJeopardyRequest("Final answer"
                 )
         );
 
@@ -1411,14 +1305,14 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSession session = createSessionInFinalJeopardy();
 
-        StompSession stompSession = connect();
+        StompSession stompSession = connect(tokenOf(session));
 
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
         stompSession.send(
                 "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
-                Map.of("playerId", session.getPlayers().getFirst().getId())
+                Map.of()
         );
 
         GameSessionErrorResponse error =
@@ -1438,6 +1332,11 @@ class GameSessionWebSocketIntegrationTest {
         return gameSessionService.createSession(
                 createBoard()
         );
+    }
+
+    /** The secret token of the session's first player. */
+    private String tokenOf(GameSession session) {
+        return session.getPlayers().getFirst().getToken();
     }
 
     private GameSession createSessionWithPlayer() {
@@ -1676,25 +1575,14 @@ class GameSessionWebSocketIntegrationTest {
         return error;
     }
 
-    private void joinSession(
-            StompSession stompSession,
-            UUID sessionId,
-            JoinSessionRequest request
-    ) {
-        stompSession.send(
-                "/app/sessions/" + sessionId + "/join",
-                request
-        );
-    }
-
+    // Start and buzz need no body: who is acting comes from the connection.
     private void startGame(
             StompSession stompSession,
-            UUID sessionId,
-            StartGameRequest request
+            UUID sessionId
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/start",
-                request
+                Map.of()
         );
     }
 
@@ -1711,12 +1599,11 @@ class GameSessionWebSocketIntegrationTest {
 
     private void buzz(
             StompSession stompSession,
-            UUID sessionId,
-            BuzzRequest request
+            UUID sessionId
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/buzz",
-                request
+                Map.of()
         );
     }
 

@@ -4,12 +4,14 @@ import com.nickneim.jeopardy.session.dto.*;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
+import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -17,6 +19,12 @@ import org.springframework.validation.BindingResult;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Player actions over STOMP. Who sent an action always comes from the
+ * connection (attached by PlayerAuthenticationInterceptor from the player's
+ * token), never from the message, so a player can't act as someone else.
+ * Players join over REST (GameSessionController), which returns the token.
+ */
 @Controller
 public class GameSessionWebSocketController {
 
@@ -28,36 +36,26 @@ public class GameSessionWebSocketController {
         this.gameSessionService = gameSessionService;
     }
 
-    @MessageMapping("/sessions/{sessionId}/join")
-    public void joinSession(
-            @DestinationVariable UUID sessionId,
-            @Valid JoinSessionRequest request
-    ) {
-        gameSessionService.joinSession(
-                sessionId,
-                request.playerName()
-        );
-    }
-
     @MessageMapping("/sessions/{sessionId}/start")
     public void startGame(
             @DestinationVariable UUID sessionId,
-            @Valid StartGameRequest request
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.startGame(
                 sessionId,
-                request.playerId()
+                playerId(sessionId, headers)
         );
     }
 
     @MessageMapping("/sessions/{sessionId}/choose-clue")
     public void chooseClue(
             @DestinationVariable UUID sessionId,
-            @Valid ChooseClueRequest request
+            @Valid ChooseClueRequest request,
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.chooseClue(
                 sessionId,
-                request.playerId(),
+                playerId(sessionId, headers),
                 request.clueId()
         );
     }
@@ -65,35 +63,36 @@ public class GameSessionWebSocketController {
     @MessageMapping("/sessions/{sessionId}/buzz")
     public void buzz(
             @DestinationVariable UUID sessionId,
-            @Valid BuzzRequest request
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.buzz(
                 sessionId,
-                request.playerId()
+                playerId(sessionId, headers)
         );
     }
 
     @MessageMapping("/sessions/{sessionId}/answer")
     public void answerClue(
             @DestinationVariable UUID sessionId,
-            @Valid AnswerClueRequest request
+            @Valid AnswerClueRequest request,
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.answerClue(
                 sessionId,
-                request.playerId(),
+                playerId(sessionId, headers),
                 request.answer()
         );
     }
 
-
     @MessageMapping("/sessions/{sessionId}/place-daily-double-wager")
     public void placeDailyDoubleWager(
             @DestinationVariable UUID sessionId,
-            @Valid PlaceDailyDoubleWagerRequest request
+            @Valid PlaceDailyDoubleWagerRequest request,
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.placeDailyDoubleWager(
                 sessionId,
-                request.playerId(),
+                playerId(sessionId, headers),
                 request.wager()
         );
     }
@@ -101,11 +100,12 @@ public class GameSessionWebSocketController {
     @MessageMapping("/sessions/{sessionId}/place-final-jeopardy-wager")
     public void placeFinalJeopardyWager(
             @DestinationVariable UUID sessionId,
-            @Valid PlaceFinalJeopardyWagerRequest request
+            @Valid PlaceFinalJeopardyWagerRequest request,
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.placeFinalJeopardyWager(
                 sessionId,
-                request.playerId(),
+                playerId(sessionId, headers),
                 request.wager()
         );
     }
@@ -113,13 +113,36 @@ public class GameSessionWebSocketController {
     @MessageMapping("/sessions/{sessionId}/answer-final-jeopardy")
     public void answerFinalJeopardy(
             @DestinationVariable UUID sessionId,
-            @Valid AnswerFinalJeopardyRequest request
+            @Valid AnswerFinalJeopardyRequest request,
+            SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.answerFinalJeopardy(
                 sessionId,
-                request.playerId(),
+                playerId(sessionId, headers),
                 request.answer()
         );
+    }
+
+    /**
+     * The id of the player on this connection, checked against the session
+     * the action is for. An anonymous connection (no token) can only watch.
+     */
+    private Long playerId(UUID sessionId, SimpMessageHeaderAccessor headers) {
+        if (!(headers.getUser() instanceof PlayerPrincipal player)) {
+            throw new InvalidGameActionException(
+                    GameErrorCode.UNAUTHENTICATED,
+                    "Join the session and connect with your player token to play!"
+            );
+        }
+
+        if (!player.sessionId().equals(sessionId)) {
+            throw new InvalidGameActionException(
+                    GameErrorCode.PLAYER_NOT_IN_SESSION,
+                    "You're not in this session!"
+            );
+        }
+
+        return player.playerId();
     }
 
     @MessageExceptionHandler(InvalidGameActionException.class)
