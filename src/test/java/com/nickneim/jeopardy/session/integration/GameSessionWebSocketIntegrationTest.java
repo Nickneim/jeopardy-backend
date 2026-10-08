@@ -8,6 +8,8 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
+import com.nickneim.jeopardy.session.dto.ClueSlotResponse;
+import com.nickneim.jeopardy.session.dto.ClueSlotStatus;
 import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
@@ -365,6 +367,14 @@ class GameSessionWebSocketIntegrationTest {
         assertEquals(
                 GameSessionState.REVEALING_CLUE,
                 response.state()
+        );
+
+        assertEquals(
+                List.of(
+                        new ClueSlotResponse(1, 10L, 200, ClueSlotStatus.PLAYED),
+                        new ClueSlotResponse(2, 11L, 400, ClueSlotStatus.AVAILABLE)
+                ),
+                response.board().getFirst().slots()
         );
     }
 

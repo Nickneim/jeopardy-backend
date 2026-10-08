@@ -4,13 +4,15 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 
+import java.util.List;
 import java.util.UUID;
 
 public record GameSessionResponse(
         UUID id,
         GameRound round,
         GameSessionState state,
-        java.util.List<PlayerResponse> players
+        List<PlayerResponse> players,
+        List<BoardCategoryResponse> board
 ) {
     static public GameSessionResponse from(GameSession session) {
         return new GameSessionResponse(
@@ -19,7 +21,11 @@ public record GameSessionResponse(
                 session.getState(),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)
-                        .toList()
+                        .toList(),
+                session.getBoard()
+                        .getRound(session.getRound())
+                        .map(round -> BoardCategoryResponse.fromRound(round, session.getPlayedClues()))
+                        .orElse(List.of())
         );
     }
 }

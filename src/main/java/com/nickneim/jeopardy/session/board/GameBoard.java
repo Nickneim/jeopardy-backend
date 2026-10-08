@@ -53,6 +53,10 @@ public final class GameBoard {
         return rounds;
     }
 
+    public Optional<BoardRound> getRound(GameRound round) {
+        return Optional.ofNullable(roundsByType.get(round));
+    }
+
     public BoardClue getClue(Long clueId) {
         BoardClue clue = cluesById.get(clueId);
 

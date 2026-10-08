@@ -1,0 +1,153 @@
+package com.nickneim.jeopardy.session.dto;
+
+import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
+import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.BoardRound;
+import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.model.GameSessionPlayer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class GameSessionResponseTest {
+
+    private final BoardClue historyRow1 =
+            new BoardClue(101L, 1, "First president?", "George Washington", 200, false);
+    private final BoardClue historyRow3 =
+            new BoardClue(103L, 3, "Second president?", "John Adams", 600, true);
+    private final BoardClue scienceRow1 =
+            new BoardClue(201L, 1, "Symbol for gold?", "Au", 200, false);
+    private final BoardClue scienceRow2 =
+            new BoardClue(202L, 2, "Red planet?", "Mars", 400, false);
+    private final BoardClue doubleJeopardyClue =
+            new BoardClue(301L, 1, "He wrote Hamlet.", "William Shakespeare", 400, false);
+
+    private GameSession session;
+    private GameSessionPlayer player;
+
+    @BeforeEach
+    void setUp() {
+        GameBoard board = new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("HISTORY", List.of(historyRow1, historyRow3)),
+                        new BoardCategory("SCIENCE", List.of(scienceRow1, scienceRow2))
+                )),
+                new BoardRound(GameRound.DOUBLE_JEOPARDY, List.of(
+                        new BoardCategory("LITERATURE", List.of(doubleJeopardyClue))
+                ))
+        ));
+
+        session = new GameSession(UUID.randomUUID(), board);
+        player = new GameSessionPlayer(1L, "Nico");
+        session.addPlayer(player);
+    }
+
+    @Test
+    void board_showsCurrentRoundAsRectangularGrid() {
+        session.startGame(player.getId());
+
+        List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
+
+        assertEquals(
+                List.of("HISTORY", "SCIENCE"),
+                board.stream().map(BoardCategoryResponse::name).toList()
+        );
+
+        // Highest row in the round is 3, so every category has 3 slots.
+        assertEquals(
+                List.of(
+                        new ClueSlotResponse(1, 101L, 200, ClueSlotStatus.AVAILABLE),
+                        ClueSlotResponse.empty(2),
+                        new ClueSlotResponse(3, 103L, 600, ClueSlotStatus.AVAILABLE)
+                ),
+                board.get(0).slots()
+        );
+        assertEquals(
+                List.of(
+                        new ClueSlotResponse(1, 201L, 200, ClueSlotStatus.AVAILABLE),
+                        new ClueSlotResponse(2, 202L, 400, ClueSlotStatus.AVAILABLE),
+                        ClueSlotResponse.empty(3)
+                ),
+                board.get(1).slots()
+        );
+    }
+
+    @Test
+    void board_marksChosenCluesAsPlayed() {
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow2.id());
+
+        List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
+
+        assertEquals(
+                ClueSlotStatus.PLAYED,
+                board.get(1).slots().get(1).status()
+        );
+        assertEquals(
+                ClueSlotStatus.AVAILABLE,
+                board.get(1).slots().get(0).status()
+        );
+    }
+
+    @Test
+    void board_followsTheCurrentRound() {
+        session.startGame(player.getId());
+
+        for (BoardClue clue : List.of(historyRow1, scienceRow1, scienceRow2)) {
+            session.chooseClue(player.getId(), clue.id());
+            session.finishRevealingClue();
+            session.timeoutBuzzer();
+            session.finishRevealingAnswer();
+        }
+
+        session.chooseClue(player.getId(), historyRow3.id());
+        session.placeDailyDoubleWager(player.getId(), 5);
+        session.finishRevealingClue();
+        session.answerClue(player.getId(), "John Adams");
+        session.finishRevealingAnswer();
+
+        GameSessionResponse response = GameSessionResponse.from(session);
+
+        assertEquals(GameRound.DOUBLE_JEOPARDY, response.round());
+        assertEquals(
+                List.of(new BoardCategoryResponse(
+                        "LITERATURE",
+                        List.of(new ClueSlotResponse(1, 301L, 400, ClueSlotStatus.AVAILABLE))
+                )),
+                response.board()
+        );
+    }
+
+    @Test
+    void board_isShownBeforeTheGameStarts() {
+        GameSessionResponse response = GameSessionResponse.from(session);
+
+        assertEquals(GameRound.JEOPARDY, response.round());
+        assertEquals(2, response.board().size());
+    }
+
+    @Test
+    void serializedResponse_neverContainsQuestionsAnswersOrDailyDoubles() {
+        session.startGame(player.getId());
+
+        String json = JsonMapper.builder().build()
+                .writeValueAsString(GameSessionResponse.from(session));
+
+        // Guard against a vacuous pass: the board itself must be in the JSON.
+        assertTrue(json.contains("\"HISTORY\""), json);
+        assertTrue(json.contains("\"AVAILABLE\""), json);
+
+        for (BoardClue clue : List.of(historyRow1, historyRow3, scienceRow1, scienceRow2)) {
+            assertFalse(json.contains(clue.question()), "leaked question: " + clue.question());
+            assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
+        }
+        assertFalse(json.toLowerCase().contains("dailydouble"), "leaked Daily Double flag: " + json);
+    }
+}
