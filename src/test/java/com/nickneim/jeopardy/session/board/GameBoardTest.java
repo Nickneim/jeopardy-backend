@@ -1,8 +1,15 @@
 package com.nickneim.jeopardy.session.board;
 
+import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.Clue;
+import com.nickneim.jeopardy.game.entity.ClueType;
+import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -174,10 +181,102 @@ class GameBoardTest {
         );
     }
 
+    // -------------------------------------------------------------------------
+    // from(Game)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void from_copiesRoundsCategoriesAndClues() {
+        GameBoard board = GameBoard.from(createGame());
+
+        assertEquals(
+                List.of(GameRound.JEOPARDY, GameRound.DOUBLE_JEOPARDY, GameRound.FINAL_JEOPARDY),
+                board.getRounds().stream().map(BoardRound::round).toList()
+        );
+
+        BoardRound jeopardy = board.getRounds().getFirst();
+        assertEquals(
+                List.of("HISTORY", "SCIENCE"),
+                jeopardy.categories().stream().map(BoardCategory::name).toList()
+        );
+
+        assertEquals(
+                new BoardClue(101L, 1, "Who was the first president?", "George Washington", 200, false),
+                board.getClue(101L)
+        );
+        assertEquals(Set.of(101L, 102L, 103L), board.getClueIds(GameRound.JEOPARDY));
+    }
+
+    @Test
+    void from_usesClueValuesForEachRound() {
+        GameBoard board = GameBoard.from(createGame());
+
+        assertEquals(400, board.getClue(102L).value());
+        assertEquals(800, board.getClue(201L).value());
+        assertEquals(2000, board.getClue(301L).value());
+    }
+
+    @Test
+    void from_keepsRowPositionsIncludingGaps() {
+        GameBoard board = GameBoard.from(createGame());
+
+        // HISTORY only has clues on rows 1 and 5.
+        BoardCategory history = board.getRounds().getFirst().categories().getFirst();
+        assertEquals(
+                List.of(1, 5),
+                history.clues().stream().map(BoardClue::row).toList()
+        );
+    }
+
+    @Test
+    void from_marksDailyDoubles() {
+        GameBoard board = GameBoard.from(createGame());
+
+        assertTrue(board.isDailyDouble(103L));
+        assertFalse(board.isDailyDouble(101L));
+    }
+
     private BoardRound round(GameRound round, BoardClue... clues) {
         return new BoardRound(
                 round,
                 List.of(new BoardCategory("CATEGORY", List.of(clues)))
         );
+    }
+
+    private Game createGame() {
+        Game game = new Game(
+                "Show #123",
+                LocalDate.of(2025, 1, 1),
+                "40"
+        );
+
+        Category history = addCategory(game, "HISTORY", 1);
+        Category science = addCategory(game, "SCIENCE", 2);
+        Category literature = addCategory(game, "LITERATURE", 7);
+        Category finalCategory = addCategory(game, "FINAL HISTORY", 13);
+
+        addClue(history, 101L, "Who was the first president?", "George Washington", 1);
+        addClue(science, 102L, "What is the chemical symbol for gold?", "Au", 2);
+        Clue dailyDouble =
+                addClue(history, 103L, "Who was the second president?", "John Adams", 5);
+        addClue(literature, 201L, "He wrote Hamlet.", "William Shakespeare", 2);
+        addClue(finalCategory, 301L, "This war began in 1775.", "The American Revolution", 1);
+
+        game.getDailyDoubles().add(new GameDailyDouble(game, dailyDouble));
+
+        return game;
+    }
+
+    private Category addCategory(Game game, String name, int column) {
+        Category category = new Category(name, (short) column, null, game);
+        game.getCategories().add(category);
+        return category;
+    }
+
+    private Clue addClue(Category category, Long id, String question, String answer, int row) {
+        Clue clue = new Clue(question, answer, (short) row, ClueType.TEXT, null, category);
+        ReflectionTestUtils.setField(clue, "id", id);
+        category.getClues().add(clue);
+        return clue;
     }
 }

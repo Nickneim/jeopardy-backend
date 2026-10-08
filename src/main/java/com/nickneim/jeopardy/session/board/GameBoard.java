@@ -1,7 +1,10 @@
 package com.nickneim.jeopardy.session.board;
 
+import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -51,6 +54,45 @@ public final class GameBoard {
 
         this.roundsByType = byType;
         this.cluesById = Map.copyOf(byId);
+    }
+
+    /**
+     * Copies a database game into a board. This reads the game's lazy
+     * collections, so call it inside a transaction (as
+     * {@code GameBoardService.loadBoard} does). The board it returns holds no
+     * entities and can be used after the transaction ends.
+     */
+    public static GameBoard from(Game game) {
+        Map<GameRound, List<BoardCategory>> categoriesByRound =
+                new EnumMap<>(GameRound.class);
+
+        for (Category category : game.getCategories()) {
+            List<BoardClue> clues = category.getClues()
+                    .stream()
+                    .map(clue -> new BoardClue(
+                            clue.getId(),
+                            clue.getRowNumber(),
+                            clue.getQuestion(),
+                            clue.getAnswer(),
+                            clue.getValue(),
+                            game.isDailyDouble(clue.getId())
+                    ))
+                    .toList();
+
+            categoriesByRound
+                    .computeIfAbsent(
+                            GameRound.fromColumn(category.getColumnNumber()),
+                            round -> new ArrayList<>()
+                    )
+                    .add(new BoardCategory(category.getName(), clues));
+        }
+
+        return new GameBoard(
+                categoriesByRound.entrySet()
+                        .stream()
+                        .map(entry -> new BoardRound(entry.getKey(), entry.getValue()))
+                        .toList()
+        );
     }
 
     public List<BoardRound> getRounds() {

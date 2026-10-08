@@ -4,26 +4,22 @@ import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.service.GameService;
-import com.nickneim.jeopardy.session.board.BoardCategory;
-import com.nickneim.jeopardy.session.board.BoardClue;
-import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+// The conversion itself is tested in GameBoardTest (GameBoard.from).
 class GameBoardServiceTest {
 
     private GameService gameService;
@@ -36,62 +32,13 @@ class GameBoardServiceTest {
     }
 
     @Test
-    void loadBoard_copiesRoundsCategoriesAndClues() {
+    void loadBoard_returnsTheLoadedGameAsABoard() {
         when(gameService.getGame(123L)).thenReturn(createGame());
 
         GameBoard board = gameBoardService.loadBoard(123L);
 
-        assertEquals(
-                List.of(GameRound.JEOPARDY, GameRound.DOUBLE_JEOPARDY, GameRound.FINAL_JEOPARDY),
-                board.getRounds().stream().map(BoardRound::round).toList()
-        );
-
-        BoardRound jeopardy = board.getRounds().getFirst();
-        assertEquals(
-                List.of("HISTORY", "SCIENCE"),
-                jeopardy.categories().stream().map(BoardCategory::name).toList()
-        );
-
-        assertEquals(
-                new BoardClue(101L, 1, "Who was the first president?", "George Washington", 200, false),
-                board.getClue(101L)
-        );
-        assertEquals(Set.of(101L, 102L, 103L), board.getClueIds(GameRound.JEOPARDY));
-    }
-
-    @Test
-    void loadBoard_usesClueValuesForEachRound() {
-        when(gameService.getGame(123L)).thenReturn(createGame());
-
-        GameBoard board = gameBoardService.loadBoard(123L);
-
-        assertEquals(400, board.getClue(102L).value());
-        assertEquals(800, board.getClue(201L).value());
-        assertEquals(2000, board.getClue(301L).value());
-    }
-
-    @Test
-    void loadBoard_keepsRowPositionsIncludingGaps() {
-        when(gameService.getGame(123L)).thenReturn(createGame());
-
-        GameBoard board = gameBoardService.loadBoard(123L);
-
-        // HISTORY only has clues on rows 1 and 5.
-        BoardCategory history = board.getRounds().getFirst().categories().getFirst();
-        assertEquals(
-                List.of(1, 5),
-                history.clues().stream().map(BoardClue::row).toList()
-        );
-    }
-
-    @Test
-    void loadBoard_marksDailyDoubles() {
-        when(gameService.getGame(123L)).thenReturn(createGame());
-
-        GameBoard board = gameBoardService.loadBoard(123L);
-
-        assertTrue(board.isDailyDouble(103L));
-        assertFalse(board.isDailyDouble(101L));
+        assertEquals(Set.of(101L), board.getClueIds(GameRound.JEOPARDY));
+        assertEquals("George Washington", board.getClue(101L).answer());
     }
 
     @Test
@@ -112,33 +59,20 @@ class GameBoardServiceTest {
                 "40"
         );
 
-        Category history = addCategory(game, "HISTORY", 1);
-        Category science = addCategory(game, "SCIENCE", 2);
-        Category literature = addCategory(game, "LITERATURE", 7);
-        Category finalCategory = addCategory(game, "FINAL HISTORY", 13);
+        Category history = new Category("HISTORY", (short) 1, null, game);
+        game.getCategories().add(history);
 
-        addClue(history, 101L, "Who was the first president?", "George Washington", 1);
-        addClue(science, 102L, "What is the chemical symbol for gold?", "Au", 2);
-        Clue dailyDouble =
-                addClue(history, 103L, "Who was the second president?", "John Adams", 5);
-        addClue(literature, 201L, "He wrote Hamlet.", "William Shakespeare", 2);
-        addClue(finalCategory, 301L, "This war began in 1775.", "The American Revolution", 1);
-
-        game.getDailyDoubles().add(new GameDailyDouble(game, dailyDouble));
+        Clue clue = new Clue(
+                "Who was the first president?",
+                "George Washington",
+                (short) 1,
+                ClueType.TEXT,
+                null,
+                history
+        );
+        ReflectionTestUtils.setField(clue, "id", 101L);
+        history.getClues().add(clue);
 
         return game;
-    }
-
-    private Category addCategory(Game game, String name, int column) {
-        Category category = new Category(name, (short) column, null, game);
-        game.getCategories().add(category);
-        return category;
-    }
-
-    private Clue addClue(Category category, Long id, String question, String answer, int row) {
-        Clue clue = new Clue(question, answer, (short) row, ClueType.TEXT, null, category);
-        ReflectionTestUtils.setField(clue, "id", id);
-        category.getClues().add(clue);
-        return clue;
     }
 }
