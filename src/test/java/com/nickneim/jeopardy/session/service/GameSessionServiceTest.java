@@ -20,11 +20,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -269,6 +271,26 @@ class GameSessionServiceTest {
         );
 
         verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void joinSession_broadcastsWhileHoldingSessionLock() {
+        // Building the broadcast reads session state, so it must not race
+        // with another thread changing the session.
+        GameSession session = createSession();
+        AtomicBoolean heldLock = new AtomicBoolean(false);
+
+        doAnswer(invocation -> {
+            heldLock.set(Thread.holdsLock(session));
+            return null;
+        }).when(broadcaster).broadcast(session);
+
+        gameSessionService.joinSession(
+                session.getId(),
+                "Player 1"
+        );
+
+        assertTrue(heldLock.get());
     }
 
     @Test

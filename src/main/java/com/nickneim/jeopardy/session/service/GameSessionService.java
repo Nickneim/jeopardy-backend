@@ -60,16 +60,15 @@ public class GameSessionService {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-
             session.addPlayer(
                     new GameSessionPlayer(
                             generatePlayerId(),
                             playerName
                     )
             );
-        }
 
-        broadcaster.broadcast(session);
+            broadcaster.broadcast(session);
+        }
     }
 
     public void startGame(
