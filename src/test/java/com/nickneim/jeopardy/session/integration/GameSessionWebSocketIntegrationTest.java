@@ -4,12 +4,14 @@ import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.BuzzRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
 import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
+import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -32,6 +34,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,6 +48,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 )
 @ActiveProfiles("test")
 class GameSessionWebSocketIntegrationTest {
+
+    private static final Long DAILY_DOUBLE_CLUE_ID = 12L;
 
     @Autowired
     private GameSessionService gameSessionService;
@@ -811,6 +816,279 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
+    // Daily Doubles
+    // -------------------------------------------------------------------------
+
+    @Test
+    void choosingDailyDouble_broadcastsWaitingForWager()
+            throws Exception {
+
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        chooseClue(
+                stompSession,
+                session.getId(),
+                new ChooseClueRequest(
+                        playerId,
+                        DAILY_DOUBLE_CLUE_ID
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
+                response.state()
+        );
+    }
+
+    @Test
+    void placingWager_broadcastsRevealingClue()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        placeWager(
+                stompSession,
+                session.getId(),
+                new PlaceDailyDoubleWagerRequest(
+                        playerId,
+                        500
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                response.state()
+        );
+    }
+
+    @Test
+    void placingInvalidWager_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        placeWager(
+                stompSession,
+                session.getId(),
+                new PlaceDailyDoubleWagerRequest(
+                        playerId,
+                        5000
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_WAGER",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingWagerWithWrongPlayer_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        placeWager(
+                stompSession,
+                session.getId(),
+                new PlaceDailyDoubleWagerRequest(
+                        playerId + 1,
+                        500
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "NOT_YOUR_TURN",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingWagerInWrongState_returnsError()
+            throws Exception {
+
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        placeWager(
+                stompSession,
+                session.getId(),
+                new PlaceDailyDoubleWagerRequest(
+                        playerId,
+                        500
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "INVALID_STATE",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingWagerOnNonexistentSession_returnsError()
+            throws Exception {
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        placeWager(
+                stompSession,
+                UUID.randomUUID(),
+                new PlaceDailyDoubleWagerRequest(
+                        1L,
+                        500
+                )
+        );
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals(
+                "SESSION_NOT_FOUND",
+                error.code()
+        );
+    }
+
+    @Test
+    void placingWagerWithMissingWager_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        // No @MessageExceptionHandler covers validation failures yet,
+        // so the client currently gets no error at all.
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-daily-double-wager",
+                Map.of("playerId", playerId)
+        );
+
+        awaitError(errors);
+    }
+
+    @Test
+    void answeringDailyDouble_appliesWager()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        Long playerId =
+                session.getPlayers().getFirst().getId();
+
+        gameSessionService.placeDailyDoubleWager(
+                session.getId(),
+                playerId,
+                500
+        );
+
+        gameSessionService.finishRevealingClue(
+                session.getId()
+        );
+
+        StompSession stompSession = connect();
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest(
+                        playerId,
+                        "Daily Double answer"
+                )
+        );
+
+        GameSessionResponse response =
+                awaitMessage(receivedMessages);
+
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                response.state()
+        );
+
+        assertEquals(
+                500,
+                response.players()
+                        .getFirst()
+                        .score()
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -871,6 +1149,56 @@ class GameSessionWebSocketIntegrationTest {
         game.getCategories().add(category);
         category.getClues().add(clue1);
         category.getClues().add(clue2);
+
+        return game;
+    }
+
+    private GameSession createStartedSessionWithDailyDouble() {
+        GameSession session = gameSessionService.createSession(
+                createGameWithDailyDouble()
+        );
+
+        gameSessionService.joinSession(
+                session.getId(),
+                "Nico"
+        );
+
+        gameSessionService.startGame(session.getId());
+
+        return session;
+    }
+
+    private GameSession createSessionWaitingForWager() {
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                session.getPlayers().getFirst().getId(),
+                DAILY_DOUBLE_CLUE_ID
+        );
+
+        return session;
+    }
+
+    private Game createGameWithDailyDouble() {
+        Game game = createGame();
+        Category category = game.getCategories().getFirst();
+
+        Clue dailyDouble = new Clue(
+                "Daily Double question",
+                "Daily Double answer",
+                (short) 3,
+                ClueType.TEXT,
+                null,
+                category
+        );
+
+        ReflectionTestUtils.setField(dailyDouble, "id", DAILY_DOUBLE_CLUE_ID);
+
+        category.getClues().add(dailyDouble);
+        game.getDailyDoubles().add(
+                new GameDailyDouble(game, dailyDouble)
+        );
 
         return game;
     }
@@ -1036,6 +1364,17 @@ class GameSessionWebSocketIntegrationTest {
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/answer",
+                request
+        );
+    }
+
+    private void placeWager(
+            StompSession stompSession,
+            UUID sessionId,
+            PlaceDailyDoubleWagerRequest request
+    ) {
+        stompSession.send(
+                "/app/sessions/" + sessionId + "/place-daily-double-wager",
                 request
         );
     }

@@ -80,6 +80,90 @@ WHERE name = 'SCIENCE'
   );
 
 
+INSERT INTO category (
+    name,
+    column_number,
+    comments,
+    game_id
+)
+SELECT
+    'LITERATURE',
+    7,
+    'Literature integration test category',
+    id
+FROM game
+WHERE title = 'Game Integration Test Game';
+
+INSERT INTO category (
+    name,
+    column_number,
+    comments,
+    game_id
+)
+SELECT
+    'FINAL HISTORY',
+    13,
+    'Final integration test category',
+    id
+FROM game
+WHERE title = 'Game Integration Test Game';
+
+INSERT INTO clue (
+    question,
+    answer,
+    row_number,
+    type,
+    media_url,
+    category_id
+)
+SELECT
+    'He wrote "Hamlet".',
+    'Who is William Shakespeare?',
+    1,
+    'TEXT',
+    NULL,
+    id
+FROM category
+WHERE name = 'LITERATURE'
+  AND game_id = (
+      SELECT id
+      FROM game
+      WHERE title = 'Game Integration Test Game'
+  );
+
+INSERT INTO clue (
+    question,
+    answer,
+    row_number,
+    type,
+    media_url,
+    category_id
+)
+SELECT
+    'This war began in 1775.',
+    'What is the American Revolution?',
+    1,
+    'TEXT',
+    NULL,
+    id
+FROM category
+WHERE name = 'FINAL HISTORY'
+  AND game_id = (
+      SELECT id
+      FROM game
+      WHERE title = 'Game Integration Test Game'
+  );
+
+-- The SCIENCE clue is the Daily Double.
+INSERT INTO game_daily_double (game_id, clue_id)
+SELECT category.game_id, clue.id
+FROM clue
+JOIN category ON category.id = clue.category_id
+JOIN game ON game.id = category.game_id
+WHERE game.title = 'Game Integration Test Game'
+  AND category.name = 'SCIENCE';
+
+
 -- Additional games for pagination tests
 
 INSERT INTO game (title, game_date, season)

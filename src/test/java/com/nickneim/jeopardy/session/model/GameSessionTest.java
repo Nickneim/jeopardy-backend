@@ -25,6 +25,7 @@ class GameSessionTest {
     private Clue jeopardyClue2;
     private Clue dailyDoubleClue1;
     private Clue doubleJeopardyClue1;
+    private Clue doubleJeopardyDailyDouble;
     private Clue finalJeopardyClue;
 
 
@@ -574,21 +575,7 @@ class GameSessionTest {
         session.startGame();
 
         // Select every available Jeopardy clue.
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue1.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
-
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue2.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        finishJeopardyRound();
 
         assertEquals(
                 GameRound.DOUBLE_JEOPARDY,
@@ -616,21 +603,7 @@ class GameSessionTest {
         session.startGame();
 
         // Finish Jeopardy round.
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue1.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
-
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue2.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        finishJeopardyRound();
 
         assertEquals(
                 GameRound.DOUBLE_JEOPARDY,
@@ -654,21 +627,7 @@ class GameSessionTest {
         session.startGame();
 
         // Select every available Jeopardy clue.
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue1.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
-
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue2.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        finishJeopardyRound();
 
         session.chooseClue(
                 player1.getId(),
@@ -700,21 +659,7 @@ class GameSessionTest {
         session.startGame();
 
         // Select every available Jeopardy clue.
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue1.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
-
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue2.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        finishJeopardyRound();
 
         session.chooseClue(
                 player1.getId(),
@@ -744,21 +689,7 @@ class GameSessionTest {
         session.startGame();
 
         // Finish Jeopardy.
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue1.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
-
-        session.chooseClue(
-                player1.getId(),
-                jeopardyClue2.getId()
-        );
-        session.finishRevealingClue();
-        session.timeoutBuzzer();
-        session.finishRevealingAnswer();
+        finishJeopardyRound();
 
         // Start Double Jeopardy clue.
         session.chooseClue(
@@ -800,14 +731,6 @@ class GameSessionTest {
         session.getGame().getDailyDoubles().add(dailyDouble);
     }
 
-
-    @Test
-    void isDailyDouble_returnsTrueForDailyDoubleClue() {
-        addDailyDoubleClue();
-        assertTrue(session.getGame().isDailyDouble(dailyDoubleClue1.getId()));
-        assertFalse(session.getGame().isDailyDouble(jeopardyClue1.getId()));
-        assertFalse(session.getGame().isDailyDouble(jeopardyClue2.getId()));
-    }
 
     @Test
     void chooseClue_forDailyDouble_waitsForWagerBeforeRevealing() {
@@ -987,6 +910,396 @@ class GameSessionTest {
         );
 
         assertEquals(5, player1.getWager());
+    }
+
+    // -------------------------------------------------------------------------
+    // Daily Double: wager validation
+    // -------------------------------------------------------------------------
+
+    @Test
+    void placeDailyDoubleWager_rejectsWhenNotWaitingForWager() {
+        addDailyDoubleClue();
+        session.startGame();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(player1.getId(), 500)
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void placeDailyDoubleWager_acceptsMinimumWager() {
+        startDailyDouble();
+
+        session.placeDailyDoubleWager(player1.getId(), 5);
+
+        assertEquals(5, player1.getWager());
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+    }
+
+    @Test
+    void placeDailyDoubleWager_inJeopardy_allowsUpTo1000() {
+        startDailyDouble();
+
+        assertInvalidWager(1001);
+
+        session.placeDailyDoubleWager(player1.getId(), 1000);
+
+        assertEquals(1000, player1.getWager());
+    }
+
+    @Test
+    void placeDailyDoubleWager_allowsWageringFullScoreWhenAboveRoundMax() {
+        startDailyDouble();
+        player1.addScore(1500);
+
+        assertInvalidWager(1501);
+
+        session.placeDailyDoubleWager(player1.getId(), 1500);
+
+        assertEquals(1500, player1.getWager());
+    }
+
+    @Test
+    void placeDailyDoubleWager_withNegativeScore_allowsUpToRoundMax() {
+        startDailyDouble();
+        player1.addScore(-500);
+
+        assertInvalidWager(1001);
+
+        session.placeDailyDoubleWager(player1.getId(), 1000);
+
+        assertEquals(1000, player1.getWager());
+    }
+
+    @Test
+    void placeDailyDoubleWager_inDoubleJeopardy_allowsUpTo2000() {
+        addDoubleJeopardyDailyDouble();
+        session.startGame();
+        finishJeopardyRound();
+
+        session.chooseClue(
+                player1.getId(),
+                doubleJeopardyDailyDouble.getId()
+        );
+
+        assertInvalidWager(2001);
+
+        session.placeDailyDoubleWager(player1.getId(), 2000);
+
+        assertEquals(2000, player1.getWager());
+    }
+
+    // -------------------------------------------------------------------------
+    // Daily Double: buzzing and answering
+    // -------------------------------------------------------------------------
+
+    @Test
+    void buzz_whileRevealingDailyDouble_isRejected() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.buzz(player2.getId())
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void buzz_whileWaitingForDailyDoubleAnswer_isRejected() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.buzz(player2.getId())
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void answerClue_dailyDouble_rejectsOtherPlayer() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.answerClue(player2.getId(), "John Adams")
+        );
+
+        assertEquals(GameErrorCode.NOT_YOUR_TURN, exception.getCode());
+    }
+
+    @Test
+    void answerClue_correctDailyDouble_addsWagerAndChooserKeepsControl() {
+        addDailyDoubleClue();
+        session.startGame();
+        givePlayer2Control();
+
+        session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
+        session.placeDailyDoubleWager(player2.getId(), 750);
+        session.finishRevealingClue();
+        session.answerClue(player2.getId(), "John Adams");
+
+        // The clue itself is worth 200, so the score must reflect the wager.
+        assertEquals(100 + 750, player2.getScore());
+        assertEquals(0, player1.getScore());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void answerClue_incorrectDailyDouble_deductsWagerAndChooserKeepsControl() {
+        addDailyDoubleClue();
+        session.startGame();
+        givePlayer2Control();
+
+        session.chooseClue(player2.getId(), dailyDoubleClue1.getId());
+        session.placeDailyDoubleWager(player2.getId(), 750);
+        session.finishRevealingClue();
+        session.answerClue(player2.getId(), "Thomas Jefferson");
+
+        assertEquals(100 - 750, player2.getScore());
+        assertEquals(0, player1.getScore());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void timeoutDailyDoubleWager_thenCorrectAnswer_awardsMinimumWager() {
+        startDailyDouble();
+
+        session.timeoutDailyDoubleWager();
+        session.finishRevealingClue();
+        session.answerClue(player1.getId(), "John Adams");
+
+        assertEquals(5, player1.getScore());
+    }
+
+    @Test
+    void timeoutAnswer_onDailyDoubleAsFirstClue_deductsWagerFromChooserAndRevealsAnswer() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        session.timeoutAnswer();
+
+        assertEquals(-500, player1.getScore());
+        assertEquals(0, player2.getScore());
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void timeoutAnswer_onDailyDoubleAfterBuzzedClue_deductsWagerFromChooserOnly() {
+        addDailyDoubleClue();
+        session.startGame();
+
+        // Player 2 buzzes on a normal clue and misses, leaving player 1 in control.
+        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Abraham Lincoln");
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+
+        session.timeoutAnswer();
+
+        assertEquals(-500, player1.getScore());
+        assertEquals(-100, player2.getScore());
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void dailyDouble_countsTowardRoundCompletion() {
+        addDailyDoubleClue();
+        session.startGame();
+        finishJeopardyRound();
+
+        assertEquals(GameRound.JEOPARDY, session.getRound());
+
+        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+        session.placeDailyDoubleWager(player1.getId(), 5);
+        session.finishRevealingClue();
+        session.answerClue(player1.getId(), "John Adams");
+        session.finishRevealingAnswer();
+
+        assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+    }
+
+    // -------------------------------------------------------------------------
+    // Other gameplay gaps
+    // -------------------------------------------------------------------------
+
+    @Test
+    void startGame_withNoPlayers_throwsInvalidGameAction() {
+        GameSession emptySession = new GameSession(
+                UUID.randomUUID(),
+                session.getGame()
+        );
+
+        assertThrows(
+                InvalidGameActionException.class,
+                emptySession::startGame
+        );
+    }
+
+    @Test
+    void answerClue_rejectsWhenNotWaitingForAnswer() {
+        session.startGame();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.answerClue(player1.getId(), "George Washington")
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void answerClue_wrongAnswer_withPlayersRemaining_reopensBuzzer() {
+        session.startGame();
+        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.answerClue(player2.getId(), "Abraham Lincoln");
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.buzz(player2.getId())
+        );
+        assertEquals(GameErrorCode.NOT_YOUR_TURN, exception.getCode());
+
+        session.buzz(player1.getId());
+        assertEquals(player1.getId(), session.getPlayerWhoBuzzed());
+    }
+
+    @Test
+    void answerClue_wrongAnswer_whenAllPlayersBuzzed_revealsAnswer() {
+        session.startGame();
+        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.finishRevealingClue();
+
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Abraham Lincoln");
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "John Adams");
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+        assertEquals(-100, player1.getScore());
+        assertEquals(-100, player2.getScore());
+    }
+
+    @Test
+    void timeoutAnswer_withPlayersRemaining_reopensBuzzer() {
+        session.startGame();
+        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.timeoutAnswer();
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+    }
+
+    @Test
+    void finishRevealingClue_resetsPlayersAlreadyBuzzedForNextClue() {
+        session.startGame();
+        givePlayer2Control();
+
+        session.chooseClue(player2.getId(), jeopardyClue2.getId());
+        session.finishRevealingClue();
+
+        assertTrue(session.getPlayersAlreadyBuzzed().isEmpty());
+
+        session.buzz(player2.getId());
+
+        assertEquals(player2.getId(), session.getPlayerWhoBuzzed());
+    }
+
+    @Test
+    void answerClue_correctAnswerOnSecondRow_awardsRowValue() {
+        session.startGame();
+        session.chooseClue(player1.getId(), jeopardyClue2.getId());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+
+        session.answerClue(player1.getId(), "France");
+
+        assertEquals(200, player1.getScore());
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private void finishJeopardyRound() {
+        playClueWithoutBuzz(jeopardyClue1.getId());
+        playClueWithoutBuzz(jeopardyClue2.getId());
+    }
+
+    private void playClueWithoutBuzz(Long clueId) {
+        session.chooseClue(session.getPlayerChoosingClue(), clueId);
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+    }
+
+    // Player 2 answers jeopardyClue1 correctly (+100) and takes control of the board.
+    private void givePlayer2Control() {
+        session.chooseClue(player1.getId(), jeopardyClue1.getId());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "George Washington");
+        session.finishRevealingAnswer();
+    }
+
+    private void startDailyDouble() {
+        addDailyDoubleClue();
+        session.startGame();
+        session.chooseClue(player1.getId(), dailyDoubleClue1.getId());
+    }
+
+    private void assertInvalidWager(int wager) {
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(player1.getId(), wager)
+        );
+
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
+    }
+
+    private void addDoubleJeopardyDailyDouble() {
+        Category doubleHistory = session.getGame().getCategories().get(2);
+
+        doubleJeopardyDailyDouble = new Clue(
+                "He was the third president of the United States.",
+                "Thomas Jefferson",
+                (short) 2,
+                ClueType.TEXT,
+                null,
+                doubleHistory
+        );
+        ReflectionTestUtils.setField(doubleJeopardyDailyDouble, "id", 202L);
+
+        doubleHistory.getClues().add(doubleJeopardyDailyDouble);
+
+        session.getGame().getDailyDoubles().add(
+                new GameDailyDouble(session.getGame(), doubleJeopardyDailyDouble)
+        );
     }
 
 }

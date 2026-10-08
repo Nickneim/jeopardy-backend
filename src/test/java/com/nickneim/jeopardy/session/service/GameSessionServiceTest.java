@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
@@ -13,6 +14,7 @@ import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
@@ -26,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -37,6 +40,7 @@ class GameSessionServiceTest {
     private GameSessionBroadcaster broadcaster;
 
     private static final Long CLUE_ID = 10L;
+    private static final Long DAILY_DOUBLE_CLUE_ID = 11L;
 
     @BeforeEach
     void setUp() {
@@ -581,5 +585,444 @@ class GameSessionServiceTest {
             );
             assertNotNull(session.getPlayerWhoBuzzed());
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Daily Double scheduling
+    // -------------------------------------------------------------------------
+
+    @Test
+    void chooseClue_onDailyDouble_schedulesWagerTimeout() {
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                DAILY_DOUBLE_CLUE_ID
+        );
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
+                session.getState()
+        );
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(30)),
+                any(Runnable.class)
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void placeDailyDoubleWager_schedulesClueRevealTimeoutAndBroadcasts() {
+        GameSession session = createSessionWaitingForWager();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.placeDailyDoubleWager(
+                session.getId(),
+                getFirstPlayerId(session),
+                500
+        );
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                session.getState()
+        );
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(3)),
+                any(Runnable.class)
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void finishRevealingClue_onDailyDouble_schedulesAnswerTimeoutInsteadOfBuzzer() {
+        GameSession session = createSessionWaitingForWager();
+
+        gameSessionService.placeDailyDoubleWager(
+                session.getId(),
+                getFirstPlayerId(session),
+                500
+        );
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.finishRevealingClue(session.getId());
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_ANSWER,
+                session.getState()
+        );
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(5)),
+                any(Runnable.class)
+        );
+        verify(timer, never()).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(10)),
+                any(Runnable.class)
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Timeout callbacks
+    // -------------------------------------------------------------------------
+
+    @Test
+    void wagerTimeout_setsMinimumWagerAndRevealsClue() {
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                DAILY_DOUBLE_CLUE_ID
+        );
+
+        Runnable wagerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        clearInvocations(timer, broadcaster);
+
+        wagerTimeout.run();
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                session.getState()
+        );
+        assertEquals(
+                5,
+                session.getPlayers().getFirst().getWager()
+        );
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(3)),
+                any(Runnable.class)
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void clueRevealTimeout_opensBuzzer() {
+        GameSession session = createStartedSession();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                CLUE_ID
+        );
+
+        Runnable clueRevealTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(3));
+
+        clearInvocations(timer, broadcaster);
+
+        clueRevealTimeout.run();
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_BUZZER,
+                session.getState()
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void buzzerTimeout_revealsAnswer() {
+        GameSession session = createSessionWithChosenClue();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.finishRevealingClue(session.getId());
+
+        Runnable buzzerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(10));
+
+        clearInvocations(timer, broadcaster);
+
+        buzzerTimeout.run();
+
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                session.getState()
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void answerTimeout_deductsClueValueAndRevealsAnswer() {
+        GameSession session = createSessionWaitingForBuzzer();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.buzz(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
+
+        Runnable answerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(5));
+
+        clearInvocations(timer, broadcaster);
+
+        answerTimeout.run();
+
+        assertEquals(
+                -100,
+                session.getPlayers().getFirst().getScore()
+        );
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                session.getState()
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void answerTimeout_onDailyDouble_deductsWagerAndRevealsAnswer() {
+        GameSession session = createSessionWaitingForWager();
+
+        gameSessionService.placeDailyDoubleWager(
+                session.getId(),
+                getFirstPlayerId(session),
+                500
+        );
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.finishRevealingClue(session.getId());
+
+        Runnable answerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(5));
+
+        clearInvocations(timer, broadcaster);
+
+        answerTimeout.run();
+
+        assertEquals(
+                -500,
+                session.getPlayers().getFirst().getScore()
+        );
+        assertEquals(
+                GameSessionState.REVEALING_ANSWER,
+                session.getState()
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void answerRevealTimeout_returnsToChoosingClue() {
+        GameSession session = createSessionWaitingForAnswer();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.answerClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                "Correct answer"
+        );
+
+        Runnable answerRevealTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(3));
+
+        clearInvocations(timer, broadcaster);
+
+        answerRevealTimeout.run();
+
+        assertEquals(
+                GameSessionState.CHOOSING_CLUE,
+                session.getState()
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    // -------------------------------------------------------------------------
+    // Stale timeouts and failures
+    // -------------------------------------------------------------------------
+
+    @Test
+    void staleWagerTimeout_afterWagerPlaced_doesNothing() {
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                DAILY_DOUBLE_CLUE_ID
+        );
+
+        Runnable staleWagerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        gameSessionService.placeDailyDoubleWager(
+                session.getId(),
+                getFirstPlayerId(session),
+                500
+        );
+
+        clearInvocations(timer, broadcaster);
+
+        staleWagerTimeout.run();
+
+        assertEquals(
+                GameSessionState.REVEALING_CLUE,
+                session.getState()
+        );
+        assertEquals(
+                500,
+                session.getPlayers().getFirst().getWager()
+        );
+        verifyNoInteractions(timer, broadcaster);
+    }
+
+    @Test
+    void staleBuzzerTimeout_afterBuzz_doesNothing() {
+        GameSession session = createSessionWithChosenClue();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.finishRevealingClue(session.getId());
+
+        Runnable staleBuzzerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(10));
+
+        gameSessionService.buzz(
+                session.getId(),
+                getFirstPlayerId(session)
+        );
+
+        clearInvocations(timer, broadcaster);
+
+        staleBuzzerTimeout.run();
+
+        assertEquals(
+                GameSessionState.WAITING_FOR_ANSWER,
+                session.getState()
+        );
+        verifyNoInteractions(timer, broadcaster);
+    }
+
+    @Test
+    void invalidAction_doesNotScheduleOrBroadcast() {
+        GameSession session = createStartedSession();
+
+        clearInvocations(timer, broadcaster);
+
+        assertThrows(
+                InvalidGameActionException.class,
+                () -> gameSessionService.chooseClue(
+                        session.getId(),
+                        getFirstPlayerId(session) + 1,
+                        CLUE_ID
+                )
+        );
+
+        verifyNoInteractions(timer, broadcaster);
+    }
+
+    @Test
+    void timeoutAfterSessionRemoved_throwsSessionNotFound() {
+        // Documents current behaviour: removeSession cancels the timer, but a
+        // callback that is already running will fail to find the session.
+        GameSession session = createStartedSession();
+
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                CLUE_ID
+        );
+
+        Runnable clueRevealTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(3));
+
+        gameSessionService.removeSession(session.getId());
+
+        assertThrows(
+                GameSessionNotFoundException.class,
+                clueRevealTimeout::run
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Daily Double helpers
+    // -------------------------------------------------------------------------
+
+    private Runnable captureScheduledRunnable(
+            GameSession session,
+            Duration duration
+    ) {
+        ArgumentCaptor<Runnable> captor =
+                ArgumentCaptor.forClass(Runnable.class);
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(duration),
+                captor.capture()
+        );
+
+        return captor.getValue();
+    }
+
+    private GameSession createStartedSessionWithDailyDouble() {
+        GameSession session = gameSessionService.createSession(
+                createGameWithDailyDouble()
+        );
+
+        session.addPlayer(
+                new GameSessionPlayer(1L, "Player 1")
+        );
+
+        gameSessionService.startGame(session.getId());
+
+        return session;
+    }
+
+    private GameSession createSessionWaitingForWager() {
+        GameSession session = createStartedSessionWithDailyDouble();
+
+        gameSessionService.chooseClue(
+                session.getId(),
+                getFirstPlayerId(session),
+                DAILY_DOUBLE_CLUE_ID
+        );
+
+        return session;
+    }
+
+    private Game createGameWithDailyDouble() {
+        Game game = createGameWithClue();
+        Category category = game.getCategories().getFirst();
+
+        Clue dailyDouble = new Clue(
+                "Daily Double question",
+                "Daily Double answer",
+                (short) 2,
+                ClueType.TEXT,
+                null,
+                category
+        );
+
+        ReflectionTestUtils.setField(dailyDouble, "id", DAILY_DOUBLE_CLUE_ID);
+
+        category.getClues().add(dailyDouble);
+        game.getDailyDoubles().add(
+                new GameDailyDouble(game, dailyDouble)
+        );
+
+        return game;
     }
 }

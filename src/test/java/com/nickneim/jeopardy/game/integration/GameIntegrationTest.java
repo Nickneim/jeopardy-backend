@@ -57,14 +57,24 @@ class GameIntegrationTest {
                     assertThat(body.jeopardyRound().get(1).clues())
                             .hasSize(1);
 
-                    assertThat(body.doubleJeopardyRound())
-                            .isEmpty();
+                    assertThat(body.doubleJeopardyRound()).hasSize(1);
 
-                    assertThat(body.finalJeopardy())
-                            .isNull();
+                    assertThat(body.doubleJeopardyRound().get(0).name())
+                            .isEqualTo("LITERATURE");
+                    assertThat(body.doubleJeopardyRound().get(0).columnNumber())
+                            .isEqualTo((short) 7);
+
+                    assertThat(body.finalJeopardy()).isNotNull();
+                    assertThat(body.finalJeopardy().name())
+                            .isEqualTo("FINAL HISTORY");
+                    assertThat(body.finalJeopardy().clues())
+                            .hasSize(1);
+
+                    Long scienceClueId = body.jeopardyRound().get(1)
+                            .clues().get(0).id();
 
                     assertThat(body.dailyDoubleClueIds())
-                            .isEmpty();
+                            .containsExactly(scienceClueId);
                 });
     }
 
