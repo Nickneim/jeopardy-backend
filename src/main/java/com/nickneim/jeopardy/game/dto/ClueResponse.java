@@ -13,6 +13,8 @@ public record ClueResponse(
         Integer value,
         boolean isFinalClue,
 
+        Long gameId,
+
         Long categoryId,
         String categoryName,
         String categoryComments
@@ -28,6 +30,8 @@ public record ClueResponse(
 
             clue.getValue(),
             clue.isFinalClue(),
+
+            clue.getCategory().getGame().getId(),
 
             clue.getCategory().getId(),
             clue.getCategory().getName(),

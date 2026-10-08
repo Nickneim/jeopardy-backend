@@ -45,6 +45,7 @@ class ClueIntegrationTest {
                     assertThat(body.mediaUrl()).isNull();
                     assertThat(body.value()).isEqualTo(600);
                     assertThat(body.isFinalClue()).isFalse();
+                    assertThat(body.gameId()).isEqualTo(1L);
                     assertThat(body.categoryName()).isEqualTo("HISTORY");
                     assertThat(body.categoryComments())
                             .isEqualTo("History integration test category");

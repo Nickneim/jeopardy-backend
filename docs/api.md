@@ -82,7 +82,7 @@ A full game with every category and clue. **It includes answers and Daily Double
 
 #### `GET /api/clues/{id}`
 
-One clue. Response: `ClueResponse`. Unknown id: 404.
+One clue. Response: `ClueResponse`, whose `gameId` is the game it belongs to (for `GET /api/games/{id}`). Unknown id: 404.
 
 ### 3.2 Game sessions
 
@@ -417,6 +417,7 @@ interface ClueResponse {
   mediaUrl: string | null;
   value: number;
   isFinalClue: boolean;
+  gameId: number;
   categoryId: number;
   categoryName: string;
   categoryComments: string | null;

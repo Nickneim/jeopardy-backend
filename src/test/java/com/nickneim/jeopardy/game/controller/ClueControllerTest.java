@@ -54,6 +54,7 @@ class ClueControllerTest {
                 category
         );
 
+        ReflectionTestUtils.setField(game, "id", 789L);
         ReflectionTestUtils.setField(category, "id", 456L);
         ReflectionTestUtils.setField(clue, "id", 123L);
 
@@ -71,6 +72,7 @@ class ClueControllerTest {
                     "mediaUrl": null,
                     "value": 600,
                     "isFinalClue": false,
+                    "gameId": 789,
                     "categoryId": 456,
                     "categoryName": "HISTORY",
                     "categoryComments": "Some comments"
