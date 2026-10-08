@@ -25,6 +25,7 @@ There is no linter or formatter configured.
 - The app reads `DATABASE_URL`, `DATABASE_USERNAME` and `DATABASE_PASSWORD` (`application.yaml`). Locally they come from the git-ignored `.env`, which the IntelliJ run config `.run/JeopardyApplication.run.xml` loads. `bootRun` does **not** load `.env` on its own.
 - Tests annotated `@ActiveProfiles("test")` use `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME` and `TEST_DATABASE_PASSWORD` (`src/test/resources/application-test.yml`). They need a real, reachable Postgres. There is no H2 or Testcontainers.
 - `JeopardyApplicationTests` has no test profile, so it needs the main `DATABASE_*` variables.
+- **Browser origins (CORS):** the frontend runs on another origin (Vite dev server, `http://localhost:5173`), so browsers check it on every REST call and the `/ws` handshake. Allowed origins come from `app.cors.allowed-origins` (`CorsProperties`), overridable with the comma-separated `ALLOWED_ORIGINS` environment variable. `WebCorsConfig` applies them to `/api/**` and `WebSocketConfig` to `/ws`. Test clients send no `Origin` header, so only `WebCorsConfigTest` and the WebSocket origin tests exercise this.
 - Hibernate runs with `ddl-auto: validate`. All schema changes go through Flyway migrations in `src/main/resources/db/migration/` (`V<n>__description.sql`), and the JPA entities must match them exactly. `clue.type` is a Postgres enum, mapped with `@JdbcType(PostgreSQLEnumJdbcType.class)`.
 
 ## Architecture

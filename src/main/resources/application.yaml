@@ -9,3 +9,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+app:
+  cors:
+    # Browser origins allowed to call the REST API and open /ws. Comma-separated
+    # when set through ALLOWED_ORIGINS; defaults to the Vite dev server.
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}

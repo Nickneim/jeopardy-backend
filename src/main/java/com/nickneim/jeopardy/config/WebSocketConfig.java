@@ -14,18 +14,24 @@ public class WebSocketConfig
         implements WebSocketMessageBrokerConfigurer {
 
     private final PlayerAuthenticationInterceptor playerAuthenticationInterceptor;
+    private final CorsProperties corsProperties;
 
     public WebSocketConfig(
-            PlayerAuthenticationInterceptor playerAuthenticationInterceptor
+            PlayerAuthenticationInterceptor playerAuthenticationInterceptor,
+            CorsProperties corsProperties
     ) {
         this.playerAuthenticationInterceptor = playerAuthenticationInterceptor;
+        this.corsProperties = corsProperties;
     }
 
     @Override
     public void registerStompEndpoints(
             StompEndpointRegistry registry
     ) {
-        registry.addEndpoint("/ws");
+        // Browsers send an Origin header on the WebSocket handshake, and
+        // Spring only accepts its own origin unless told otherwise.
+        registry.addEndpoint("/ws")
+                .setAllowedOrigins(corsProperties.allowedOriginsArray());
     }
 
     @Override

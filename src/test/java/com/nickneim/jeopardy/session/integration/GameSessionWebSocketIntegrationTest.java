@@ -110,6 +110,28 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
+    // Browser origins
+    // -------------------------------------------------------------------------
+
+    @Test
+    void connectingFromTheFrontendOrigin_succeeds()
+            throws Exception {
+
+        StompSession stompSession =
+                connectFromOrigin("http://localhost:5173");
+
+        assertTrue(stompSession.isConnected());
+    }
+
+    @Test
+    void connectingFromAnotherOrigin_isRejected() {
+        assertThrows(
+                ExecutionException.class,
+                () -> connectFromOrigin("https://evil.example")
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // Joining
     // -------------------------------------------------------------------------
 
@@ -1456,6 +1478,27 @@ class GameSessionWebSocketIntegrationTest {
                         "ws://localhost:" + port + "/ws",
                         new WebSocketHttpHeaders(),
                         connectHeaders,
+                        new StompSessionHandlerAdapter() {}
+                )
+                .get(
+                        5,
+                        TimeUnit.SECONDS
+                );
+    }
+
+    // Browsers send an Origin header on the handshake; the Java client
+    // doesn't unless told to, so other tests never hit the origin check.
+    private StompSession connectFromOrigin(String origin)
+            throws Exception {
+
+        WebSocketHttpHeaders handshakeHeaders = new WebSocketHttpHeaders();
+        handshakeHeaders.setOrigin(origin);
+
+        return stompClient
+                .connectAsync(
+                        "ws://localhost:" + port + "/ws",
+                        handshakeHeaders,
+                        new StompHeaders(),
                         new StompSessionHandlerAdapter() {}
                 )
                 .get(
