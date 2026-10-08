@@ -18,7 +18,9 @@ import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.StartGameRequest;
 import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -41,12 +44,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(
@@ -79,6 +84,32 @@ class GameSessionWebSocketIntegrationTest {
     @AfterEach
     void tearDown() {
         stompClient.stop();
+    }
+
+    // -------------------------------------------------------------------------
+    // Connecting with a player token
+    // -------------------------------------------------------------------------
+
+    @Test
+    void connectingWithValidPlayerToken_succeeds()
+            throws Exception {
+
+        GameSession session = createSession();
+
+        GameSessionPlayer player =
+                gameSessionService.joinSession(session.getId(), "Nico");
+
+        StompSession stompSession = connect(player.getToken());
+
+        assertTrue(stompSession.isConnected());
+    }
+
+    @Test
+    void connectingWithUnknownPlayerToken_isRejected() {
+        assertThrows(
+                ExecutionException.class,
+                () -> connect("forged-token")
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -1510,6 +1541,28 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         return session;
+    }
+
+    private StompSession connect(String playerToken)
+            throws Exception {
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add(
+                PlayerAuthenticationInterceptor.TOKEN_HEADER,
+                playerToken
+        );
+
+        return stompClient
+                .connectAsync(
+                        "ws://localhost:" + port + "/ws",
+                        new WebSocketHttpHeaders(),
+                        connectHeaders,
+                        new StompSessionHandlerAdapter() {}
+                )
+                .get(
+                        5,
+                        TimeUnit.SECONDS
+                );
     }
 
     private StompSession connect()

@@ -13,6 +13,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
+import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -56,7 +57,8 @@ class GameSessionServiceTest {
 
         gameSessionService = new GameSessionService(
                 timer,
-                broadcaster
+                broadcaster,
+                new PlayerTokenRegistry()
         );
     }
 

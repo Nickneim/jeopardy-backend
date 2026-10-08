@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
+import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -20,19 +21,18 @@ public class GameSessionService {
     private final Map<UUID, GameSession> sessions =
             new ConcurrentHashMap<>();
 
-    // Secret player token -> who that player is.
-    private final Map<String, PlayerPrincipal> playersByToken =
-            new ConcurrentHashMap<>();
-
     private final GameSessionTimer timer;
     private final GameSessionBroadcaster broadcaster;
+    private final PlayerTokenRegistry playerTokens;
 
     public GameSessionService(
             GameSessionTimer timer,
-            GameSessionBroadcaster broadcaster
+            GameSessionBroadcaster broadcaster,
+            PlayerTokenRegistry playerTokens
     ) {
         this.timer = timer;
         this.broadcaster = broadcaster;
+        this.playerTokens = playerTokens;
     }
 
     public GameSession createSession(GameBoard board) {
@@ -60,7 +60,7 @@ public class GameSessionService {
         GameSession session = sessions.remove(sessionId);
 
         if (session != null) {
-            session.getPlayers().forEach(player -> playersByToken.remove(player.getToken()));
+            session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
         }
     }
 
@@ -81,7 +81,7 @@ public class GameSessionService {
             );
 
             session.addPlayer(player);
-            playersByToken.put(
+            playerTokens.register(
                     player.getToken(),
                     new PlayerPrincipal(sessionId, player.getId())
             );
@@ -94,11 +94,7 @@ public class GameSessionService {
 
     /** The player a token belongs to, or empty if it's unknown (or null). */
     public Optional<PlayerPrincipal> findPlayerByToken(String token) {
-        if (token == null) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(playersByToken.get(token));
+        return playerTokens.find(token);
     }
 
     public void startGame(
