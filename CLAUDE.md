@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Spring Boot 4 / Java 21 backend for a multiplayer Jeopardy game. Game content (games, categories, clues, daily doubles) lives in PostgreSQL. Live game sessions are held in memory and played over STOMP WebSockets.
 
+The React frontend lives in a separate repository. **`docs/api.md` is the contract between them** (REST and STOMP endpoints, payloads, `GameSessionResponse` fields by state, rules, timings, error codes, TypeScript types, known limitations). Any change to an endpoint, payload, field, state, timing or error code must update it in the same commit.
+
 ## Commands
 
 Use the Gradle wrapper (`./gradlew` in bash, `.\gradlew.bat` in PowerShell).
