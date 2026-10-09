@@ -11,6 +11,7 @@ public class GameSessionPlayer {
     private final String token;
     private int score;
     private int wager;
+    private boolean leaving;
 
     public GameSessionPlayer(Long id, String name) {
         this.id = id;
@@ -46,5 +47,17 @@ public class GameSessionPlayer {
 
     public void setWager(int wager) {
         this.wager = wager;
+    }
+
+    /**
+     * True once the player has left or been kicked. They can't act any more
+     * and are removed from the session as soon as they hold no role.
+     */
+    public boolean isLeaving() {
+        return leaving;
+    }
+
+    public void markLeaving() {
+        leaving = true;
     }
 }

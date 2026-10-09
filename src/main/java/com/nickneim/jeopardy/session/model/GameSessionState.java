@@ -14,5 +14,10 @@ public enum GameSessionState {
     FINAL_JEOPARDY_ANSWERING,
     /** Final Jeopardy: answers, wagers and the correct response are shown. */
     FINAL_JEOPARDY_REVEALING,
-    FINISHED_GAME
+    FINISHED_GAME,
+    /**
+     * The session was removed from memory. Only its last broadcast has this
+     * state; see {@link SessionCloseReason}.
+     */
+    CLOSED
 }

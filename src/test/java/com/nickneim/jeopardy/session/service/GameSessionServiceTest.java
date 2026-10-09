@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -7,19 +8,26 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
+import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
+import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
+import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
+import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,12 +44,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 class GameSessionServiceTest {
 
     private GameSessionService gameSessionService;
     private GameSessionTimer timer;
     private GameSessionBroadcaster broadcaster;
+    private PlayerConnections connections;
+    private Clock clock;
 
     private static final Long CLUE_ID = 10L;
     private static final Long DAILY_DOUBLE_CLUE_ID = 11L;
@@ -56,10 +67,16 @@ class GameSessionServiceTest {
         timer = mock(GameSessionTimer.class);
         broadcaster = mock(GameSessionBroadcaster.class);
 
+        connections = mock(PlayerConnections.class);
+        clock = mock(Clock.class);
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
+
         gameSessionService = new GameSessionService(
                 timer,
                 broadcaster,
-                new PlayerTokenRegistry()
+                new PlayerTokenRegistry(),
+                connections,
+                clock
         );
     }
 
@@ -332,6 +349,8 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(30)),
                 any(Runnable.class)
         );
+        // A game in progress is never cleaned up.
+        verify(timer).cancelCleanup(session.getId());
         verifyNoMoreInteractions(timer);
     }
 
@@ -1197,7 +1216,7 @@ class GameSessionServiceTest {
 
         assertEquals(100, session.getFinalJeopardyWager(PLAYER_ID));
         verify(broadcaster).broadcast(session);
-        verifyNoInteractions(timer);
+        verifyPhaseTimerUntouched();
     }
 
     @Test
@@ -1211,7 +1230,7 @@ class GameSessionServiceTest {
 
         assertEquals("Final answer", session.getFinalJeopardyAnswer(PLAYER_ID));
         verify(broadcaster).broadcast(session);
-        verifyNoInteractions(timer);
+        verifyPhaseTimerUntouched();
     }
 
     @Test
@@ -1248,6 +1267,11 @@ class GameSessionServiceTest {
         assertEquals(200 + 150, session.getPlayers().getFirst().getScore());
         verify(broadcaster).broadcast(session);
         verify(timer).cancel(session.getId());
+        verify(timer).scheduleCleanup(
+                eq(session.getId()),
+                eq(GameSessionService.FINISHED_SESSION_TIMEOUT),
+                any(Runnable.class)
+        );
         verifyNoMoreInteractions(timer);
     }
 
@@ -1399,5 +1423,427 @@ class GameSessionServiceTest {
                 GameSessionNotFoundException.class,
                 () -> gameSessionService.getSessionState(UUID.randomUUID())
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Leaving and kicking
+    // -------------------------------------------------------------------------
+
+    @Test
+    void leave_revokesTheTokenClosesConnectionsAndBroadcasts() {
+        GameSession session = createSession();
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.leave(session.getId(), other.getId());
+
+        assertEquals(List.of(host), session.getPlayers());
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(other.getToken()));
+        assertTrue(gameSessionService.findPlayerByToken(host.getToken()).isPresent());
+        verify(broadcaster).broadcast(session);
+        verify(connections).close(
+                new PlayerPrincipal(session.getId(), other.getId()),
+                GameSessionService.LEFT_MESSAGE
+        );
+        verifyPhaseTimerUntouched();
+    }
+
+    @Test
+    void kick_revokesTheKickedPlayersToken() {
+        GameSession session = createSession();
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.kick(session.getId(), host.getId(), other.getId());
+
+        assertEquals(List.of(host), session.getPlayers());
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(other.getToken()));
+        verify(broadcaster).broadcast(session);
+        verify(connections).close(
+                new PlayerPrincipal(session.getId(), other.getId()),
+                GameSessionService.KICKED_MESSAGE
+        );
+    }
+
+    @Test
+    void kick_byANonHost_changesNothing() {
+        GameSession session = createSession();
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+        clearInvocations(timer, broadcaster);
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> gameSessionService.kick(session.getId(), other.getId(), host.getId())
+        );
+
+        assertEquals(GameErrorCode.NOT_HOST, exception.getCode());
+        assertEquals(2, session.getPlayers().size());
+        assertTrue(gameSessionService.findPlayerByToken(host.getToken()).isPresent());
+        verifyNoInteractions(timer, broadcaster, connections);
+    }
+
+    @Test
+    void hostLeaving_broadcastsTheNewHost() {
+        GameSession session = createSession();
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+
+        clearInvocations(broadcaster);
+        AtomicBoolean checked = new AtomicBoolean();
+        doAnswer(invocation -> {
+            GameSessionResponse response = GameSessionResponse.from(invocation.<GameSession>getArgument(0));
+            assertEquals(other.getId(), response.hostPlayerId());
+            checked.set(true);
+            return null;
+        }).when(broadcaster).broadcast(session);
+
+        gameSessionService.leave(session.getId(), host.getId());
+
+        verify(broadcaster).broadcast(session);
+        assertTrue(checked.get());
+    }
+
+    @Test
+    void leavingWithoutChangingTheState_keepsThePhaseTimerRunning() {
+        GameSession session = createSessionWithPlayers(3);
+        gameSessionService.startGame(session.getId(), 1L);
+        gameSessionService.chooseClue(session.getId(), 1L, CLUE_ID);
+        gameSessionService.finishRevealingClue(session.getId());
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.leave(session.getId(), 3L);
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        verify(broadcaster).broadcast(session);
+        verifyPhaseTimerUntouched();
+    }
+
+    @Test
+    void leavingThatEndsTheBuzzing_schedulesTheAnswerReveal() {
+        GameSession session = createSessionWithPlayers(2);
+        gameSessionService.startGame(session.getId(), 1L);
+        gameSessionService.chooseClue(session.getId(), 1L, CLUE_ID);
+        gameSessionService.finishRevealingClue(session.getId());
+        gameSessionService.buzz(session.getId(), 2L);
+        gameSessionService.answerClue(session.getId(), 2L, "Wrong answer");
+        clearInvocations(timer, broadcaster);
+
+        // The chooser leaves; the only active player has already buzzed.
+        gameSessionService.leave(session.getId(), 1L);
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(3)), any(Runnable.class));
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void lastActivePlayerLeaving_closesAndRemovesTheSession() {
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        gameSessionService.startGame(session.getId(), player.getId());
+
+        assertClosedOnNextBroadcast(session, SessionCloseReason.ABANDONED);
+        clearInvocations(timer);
+
+        gameSessionService.leave(session.getId(), player.getId());
+
+        verify(broadcaster).broadcast(session);
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+        verify(timer).cancel(session.getId());
+        verify(connections).close(
+                new PlayerPrincipal(session.getId(), player.getId()),
+                GameSessionService.LEFT_MESSAGE
+        );
+    }
+
+    @Test
+    void everyoneLeavingWhileAChooserIsStillLeaving_closesTheSession() {
+        GameSession session = createSession();
+        GameSessionPlayer chooser = gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+        gameSessionService.startGame(session.getId(), chooser.getId());
+        gameSessionService.leave(session.getId(), chooser.getId());
+
+        assertTrue(chooser.isLeaving());
+        assertClosedOnNextBroadcast(session, SessionCloseReason.ABANDONED);
+
+        gameSessionService.leave(session.getId(), other.getId());
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+    }
+
+    // -------------------------------------------------------------------------
+    // Timers
+    // -------------------------------------------------------------------------
+
+    @Test
+    void createSession_usesTheGivenTimers() {
+        GameSessionTimeouts timeouts = GameSessionTimeouts.defaults();
+        GameSessionTimeouts custom = new GameSessionTimeouts(
+                Duration.ofSeconds(45), timeouts.clueReveal(), timeouts.dailyDoubleWager(),
+                timeouts.buzzer(), timeouts.answer(), timeouts.answerReveal(),
+                timeouts.finalJeopardyWager(), timeouts.finalJeopardyAnswer(), timeouts.finalJeopardyReveal()
+        );
+
+        GameSession session = gameSessionService.createSession(createBoard(), custom);
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        gameSessionService.startGame(session.getId(), player.getId());
+
+        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(45)), any(Runnable.class));
+    }
+
+    @Test
+    void updateTimers_changesOnlyTheGivenDurationsAndBroadcasts() {
+        GameSession session = createSession();
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.updateTimers(
+                session.getId(),
+                host.getId(),
+                new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null)
+        );
+
+        assertEquals(Duration.ofSeconds(4), session.getTimeouts().buzzer());
+        assertEquals(GameSessionTimeouts.defaults().clueChoice(), session.getTimeouts().clueChoice());
+        verify(broadcaster).broadcast(session);
+        verifyPhaseTimerUntouched();
+    }
+
+    @Test
+    void updateTimers_byANonHost_isRejected() {
+        GameSession session = createSession();
+        gameSessionService.joinSession(session.getId(), "Nico");
+        GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
+        clearInvocations(broadcaster);
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> gameSessionService.updateTimers(
+                        session.getId(),
+                        other.getId(),
+                        new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null)
+                )
+        );
+
+        assertEquals(GameErrorCode.NOT_HOST, exception.getCode());
+        assertEquals(GameSessionTimeouts.defaults(), session.getTimeouts());
+        verifyNoInteractions(broadcaster);
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup
+    // -------------------------------------------------------------------------
+
+    @Test
+    void newSession_isRemovedWhenItsLobbyIdlesTooLong() {
+        GameSession session = createSession();
+        Runnable cleanup = captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT);
+
+        assertClosedOnNextBroadcast(session, SessionCloseReason.IDLE);
+
+        cleanup.run();
+
+        verify(broadcaster).broadcast(session);
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+    }
+
+    @Test
+    void lobbyCleanup_revokesEveryToken() {
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        Runnable cleanup = captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT);
+
+        cleanup.run();
+
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+        // The connections stay open, so clients see the CLOSED broadcast.
+        verifyNoInteractions(connections);
+    }
+
+    @Test
+    void everyChangeInTheLobby_restartsTheIdleTimeout() {
+        GameSession session = createSession();
+        Runnable staleCleanup = captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT);
+
+        gameSessionService.joinSession(session.getId(), "Nico");
+        clearInvocations(broadcaster);
+
+        staleCleanup.run();
+
+        assertSame(session, gameSessionService.getSession(session.getId()));
+        verifyNoInteractions(broadcaster);
+    }
+
+    @Test
+    void startingTheGame_cancelsTheIdleTimeout() {
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        Runnable staleCleanup = captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT);
+
+        gameSessionService.startGame(session.getId(), player.getId());
+
+        verify(timer).cancelCleanup(session.getId());
+
+        // Even if it fires anyway, a game in progress is never cleaned up.
+        staleCleanup.run();
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+    }
+
+    @Test
+    void finishedSession_isRemovedAfterTheFinishedTimeout() {
+        GameSession session = gameSessionService.createSession(
+                board(new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false))
+        );
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        gameSessionService.startGame(session.getId(), player.getId());
+        gameSessionService.chooseClue(session.getId(), player.getId(), CLUE_ID);
+        gameSessionService.finishRevealingClue(session.getId());
+        gameSessionService.buzz(session.getId(), player.getId());
+        gameSessionService.answerClue(session.getId(), player.getId(), "Correct answer");
+        clearInvocations(timer);
+        gameSessionService.finishRevealingAnswer(session.getId());
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+
+        Runnable cleanup = captureCleanup(session, GameSessionService.FINISHED_SESSION_TIMEOUT);
+        assertClosedOnNextBroadcast(session, SessionCloseReason.FINISHED);
+
+        cleanup.run();
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+    }
+
+    @Test
+    void cleanupOfAnAlreadyRemovedSession_doesNothing() {
+        GameSession session = createSession();
+        Runnable cleanup = captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT);
+        gameSessionService.removeSession(session.getId());
+
+        assertDoesNotThrow(cleanup::run);
+        verifyNoInteractions(broadcaster);
+    }
+
+    // -------------------------------------------------------------------------
+    // Listing
+    // -------------------------------------------------------------------------
+
+    @Test
+    void listSessions_newestFirst_withoutFinishedOnesByDefault() {
+        when(clock.instant()).thenReturn(
+                Instant.parse("2026-10-09T10:00:00Z"),
+                Instant.parse("2026-10-09T11:00:00Z"),
+                Instant.parse("2026-10-09T12:00:00Z")
+        );
+        GameSession older = createSession();
+        GameSession finished = createSession();
+        GameSession newer = createSession();
+        finished.addPlayer("Nico");
+        finished.startGame(1L);
+        finished.timeoutChoosingClue();
+        finished.finishRevealingClue();
+        finished.timeoutBuzzer();
+        finished.finishRevealingAnswer();
+        finished.timeoutChoosingClue();
+        finished.finishRevealingClue();
+        finished.timeoutBuzzer();
+        finished.finishRevealingAnswer();
+        assertEquals(GameSessionState.FINISHED_GAME, finished.getState());
+
+        assertEquals(
+                List.of(newer.getId(), older.getId()),
+                gameSessionService.listSessions(false, 0, 20).content()
+                        .stream().map(GameSessionSummaryResponse::id).toList()
+        );
+        assertEquals(
+                List.of(newer.getId(), finished.getId(), older.getId()),
+                gameSessionService.listSessions(true, 0, 20).content()
+                        .stream().map(GameSessionSummaryResponse::id).toList()
+        );
+    }
+
+    @Test
+    void listSessions_isPaged() {
+        when(clock.instant()).thenReturn(
+                Instant.parse("2026-10-09T10:00:00Z"),
+                Instant.parse("2026-10-09T11:00:00Z"),
+                Instant.parse("2026-10-09T12:00:00Z")
+        );
+        GameSession oldest = createSession();
+        createSession();
+        createSession();
+
+        PageResponse<GameSessionSummaryResponse> page = gameSessionService.listSessions(false, 1, 2);
+
+        assertEquals(List.of(oldest.getId()), page.content().stream().map(GameSessionSummaryResponse::id).toList());
+        assertEquals(1, page.page());
+        assertEquals(2, page.size());
+        assertEquals(3, page.totalElements());
+        assertEquals(2, page.totalPages());
+        assertEquals(List.of(), gameSessionService.listSessions(false, 5, 2).content());
+    }
+
+    @Test
+    void listSessions_summarizesTheHostAndActivePlayers() {
+        GameBoard board = new GameBoard(42L, "Show #42", createBoard().getRounds());
+        GameSession session = gameSessionService.createSession(board);
+        GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
+        gameSessionService.joinSession(session.getId(), "John");
+        gameSessionService.joinSession(session.getId(), "Ana");
+        gameSessionService.startGame(session.getId(), host.getId());
+        // The chooser stays (leaving) until someone else takes control.
+        gameSessionService.leave(session.getId(), host.getId());
+
+        GameSessionSummaryResponse summary =
+                gameSessionService.listSessions(false, 0, 20).content().getFirst();
+
+        assertEquals(session.getId(), summary.id());
+        assertEquals(42L, summary.gameId());
+        assertEquals("Show #42", summary.gameTitle());
+        assertEquals(GameSessionState.CHOOSING_CLUE, summary.state());
+        assertEquals(GameRound.JEOPARDY, summary.round());
+        assertEquals(2, summary.playerCount());
+        assertEquals("John", summary.hostName());
+        assertEquals(Instant.parse("2026-10-09T12:00:00Z"), summary.createdAt());
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers for leaving, timers and cleanup
+    // -------------------------------------------------------------------------
+
+    private void verifyPhaseTimerUntouched() {
+        verify(timer, never()).schedule(any(), any(), any());
+        verify(timer, never()).cancel(any());
+    }
+
+    // The most recently armed cleanup for the session.
+    private Runnable captureCleanup(GameSession session, Duration timeout) {
+        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+
+        verify(timer, org.mockito.Mockito.atLeastOnce()).scheduleCleanup(
+                eq(session.getId()),
+                eq(timeout),
+                captor.capture()
+        );
+
+        return captor.getValue();
+    }
+
+    // Checks the broadcast as it is sent, since the session is removed right after.
+    private void assertClosedOnNextBroadcast(GameSession session, SessionCloseReason reason) {
+        clearInvocations(broadcaster);
+
+        doAnswer(invocation -> {
+            GameSessionResponse response = GameSessionResponse.from(invocation.<GameSession>getArgument(0));
+            assertEquals(GameSessionState.CLOSED, response.state());
+            assertEquals(reason, response.closeReason());
+            assertNull(response.phaseDurationMs());
+            assertSame(session, gameSessionService.getSession(session.getId()));
+            return null;
+        }).when(broadcaster).broadcast(session);
     }
 }

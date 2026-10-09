@@ -1,18 +1,26 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
+import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
+import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
+import com.nickneim.jeopardy.session.model.SessionCloseReason;
+import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,30 +29,90 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GameSessionService {
 
+    /** A lobby (WAITING_FOR_START) with no change for this long is removed. */
+    public static final Duration IDLE_LOBBY_TIMEOUT = Duration.ofMinutes(30);
+
+    /** A finished game with no change for this long is removed. */
+    public static final Duration FINISHED_SESSION_TIMEOUT = Duration.ofMinutes(10);
+
+    static final String LEFT_MESSAGE = "You left the session";
+    static final String KICKED_MESSAGE = "You were removed from the session by the host";
+
     private final Map<UUID, GameSession> sessions =
             new ConcurrentHashMap<>();
 
     private final GameSessionTimer timer;
     private final GameSessionBroadcaster broadcaster;
     private final PlayerTokenRegistry playerTokens;
+    private final PlayerConnections connections;
+    private final Clock clock;
 
     public GameSessionService(
             GameSessionTimer timer,
             GameSessionBroadcaster broadcaster,
-            PlayerTokenRegistry playerTokens
+            PlayerTokenRegistry playerTokens,
+            PlayerConnections connections,
+            Clock clock
     ) {
         this.timer = timer;
         this.broadcaster = broadcaster;
         this.playerTokens = playerTokens;
+        this.connections = connections;
+        this.clock = clock;
     }
 
     public GameSession createSession(GameBoard board) {
+        return createSession(board, GameSessionTimeouts.defaults());
+    }
+
+    public GameSession createSession(GameBoard board, GameSessionTimeouts timeouts) {
         UUID id = UUID.randomUUID();
-        GameSession session = new GameSession(id, board);
+        GameSession session = new GameSession(id, board, timeouts, clock.instant());
 
         sessions.put(session.getId(), session);
 
+        // Nobody may ever join, so the idle lobby timeout starts now.
+        synchronized (session) {
+            scheduleCleanup(session);
+        }
+
         return session;
+    }
+
+    /**
+     * The open sessions for a lobby page, newest first (ties by id), without
+     * finished ones unless {@code includeFinished}. Each summary is built
+     * under its session's lock.
+     */
+    public PageResponse<GameSessionSummaryResponse> listSessions(
+            boolean includeFinished,
+            int page,
+            int size
+    ) {
+        List<GameSessionSummaryResponse> matching = sessions.values()
+                .stream()
+                .map(session -> {
+                    synchronized (session) {
+                        return GameSessionSummaryResponse.from(session);
+                    }
+                })
+                .filter(summary -> summary.state() != GameSessionState.CLOSED)
+                .filter(summary -> includeFinished || summary.state() != GameSessionState.FINISHED_GAME)
+                .sorted(Comparator.comparing(GameSessionSummaryResponse::createdAt)
+                        .reversed()
+                        .thenComparing(GameSessionSummaryResponse::id))
+                .toList();
+
+        int from = (int) Math.min((long) page * size, matching.size());
+        int to = Math.min(from + size, matching.size());
+
+        return new PageResponse<>(
+                matching.subList(from, to),
+                page,
+                size,
+                matching.size(),
+                (matching.size() + size - 1) / size
+        );
     }
 
     public GameSession getSession(UUID sessionId) {
@@ -69,8 +137,10 @@ public class GameSessionService {
         }
     }
 
+    /** Forgets a session at once, without a broadcast. */
     public void removeSession(UUID sessionId) {
         timer.cancel(sessionId);
+        timer.cancelCleanup(sessionId);
 
         GameSession session = sessions.remove(sessionId);
 
@@ -90,6 +160,11 @@ public class GameSessionService {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
+            // Closed while this request waited for the lock.
+            if (session.getState() == GameSessionState.CLOSED) {
+                throw new GameSessionNotFoundException(sessionId);
+            }
+
             GameSessionPlayer player = session.addPlayer(playerName);
             playerTokens.register(
                     player.getToken(),
@@ -105,6 +180,83 @@ public class GameSessionService {
     /** The player a token belongs to, or empty if it's unknown (or null). */
     public Optional<PlayerPrincipal> findPlayerByToken(String token) {
         return playerTokens.find(token);
+    }
+
+    /**
+     * The host changes the phase durations before the game starts. Any
+     * duration the request leaves out keeps its current value. There is no
+     * timer to re-arm, since the lobby has none.
+     */
+    public void updateTimers(
+            UUID sessionId,
+            Long playerId,
+            SessionTimersRequest request
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            session.updateTimeouts(playerId, request.applyTo(session.getTimeouts()));
+
+            broadcast(session);
+        }
+    }
+
+    public void leave(
+            UUID sessionId,
+            Long playerId
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            GameSessionState before = session.getState();
+            GameSessionPlayer player = session.leave(playerId);
+
+            afterDeparture(session, player, before, LEFT_MESSAGE);
+        }
+    }
+
+    public void kick(
+            UUID sessionId,
+            Long hostId,
+            Long playerId
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            GameSessionState before = session.getState();
+            GameSessionPlayer player = session.kick(hostId, playerId);
+
+            afterDeparture(session, player, before, KICKED_MESSAGE);
+        }
+    }
+
+    /**
+     * The player's token stops working at once and their open connections
+     * are closed, so a client that reconnects is rejected like any unknown
+     * token. If nobody active is left, the session is closed.
+     */
+    private void afterDeparture(
+            GameSession session,
+            GameSessionPlayer player,
+            GameSessionState before,
+            String message
+    ) {
+        playerTokens.unregister(player.getToken());
+
+        if (session.getActivePlayers().isEmpty()) {
+            closeSession(session, SessionCloseReason.ABANDONED);
+        } else {
+            // A departure usually leaves the state alone, and re-arming the
+            // timer then would restart the phase. It changes it when the last
+            // player who could still buzz leaves.
+            if (session.getState() != before) {
+                scheduleTimeout(session);
+            }
+
+            broadcast(session);
+        }
+
+        connections.close(new PlayerPrincipal(session.getId(), player.getId()), message);
     }
 
     public void startGame(
@@ -348,6 +500,70 @@ public class GameSessionService {
     private void broadcast(GameSession session) {
         session.incrementVersion();
         broadcaster.broadcast(session);
+        scheduleCleanup(session);
+    }
+
+    /**
+     * Arms the session's cleanup timer after every change: a lobby or a
+     * finished game is removed once it has gone without changes for its
+     * timeout. A game in progress always moves on by itself, so it has none.
+     * Called with the session's lock held.
+     */
+    private void scheduleCleanup(GameSession session) {
+        UUID sessionId = session.getId();
+
+        Duration timeout = switch (session.getState()) {
+            case WAITING_FOR_START -> IDLE_LOBBY_TIMEOUT;
+            case FINISHED_GAME -> FINISHED_SESSION_TIMEOUT;
+            default -> null;
+        };
+
+        if (timeout == null) {
+            timer.cancelCleanup(sessionId);
+            return;
+        }
+
+        long version = session.getVersion();
+        timer.scheduleCleanup(sessionId, timeout, () -> expireSession(sessionId, version));
+    }
+
+    // A stale cleanup (the session changed since it was armed) is a no-op.
+    private void expireSession(UUID sessionId, long version) {
+        GameSession session = sessions.get(sessionId);
+
+        if (session == null) {
+            return;
+        }
+
+        synchronized (session) {
+            if (session.getVersion() != version) {
+                return;
+            }
+
+            switch (session.getState()) {
+                case WAITING_FOR_START -> closeSession(session, SessionCloseReason.IDLE);
+                case FINISHED_GAME -> closeSession(session, SessionCloseReason.FINISHED);
+                default -> {
+                }
+            }
+        }
+    }
+
+    /**
+     * Sends a last broadcast with state CLOSED, then forgets the session and
+     * every token in it. Connections stay open so clients can show the
+     * closed session; a reconnect is rejected because the token is gone, and
+     * GET /api/game-sessions/{id} returns 404. Called with the lock held.
+     */
+    private void closeSession(GameSession session, SessionCloseReason reason) {
+        UUID sessionId = session.getId();
+
+        timer.cancel(sessionId);
+        session.close(reason);
+        broadcast(session);
+
+        sessions.remove(sessionId);
+        session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
     }
 
     private void scheduleTimeout(GameSession session) {
@@ -393,8 +609,8 @@ public class GameSessionService {
                     timeouts.finalJeopardyReveal(),
                     () -> finishFinalJeopardyReveal(sessionId)
             );
-            // No timeout for this state.
-            case WAITING_FOR_START, FINISHED_GAME -> null;
+            // No timeout for these states.
+            case WAITING_FOR_START, FINISHED_GAME, CLOSED -> null;
         };
 
         if (timeout == null) {

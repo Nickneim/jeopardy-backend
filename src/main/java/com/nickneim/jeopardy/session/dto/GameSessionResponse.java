@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.dto;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCloseReason;
 
 import java.time.Duration;
 import java.util.List;
@@ -14,9 +15,12 @@ public record GameSessionResponse(
         long version,
         GameRound round,
         GameSessionState state,
+        SessionCloseReason closeReason,
         Long phaseDurationMs,
         Long phaseRemainingMs,
+        SessionTimersResponse timers,
         List<PlayerResponse> players,
+        Long hostPlayerId,
         Long playerChoosingClue,
         Long playerAnswering,
         Set<Long> playersLockedOut,
@@ -43,11 +47,14 @@ public record GameSessionResponse(
                 session.getVersion(),
                 session.getRound(),
                 session.getState(),
+                session.getCloseReason(),
                 phaseDuration == null ? null : phaseDuration.toMillis(),
                 phaseRemaining == null ? null : phaseRemaining.toMillis(),
+                SessionTimersResponse.from(session.getTimeouts()),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)
                         .toList(),
+                session.getHostPlayerId(),
                 session.getPlayerChoosingClue(),
                 session.getPlayerAnswering(),
                 session.getPlayersLockedOut(),

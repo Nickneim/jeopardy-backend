@@ -8,17 +8,27 @@ import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 public class GameSession {
 
     private final UUID id;
     private final GameBoard board;
+    private final Instant createdAt;
+    // Every player still in the session, in join order. A player who left
+    // while holding a role stays here, marked as leaving, until the role ends.
     private final List<GameSessionPlayer> players = new ArrayList<>();
-    private final GameSessionTimeouts timeouts;
+    private GameSessionTimeouts timeouts;
+
+    // Ids are never reused, so a removed player's id can't come back as
+    // someone else's.
+    private long nextPlayerId = 1;
+    private Long hostPlayerId;
 
     private GameRound round;
     private GameSessionState state;
+    private SessionCloseReason closeReason;
     private long version;
 
     // The timer of the current phase, set by GameSessionService whenever it
@@ -44,9 +54,14 @@ public class GameSession {
     private final Map<Long, String> finalJeopardyAnswers = new HashMap<>();
 
     public GameSession(UUID id, GameBoard board) {
+        this(id, board, GameSessionTimeouts.defaults(), Instant.now());
+    }
+
+    public GameSession(UUID id, GameBoard board, GameSessionTimeouts timeouts, Instant createdAt) {
         this.id = id;
         this.board = board;
-        this.timeouts = GameSessionTimeouts.defaults();
+        this.timeouts = timeouts;
+        this.createdAt = createdAt;
         this.round = board.getFirstRound();
         this.state = GameSessionState.WAITING_FOR_START;
     }
@@ -59,8 +74,25 @@ public class GameSession {
         return board;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    /** Every player in the session, including those waiting to be removed. */
     public List<GameSessionPlayer> getPlayers() {
         return List.copyOf(players);
+    }
+
+    /** Players who haven't left. */
+    public List<GameSessionPlayer> getActivePlayers() {
+        return players.stream()
+                .filter(player -> !player.isLeaving())
+                .toList();
+    }
+
+    /** The host, or null while nobody has joined. */
+    public Long getHostPlayerId() {
+        return hostPlayerId;
     }
 
     public GameSessionTimeouts getTimeouts() { return timeouts; }
@@ -71,6 +103,11 @@ public class GameSession {
 
     public GameSessionState getState() {
         return state;
+    }
+
+    /** Why the session was closed, or null while it's open. */
+    public SessionCloseReason getCloseReason() {
+        return closeReason;
     }
 
     public Long getPlayerChoosingClue() {
@@ -141,24 +178,26 @@ public class GameSession {
         };
     }
 
+    /** Adds a player with a given id. The first player to join becomes the host. */
     public void addPlayer(GameSessionPlayer player) {
         players.add(player);
+        nextPlayerId = Math.max(nextPlayerId, player.getId() + 1);
+
+        if (hostPlayerId == null) {
+            hostPlayerId = player.getId();
+        }
     }
 
     /**
-     * Adds a new player numbered after the highest id in this session
-     * (1, 2, 3, ...). Small ids are safe as JavaScript numbers; they are
-     * only unique within the session, which is fine because a player is
-     * always identified by their session and token, never their id alone.
+     * Adds a new player numbered after every id this session has handed out
+     * (1, 2, 3, ...), including players who have since left. Small ids are
+     * safe as JavaScript numbers; they are only unique within the session,
+     * which is fine because a player is always identified by their session
+     * and token, never their id alone.
      */
     public GameSessionPlayer addPlayer(String name) {
-        long nextId = players.stream()
-                .mapToLong(GameSessionPlayer::getId)
-                .max()
-                .orElse(0) + 1;
-
-        GameSessionPlayer player = new GameSessionPlayer(nextId, name);
-        players.add(player);
+        GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name);
+        addPlayer(player);
 
         return player;
     }
@@ -203,15 +242,142 @@ public class GameSession {
         return Duration.ofNanos(Math.max(0, phaseDeadlineNanos - nowNanos));
     }
 
+    // -------------------------------------------------------------------------
+    // Lobby: host, timers, leaving
+    // -------------------------------------------------------------------------
+
+    /** Only the host can change the timers, and only before the game starts. */
+    public void updateTimeouts(Long playerId, GameSessionTimeouts newTimeouts) {
+        requireActivePlayer(playerId);
+        requireHost(playerId, "Only the host can change the timers!");
+
+        if (state != GameSessionState.WAITING_FOR_START) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Timers can only be changed before the game starts!");
+        }
+
+        timeouts = newTimeouts;
+    }
+
+    /**
+     * The player leaves the session. They can't act any more, but see
+     * {@link #removeDepartedPlayers()} for when they disappear.
+     *
+     * @return the player who left, so the caller can revoke their token
+     */
+    public GameSessionPlayer leave(Long playerId) {
+        requireOpen();
+        GameSessionPlayer player = requireActivePlayer(playerId);
+
+        depart(player);
+
+        return player;
+    }
+
+    /**
+     * The host removes another player. It works exactly like that player
+     * leaving.
+     *
+     * @return the kicked player, so the caller can revoke their token
+     */
+    public GameSessionPlayer kick(Long hostId, Long playerId) {
+        requireOpen();
+        requireActivePlayer(hostId);
+        requireHost(hostId, "Only the host can kick players!");
+
+        if (hostId.equals(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_REQUEST, "You can't kick yourself. Leave the session instead!");
+        }
+
+        GameSessionPlayer player = getActivePlayer(playerId);
+        if (player == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_FOUND, "That player isn't in this session!");
+        }
+
+        depart(player);
+
+        return player;
+    }
+
+    private void depart(GameSessionPlayer player) {
+        player.markLeaving();
+
+        // The host is always the active player with the lowest id.
+        if (player.getId().equals(hostPlayerId)) {
+            hostPlayerId = getActivePlayers()
+                    .stream()
+                    .map(GameSessionPlayer::getId)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+        }
+
+        // If everyone still playing has already buzzed, nobody can buzz any
+        // more, just as after the last wrong answer.
+        if (state == GameSessionState.WAITING_FOR_BUZZER && haveAllActivePlayersBuzzed()) {
+            startRevealingAnswer();
+        }
+
+        removeDepartedPlayers();
+    }
+
+    /** Ends the session for good. Nothing can happen in it afterwards. */
+    public void close(SessionCloseReason reason) {
+        state = GameSessionState.CLOSED;
+        closeReason = reason;
+        clearPhaseTimer();
+    }
+
+    /**
+     * Removes every player who has left and no longer holds a role. A player
+     * who leaves while choosing or answering keeps that role (the timers act
+     * for them) until it passes to someone else, so the game never has a
+     * missing chooser or answerer. Removing a player removes every trace of
+     * them, so each player id in a response belongs to someone in it.
+     */
+    private void removeDepartedPlayers() {
+        List<GameSessionPlayer> departed = players.stream()
+                .filter(GameSessionPlayer::isLeaving)
+                .filter(player -> !holdsRole(player.getId()))
+                .toList();
+
+        for (GameSessionPlayer player : departed) {
+            Long playerId = player.getId();
+
+            players.remove(player);
+            playersAlreadyBuzzed.remove(playerId);
+            clueAnswers.removeIf(answer -> answer.playerId().equals(playerId));
+            finalJeopardyWagers.remove(playerId);
+            finalJeopardyAnswers.remove(playerId);
+
+            // Only possible once the rounds with a chooser are over.
+            if (playerId.equals(playerChoosingClue)) {
+                playerChoosingClue = null;
+            }
+        }
+    }
+
+    // Choosing and answering are the only roles, and only in the clue rounds.
+    private boolean holdsRole(Long playerId) {
+        return switch (state) {
+            case CHOOSING_CLUE, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE,
+                 WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, REVEALING_ANSWER ->
+                    playerId.equals(playerChoosingClue) || playerId.equals(getPlayerAnswering());
+            default -> false;
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // Clue rounds
+    // -------------------------------------------------------------------------
+
     public void startGame(Long playerId) {
         if (!state.equals(GameSessionState.WAITING_FOR_START)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Game has already started!");
         }
-        if (getPlayer(playerId) == null) {
-            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
-        }
+        requireActivePlayer(playerId);
+        requireHost(playerId, "Only the host can start the game!");
 
-        playerChoosingClue = players.getFirst().getId();
+        // The host is the first player to join who is still here.
+        playerChoosingClue = hostPlayerId;
         enterRound(board.getFirstRound());
     }
 
@@ -229,6 +395,7 @@ public class GameSession {
         if (!state.equals(GameSessionState.CHOOSING_CLUE)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't choose a clue right now!");
         }
+        requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't choose a clue right now!");
         }
@@ -239,12 +406,16 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.CLUE_ALREADY_PLAYED, "That clue was already chosen!");
         }
 
+        playClue(clueId);
+    }
+
+    private void playClue(Long clueId) {
         chosenClueId = clueId;
         playedClues.add(clueId);
         clueAnswers.clear();
         if (board.isDailyDouble(clueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
-            playerWhoBuzzed = playerId;
+            playerWhoBuzzed = playerChoosingClue;
             startWaitingForDailyDoubleWager();
         } else {
             startRevealingClue();
@@ -258,6 +429,10 @@ public class GameSession {
      * This keeps a game moving even if the chooser has left.
      */
     public void timeoutChoosingClue() {
+        if (state != GameSessionState.CHOOSING_CLUE) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "No clue is being chosen right now!");
+        }
+
         Set<Long> available = getAvailableClues();
 
         BoardClue clue = board.getRound(round)
@@ -269,7 +444,7 @@ public class GameSession {
                 .findFirst()
                 .orElseThrow();
 
-        chooseClue(playerChoosingClue, clue.id());
+        playClue(clue.id());
     }
 
     private void startWaitingForDailyDoubleWager() {
@@ -280,6 +455,7 @@ public class GameSession {
         if (!state.equals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager a bet right now!");
         }
+        requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
         }
@@ -321,11 +497,9 @@ public class GameSession {
         if (!state.equals(GameSessionState.WAITING_FOR_BUZZER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't buzz right now!");
         }
+        requireActivePlayer(playerId);
         if (playersAlreadyBuzzed.contains(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You already buzzed!");
-        }
-        if (players.stream().noneMatch(player -> player.getId().equals(playerId))) {
-            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
         }
         playerWhoBuzzed = playerId;
         playersAlreadyBuzzed.add(playerId);
@@ -346,6 +520,10 @@ public class GameSession {
                 this::enterRound,
                 () -> state = GameSessionState.FINISHED_GAME
         );
+
+        // Final Jeopardy and the end of the game have no chooser, so a
+        // chooser who left is removed now.
+        removeDepartedPlayers();
     }
 
     // -------------------------------------------------------------------------
@@ -373,10 +551,7 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager on Final Jeopardy right now!");
         }
 
-        GameSessionPlayer player = getPlayer(playerId);
-        if (player == null) {
-            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
-        }
+        GameSessionPlayer player = requireActivePlayer(playerId);
 
         int maximumWager = Math.max(0, player.getScore());
         if (wager < 0 || wager > maximumWager) {
@@ -400,9 +575,7 @@ public class GameSession {
         if (state != GameSessionState.FINAL_JEOPARDY_ANSWERING) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer Final Jeopardy right now!");
         }
-        if (getPlayer(playerId) == null) {
-            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
-        }
+        requireActivePlayer(playerId);
 
         finalJeopardyAnswers.put(playerId, answer);
     }
@@ -474,30 +647,69 @@ public class GameSession {
         if (board.isDailyDouble(chosenClueId)) {
             player.addScore(-player.getWager());
             startRevealingAnswer();
-            return;
+        } else {
+            BoardClue clue = board.getClue(chosenClueId);
+            player.addScore(-clue.value());
+            if (haveAllActivePlayersBuzzed()) {
+                startRevealingAnswer();
+            } else {
+                startWaitingForBuzzer();
+            }
         }
 
-        BoardClue clue = board.getClue(chosenClueId);
-        player.addScore(-clue.value());
-        if (players.size() == playersAlreadyBuzzed.size()) {
-            startRevealingAnswer();
-        } else {
-            startWaitingForBuzzer();
-        }
+        // The answerer's turn is over, so they're removed if they left.
+        removeDepartedPlayers();
     }
 
     private boolean isCorrectAnswer(BoardClue clue, String answer) {
         return clue.answer().equals(answer);
     }
 
+    // Players who have left can't buzz, so they don't count.
+    private boolean haveAllActivePlayersBuzzed() {
+        return getActivePlayers()
+                .stream()
+                .allMatch(player -> playersAlreadyBuzzed.contains(player.getId()));
+    }
+
     private GameSessionPlayer getPlayer(Long playerId) {
         return players.stream().filter(player -> player.getId().equals(playerId)).findFirst().orElse(null);
+    }
+
+    private GameSessionPlayer getActivePlayer(Long playerId) {
+        GameSessionPlayer player = getPlayer(playerId);
+
+        return player == null || player.isLeaving() ? null : player;
+    }
+
+    /** A player who left (or never joined) can't act, even if they still hold a role. */
+    private GameSessionPlayer requireActivePlayer(Long playerId) {
+        GameSessionPlayer player = getActivePlayer(playerId);
+
+        if (player == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
+        }
+
+        return player;
+    }
+
+    private void requireHost(Long playerId, String message) {
+        if (!playerId.equals(hostPlayerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_HOST, message);
+        }
+    }
+
+    private void requireOpen() {
+        if (state == GameSessionState.CLOSED) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "This session has ended!");
+        }
     }
 
     public void answerClue(Long playerId, String answer) {
         if (!state.equals(GameSessionState.WAITING_FOR_ANSWER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
+        requireActivePlayer(playerId);
 
         BoardClue clue = board.getClue(chosenClueId);
         int clueValue;
@@ -525,12 +737,15 @@ public class GameSession {
             player.addScore(-clueValue);
             if (board.isDailyDouble(chosenClueId)) {
                 startRevealingAnswer();
-            } else if (players.size() == playersAlreadyBuzzed.size()) {
+            } else if (haveAllActivePlayersBuzzed()) {
                 startRevealingAnswer();
             } else {
                 startWaitingForBuzzer();
             }
         }
+
+        // A correct answer takes control of the board from a chooser who left.
+        removeDepartedPlayers();
     }
 
 }

@@ -123,6 +123,43 @@ public class GameSessionWebSocketController {
         );
     }
 
+    @MessageMapping("/sessions/{sessionId}/update-timers")
+    public void updateTimers(
+            @DestinationVariable UUID sessionId,
+            @Valid SessionTimersRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.updateTimers(
+                sessionId,
+                playerId(sessionId, headers),
+                request
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/leave")
+    public void leave(
+            @DestinationVariable UUID sessionId,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.leave(
+                sessionId,
+                playerId(sessionId, headers)
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/kick")
+    public void kick(
+            @DestinationVariable UUID sessionId,
+            @Valid KickPlayerRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.kick(
+                sessionId,
+                playerId(sessionId, headers),
+                request.playerId()
+        );
+    }
+
     /**
      * The id of the player on this connection, checked against the session
      * the action is for. An anonymous connection (no token) can only watch.

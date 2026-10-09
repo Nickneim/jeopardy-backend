@@ -17,7 +17,11 @@ public class GameSessionTimer {
     private final ScheduledExecutorService scheduler =
             Executors.newScheduledThreadPool(4);
 
+    // Each session has one phase timer and, separately, one cleanup timer
+    // that removes the session once it has been idle for too long.
     private final Map<UUID, ScheduledFuture<?>> timers =
+            new ConcurrentHashMap<>();
+    private final Map<UUID, ScheduledFuture<?>> cleanupTimers =
             new ConcurrentHashMap<>();
 
     public void schedule(
@@ -25,7 +29,32 @@ public class GameSessionTimer {
             Duration delay,
             Runnable action
     ) {
-        cancel(sessionId);
+        schedule(timers, sessionId, delay, action);
+    }
+
+    public void cancel(UUID sessionId) {
+        cancel(timers, sessionId);
+    }
+
+    public void scheduleCleanup(
+            UUID sessionId,
+            Duration delay,
+            Runnable action
+    ) {
+        schedule(cleanupTimers, sessionId, delay, action);
+    }
+
+    public void cancelCleanup(UUID sessionId) {
+        cancel(cleanupTimers, sessionId);
+    }
+
+    private void schedule(
+            Map<UUID, ScheduledFuture<?>> timers,
+            UUID sessionId,
+            Duration delay,
+            Runnable action
+    ) {
+        cancel(timers, sessionId);
 
         ScheduledFuture<?> future = scheduler.schedule(
                 action,
@@ -36,7 +65,7 @@ public class GameSessionTimer {
         timers.put(sessionId, future);
     }
 
-    public void cancel(UUID sessionId) {
+    private void cancel(Map<UUID, ScheduledFuture<?>> timers, UUID sessionId) {
         ScheduledFuture<?> future = timers.remove(sessionId);
 
         if (future != null) {

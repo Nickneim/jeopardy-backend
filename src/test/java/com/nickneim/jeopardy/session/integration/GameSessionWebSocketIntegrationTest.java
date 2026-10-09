@@ -15,9 +15,12 @@ import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
+import com.nickneim.jeopardy.session.dto.PlayerResponse;
+import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.AfterEach;
@@ -47,6 +50,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1389,6 +1393,151 @@ class GameSessionWebSocketIntegrationTest {
                 "INVALID_REQUEST",
                 error.code()
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Host, timers, leaving and kicking
+    // -------------------------------------------------------------------------
+
+    @Test
+    void onlyTheHostCanStart()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer other =
+                gameSessionService.joinSession(session.getId(), "John");
+
+        StompSession stompSession = connect(other.getToken());
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        startGame(stompSession, session.getId());
+
+        assertEquals("NOT_HOST", awaitError(errors).code());
+        assertEquals(GameSessionState.WAITING_FOR_START, session.getState());
+    }
+
+    @Test
+    void hostUpdatingTimers_broadcastsThem()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(stompSession, session.getId());
+        subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-timers",
+                Map.of("buzzerMs", 4000)
+        );
+
+        GameSessionResponse response = awaitMessage(messages);
+
+        assertEquals(4000, response.timers().buzzerMs());
+        assertEquals(30000, response.timers().clueChoiceMs());
+    }
+
+    @Test
+    void timersOutsideTheBounds_areRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-timers",
+                Map.of("buzzerMs", 10)
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals("buzzerMs must be between 1000 and 300000", error.message());
+    }
+
+    @Test
+    void leaving_removesThePlayerAndPassesOnTheHost()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer other =
+                gameSessionService.joinSession(session.getId(), "John");
+
+        StompSession host = connect(tokenOf(session));
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(connect(), session.getId());
+
+        host.send("/app/sessions/" + session.getId() + "/leave", Map.of());
+
+        GameSessionResponse response = awaitMessage(messages);
+
+        assertEquals(List.of(other.getId()), response.players().stream().map(PlayerResponse::id).toList());
+        assertEquals(other.getId(), response.hostPlayerId());
+        awaitDisconnected(host);
+    }
+
+    @Test
+    void kickedPlayer_isDisconnectedAndTheirTokenIsRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer other =
+                gameSessionService.joinSession(session.getId(), "John");
+
+        StompSession host = connect(tokenOf(session));
+        StompSession kicked = connect(other.getToken());
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(host, session.getId());
+        subscribeToErrors(host);
+
+        host.send(
+                "/app/sessions/" + session.getId() + "/kick",
+                Map.of("playerId", other.getId())
+        );
+
+        GameSessionResponse response = awaitMessage(messages);
+
+        assertEquals(1, response.players().size());
+        awaitDisconnected(kicked);
+        assertThrows(ExecutionException.class, () -> connect(other.getToken()));
+        assertTrue(host.isConnected());
+    }
+
+    @Test
+    void lastPlayerLeaving_closesTheSession()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        String token = tokenOf(session);
+
+        StompSession player = connect(token);
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(connect(), session.getId());
+
+        player.send("/app/sessions/" + session.getId() + "/leave", Map.of());
+
+        GameSessionResponse response = awaitMessage(messages);
+
+        assertEquals(GameSessionState.CLOSED, response.state());
+        assertEquals(SessionCloseReason.ABANDONED, response.closeReason());
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertThrows(ExecutionException.class, () -> connect(token));
+    }
+
+    // The server closes a connection by sending an ERROR frame.
+    private void awaitDisconnected(StompSession stompSession) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+
+        while (stompSession.isConnected() && System.nanoTime() < deadline) {
+            Thread.sleep(20);
+        }
+
+        assertFalse(stompSession.isConnected());
     }
 
     // -------------------------------------------------------------------------

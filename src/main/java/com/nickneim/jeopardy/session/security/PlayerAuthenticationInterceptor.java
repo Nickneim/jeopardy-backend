@@ -1,13 +1,10 @@
 package com.nickneim.jeopardy.session.security;
 
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +25,9 @@ import org.springframework.stereotype.Component;
  * exceptions from inbound interceptors, so no ERROR frame would reach the
  * client. Instead this sends the ERROR frame itself, which also makes Spring
  * close the connection, and drops the CONNECT.
+ *
+ * It also records each player's connections in {@link PlayerConnections}, so
+ * they can be closed when the player leaves.
  */
 @Component
 public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
@@ -37,16 +37,14 @@ public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
     static final String UNKNOWN_TOKEN_MESSAGE = "Unknown player token";
 
     private final PlayerTokenRegistry playerTokens;
-    private final MessageChannel clientOutboundChannel;
+    private final PlayerConnections connections;
 
-    // The outbound channel is lazy because the broker configuration that
-    // creates it also registers this interceptor.
     public PlayerAuthenticationInterceptor(
             PlayerTokenRegistry playerTokens,
-            @Lazy @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel
+            PlayerConnections connections
     ) {
         this.playerTokens = playerTokens;
-        this.clientOutboundChannel = clientOutboundChannel;
+        this.connections = connections;
     }
 
     @Override
@@ -54,7 +52,18 @@ public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor =
                 MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor == null || accessor.getCommand() != StompCommand.CONNECT) {
+        if (accessor == null) {
+            return message;
+        }
+
+        // Spring sends a DISCONNECT for every connection that ends, even
+        // when the client just went away.
+        if (accessor.getCommand() == StompCommand.DISCONNECT) {
+            connections.disconnected(accessor.getSessionId());
+            return message;
+        }
+
+        if (accessor.getCommand() != StompCommand.CONNECT) {
             return message;
         }
 
@@ -66,24 +75,15 @@ public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
 
         PlayerPrincipal player = playerTokens.find(token).orElse(null);
 
+        // Never include the token in the error: it could end up in logs.
         if (player == null) {
-            reject(accessor.getSessionId());
+            connections.sendError(accessor.getSessionId(), UNKNOWN_TOKEN_MESSAGE);
             return null;
         }
 
         accessor.setUser(player);
+        connections.connected(accessor.getSessionId(), player);
 
         return message;
-    }
-
-    // Never include the token in the error: it could end up in logs.
-    private void reject(String sessionId) {
-        StompHeaderAccessor error = StompHeaderAccessor.create(StompCommand.ERROR);
-        error.setMessage(UNKNOWN_TOKEN_MESSAGE);
-        error.setSessionId(sessionId);
-
-        clientOutboundChannel.send(
-                MessageBuilder.createMessage(new byte[0], error.getMessageHeaders())
-        );
     }
 }

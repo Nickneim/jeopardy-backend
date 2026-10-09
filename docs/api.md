@@ -18,13 +18,14 @@ The contract between this backend and the React frontend. It covers the REST API
 ## 2. How a multiplayer game works
 
 ```
-1. POST /api/game-sessions                    { gameId }       → { id }               (create)
-2. POST /api/game-sessions/{id}/players       { playerName }   → { playerId, token }  (join)
+0. GET  /api/game-sessions                                     → open sessions      (lobby list)
+1. POST /api/game-sessions                    { gameId, timers? } → { id }            (create)
+2. POST /api/game-sessions/{id}/players       { playerName }   → { playerId, token }  (join; the first player is the host)
 3. STOMP CONNECT ws://localhost:8080/ws       header  player-token: <token>
 4. SUBSCRIBE /topic/sessions/{id}             ← full game state after every change
    SUBSCRIBE /user/queue/errors               ← errors caused by your own actions
 5. GET  /api/game-sessions/{id}                                → current state      (catch up)
-6. SEND /app/sessions/{id}/start | choose-clue | buzz | answer | ...
+6. SEND /app/sessions/{id}/start | choose-clue | buzz | answer | ... | leave
 ```
 
 Key ideas:
@@ -33,7 +34,10 @@ Key ideas:
 - **Catching up after connecting.** Subscribe first, then fetch `GET /api/game-sessions/{id}`. Every response carries a `version` that goes up with each change, so whether the fetch result or a broadcast arrives first, **keep whichever has the higher `version`** and ignore the other. Use the same approach after a refresh or reconnect.
 - **Who you are comes from your connection, not your messages.** You prove your identity once, with your token, when you connect. Action payloads never contain a player id, so a player can't act as someone else.
 - **Anyone can watch.** A connection without a token can subscribe to a session's topic but can't act.
-- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. See §6.3.
+- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set before the start (`timers`, §6.3).
+- **The host runs the lobby.** The first player to join is the host (`hostPlayerId`). Only the host can start the game, change the timers and kick players. If the host leaves, the next player takes over (§6.4).
+- **Leaving is explicit.** Closing the tab or losing the connection is *not* leaving: the player stays in the game and can reconnect with their token. Only the `leave` action (or being kicked) removes a player, and it makes their token stop working (§6.4).
+- **Sessions don't live forever.** Idle lobbies, finished games and sessions everyone has left are removed from memory (§6.5).
 
 ---
 
@@ -93,32 +97,64 @@ One clue. Response: `ClueResponse`, whose `gameId` is the game it belongs to (fo
 
 ### 3.2 Game sessions
 
+#### `GET /api/game-sessions`
+
+The sessions in memory, for a lobby page where players pick a game to join or watch. No token is needed: entries never contain tokens or anything else secret.
+
+| Query param | Default | Rules |
+|---|---|---|
+| `page` | `0` | ≥ 0 (0-based) |
+| `size` | `20` | 1–100 |
+| `includeFinished` | `false` | `true` also lists sessions in `FINISHED_GAME` (they stay in memory for 10 minutes, §6.5) |
+
+- **Filtering:** by default every session that hasn't finished: lobbies (`WAITING_FOR_START`) and games in progress. Closed sessions are never listed, because they're already gone.
+- **Order:** newest first by `createdAt`, then by `id`.
+- Response: `PageResponse<GameSessionSummaryResponse>` (the same page shape as `GET /api/games`):
+
+| Field | Meaning |
+|---|---|
+| `id` | Session id |
+| `gameId` | The stored game it was created from (`null` for a board that isn't in the database; there are none yet) |
+| `gameTitle` | That game's title (`null` if it has none) |
+| `state` | The session's `GameSessionState` (§6). Use it to show "waiting for players" vs "in progress". |
+| `round` | The round being played, or about to be |
+| `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
+| `hostName` | The host's name, or `null` before anyone has joined |
+| `createdAt` | When the session was created, an ISO-8601 UTC timestamp such as `"2026-10-09T12:30:00Z"` |
+
+The list is a snapshot: a session can start, fill up or close right after. Anyone can join any listed session (§3.2, join), including one in progress.
+
+Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
+
 #### `POST /api/game-sessions`
 
-Creates a live session from a stored game.
+Creates a live session from a stored game. Nobody is in it yet: the creator should join next, which makes them the host.
 
-- Request: `{ "gameId": 123 }`
+- Request: `{ "gameId": 123, "timers": { "buzzerMs": 8000 } }`. `timers` is optional, and so is every field in it: any duration left out keeps its default (§6.3).
 - `201 { "id": "8f6c…-uuid" }`
 - Unknown game: 404.
 - Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
+- A duration outside 1000–300000 ms: `400` naming each one, for example `{ "status": 400, "message": "timers.buzzerMs must be between 1000 and 300000" }`.
+- A session nobody joins is removed after 30 minutes (§6.5).
 
 #### `GET /api/game-sessions/{sessionId}`
 
-The session's current state: the same `GameSessionResponse` as the latest broadcast, including its `version`. Use it to catch up after connecting, refreshing or reconnecting (§2). No token is needed, because the state never contains secrets. Unknown session: 404.
+The session's current state: the same `GameSessionResponse` as the latest broadcast, including its `version`. Use it to catch up after connecting, refreshing or reconnecting (§2). No token is needed, because the state never contains secrets. Unknown session: 404. That includes a session that has been removed (§6.5): treat a 404 as "this session no longer exists".
 
 #### `POST /api/game-sessions/{sessionId}/players`
 
 Joins a session.
 
 - Request: `{ "playerName": "Nico" }` (must not be blank)
-- `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session.
-- Unknown session: `404 { "status": 404, "message": "Game session not found: <id>" }`
+- `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
+- The first player to join becomes the host (§6.4).
+- Unknown (or removed) session: `404 { "status": 404, "message": "Game session not found: <id>" }`
 - Missing or blank name: `400 { "status": 400, "message": "playerName must not be blank" }`
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 
-Players can currently join at any time, including mid-game.
+Players can join at any time, including mid-game (with a score of 0). Someone who left can join again the same way, under any name (even the same one): they become a new player with a new id, token and a score of 0, and nothing from their old self carries over.
 
 ---
 
@@ -129,8 +165,10 @@ Players can currently join at any time, including mid-game.
 - URL: `ws://localhost:8080/ws`. It's a **plain WebSocket, not SockJS**, so use a client such as [`@stomp/stompjs`](https://github.com/stomp-js/stompjs).
 - To play, send the token in the CONNECT frame header `player-token`.
 - With no token you get an anonymous connection that can only watch.
-- An unknown or invalid token **rejects the connection** with a STOMP ERROR frame. A token stops working when its session is removed.
-- Reconnecting with the same token restores the same player.
+- An unknown or invalid token **rejects the connection** with a STOMP ERROR frame (message `"Unknown player token"`) before CONNECT completes. A token stops working when its player leaves or is kicked (§6.4) and when its session is removed (§6.5). In every case, treat the rejection as "this token is gone": forget it and show the join form.
+- Reconnecting with the same token restores the same player. Dropping the connection doesn't make a player leave.
+- **When a player leaves or is kicked, the server closes their open connections** with a STOMP ERROR frame, *after* CONNECT completed. Its `message` header is `"You left the session"` or `"You were removed from the session by the host"`. A client that then reconnects with the old token is rejected as above, so the usual "token rejected" handling takes them back to the join form. The broadcast that removed them may or may not arrive before the ERROR frame.
+- When a session is removed, connections are **not** closed: everyone receives a last broadcast with `state: "CLOSED"` (§6.5). A reconnect after that is rejected, and `GET /api/game-sessions/{id}` returns 404.
 
 ```ts
 import { Client } from "@stomp/stompjs";
@@ -177,13 +215,18 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 
 | Destination | Body | Allowed when |
 |---|---|---|
-| `start` | none (an empty body or `{}` is fine) | `WAITING_FOR_START`; any joined player can start |
+| `start` | none (an empty body or `{}` is fine) | `WAITING_FOR_START`; **host only** |
+| `update-timers` | `Partial<SessionTimers>`, for example `{ "buzzerMs": 8000 }` (send `{}` at least) | `WAITING_FOR_START`; **host only**. Durations left out keep their current value. Each must be 1000–300000 ms (§6.3). |
+| `kick` | `{ "playerId": number }` | Any state except `CLOSED`; **host only**; not yourself (use `leave`). The kicked player is treated exactly like a player who leaves. |
+| `leave` | none | Any state except `CLOSED` (§6.4) |
 | `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue` |
 | `buzz` | none | `WAITING_FOR_BUZZER`, unless you're in `playersLockedOut` |
 | `answer` | `{ "answer": string }` | `WAITING_FOR_ANSWER`, if you are `playerAnswering` |
 | `place-daily-double-wager` | `{ "wager": number }` | `WAITING_FOR_DAILY_DOUBLE_WAGER`, if you chose the clue |
 | `place-final-jeopardy-wager` | `{ "wager": number }` | `FINAL_JEOPARDY_WAGERING` (can be changed until the phase ends) |
 | `answer-final-jeopardy` | `{ "answer": string }` | `FINAL_JEOPARDY_ANSWERING` (can be changed until the phase ends) |
+
+Every action requires a player who hasn't left. A player who has left can't act at all, even while they still hold a role (§6.4).
 
 A successful action produces a broadcast. A failed one produces an error on `/user/queue/errors` and nothing else.
 
@@ -199,16 +242,21 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `version` | Goes up by one with every change (0 for a new session). Keep the response with the highest version (§2). |
 | `round` | `JEOPARDY` \| `DOUBLE_JEOPARDY` \| `FINAL_JEOPARDY`, the round being played (or about to be, before the start) |
 | `state` | See §6 |
+| `closeReason` | Why the session was removed: `ABANDONED` \| `IDLE` \| `FINISHED` (§6.5). Only set when `state` is `CLOSED`; otherwise `null`. |
 | `phaseDurationMs` | Full length of the current phase in milliseconds, or `null` if the state has no timer (§6.3) |
 | `phaseRemainingMs` | Milliseconds left in the current phase when the server built this response (never negative), or `null` if the state has no timer |
-| `players` | `{ id, name, score }` in join order |
-| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board. |
+| `timers` | The session's configured phase durations in milliseconds (`SessionTimers`, §6.3). Always present, so the lobby can show them. |
+| `players` | `{ id, name, score, leaving }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed (§6.4); show them as leaving. Removed players aren't listed at all. |
+| `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`. |
+| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board. Can be `null` in Final Jeopardy and `FINISHED_GAME` if the last chooser left (§6.4). |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
 | `currentClue` | The clue in play (§5.2), or `null` |
 | `clueAnswers` | Every answer given to the clue in play, or to the last clue played (§5.4). Never `null`; `[]` when there are none. |
 | `finalJeopardy` | Final Jeopardy status (§5.3), or `null` |
+
+**Every player id in a response belongs to someone in `players`** (`hostPlayerId`, `playerChoosingClue`, `playerAnswering`, `playersLockedOut`, `clueAnswers[].playerId`, `finalJeopardy.players[].playerId`). When a player is removed, every trace of them goes with them (§6.4).
 
 ### 5.1 `board`
 
@@ -259,6 +307,8 @@ What players answered on the current ordinary clue or Daily Double, oldest first
 
 An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
 
+The one exception: when a player is removed after leaving (§6.4), their entries are deleted with them.
+
 **Every answer to the clue is kept, not just the latest one.** Clients render from the latest snapshot (§2), so one that missed a broadcast or joined mid-clue still sees that, for example, player 1 answered wrong before player 2 answered right. For "the latest answer", use the last element.
 
 It never contains the stored correct response, which is only sent as `currentClue.answer` in `REVEALING_ANSWER`. A correct answer matches that response exactly (§6.2), so its text is public at the same moment. A wrong answer, however, is shown to everyone while other players can still buzz, as on the TV show.
@@ -291,14 +341,18 @@ REVEALING_ANSWER (3s) ◄──────────────────�
 Final Jeopardy:
 FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
   → FINAL_JEOPARDY_REVEALING (10s) → scores applied → FINISHED_GAME
+
+Any state ──(session removed, §6.5)──► CLOSED   (only in the very last broadcast)
 ```
+
+The durations shown are the defaults; each session can change them (§6.3).
 
 ### 6.2 Rules
 
-- **Start:** the first player to join picks the first clue.
-- **Choosing a clue:** the player in control has 30 s to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser has left.
+- **Start:** only the host can start, and the host picks the first clue.
+- **Choosing a clue:** the player in control has 30 s (by default) to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser has left.
 - **Scoring:** a correct answer adds the clue's value and gives that player control of the board. A wrong answer, or running out of time to answer, subtracts it. Not buzzing costs nothing.
-- **Wrong answers:** the other players who haven't buzzed yet can buzz. When everyone has buzzed, the answer is revealed.
+- **Wrong answers:** the other players who haven't buzzed yet can buzz. When everyone has buzzed, the answer is revealed. "Everyone" means every player who hasn't left: players marked `leaving` can't buzz and aren't waited for. If a player leaves while everyone else still in the game has already buzzed, the answer is revealed at once.
 - **Rounds:** when every clue in a round has been played, the next round starts. Rounds with no clues are skipped. After Double Jeopardy comes Final Jeopardy if the game has one; otherwise the game finishes.
 - **Daily Double:** only the player who chose it plays. Their wager must be between 5 and the larger of their score and the round's highest clue value (normally 1000 in Jeopardy and 2000 in Double Jeopardy). Not wagering in time means a wager of 5. Right or wrong, the wager is added or subtracted, and the chooser keeps control.
 - **Final Jeopardy:**
@@ -308,21 +362,30 @@ FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
   - Scores change only after the reveal.
 - **Answer checking is currently an exact, case-sensitive string match** against the stored answer. Lenient matching is planned (§9).
 
-### 6.3 Timings (server defaults)
+### 6.3 Timings
 
-| Phase | Duration |
-|---|---|
-| Choosing a clue (`CHOOSING_CLUE`) | 30 s |
-| Clue reveal (`REVEALING_CLUE`) | 3 s |
-| Daily Double wager | 30 s |
-| Buzzer (`WAITING_FOR_BUZZER`) | 10 s |
-| Answer (`WAITING_FOR_ANSWER`) | 5 s |
-| Answer reveal (`REVEALING_ANSWER`) | 3 s |
-| Final Jeopardy wagering | 30 s |
-| Final Jeopardy answering | 30 s |
-| Final Jeopardy reveal | 10 s |
+Each session has its own phase durations, sent in every response as `timers`. They start at these defaults:
 
-`WAITING_FOR_START` and `FINISHED_GAME` have no timer.
+| Phase | `timers` field | Default |
+|---|---|---|
+| Choosing a clue (`CHOOSING_CLUE`) | `clueChoiceMs` | 30 s |
+| Clue reveal (`REVEALING_CLUE`) | `clueRevealMs` | 3 s |
+| Daily Double wager (`WAITING_FOR_DAILY_DOUBLE_WAGER`) | `dailyDoubleWagerMs` | 30 s |
+| Buzzer (`WAITING_FOR_BUZZER`) | `buzzerMs` | 10 s |
+| Answer (`WAITING_FOR_ANSWER`) | `answerMs` | 5 s |
+| Answer reveal (`REVEALING_ANSWER`) | `answerRevealMs` | 3 s |
+| Final Jeopardy wagering | `finalJeopardyWagerMs` | 30 s |
+| Final Jeopardy answering | `finalJeopardyAnswerMs` | 30 s |
+| Final Jeopardy reveal | `finalJeopardyRevealMs` | 10 s |
+
+`WAITING_FOR_START`, `FINISHED_GAME` and `CLOSED` have no timer.
+
+**Changing them:**
+
+- When creating the session: the optional `timers` object on `POST /api/game-sessions` (§3.2).
+- In the lobby: the host's `update-timers` action (§4.3), only in `WAITING_FOR_START`. It broadcasts the new `timers`. Once the game has started they're fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`.
+- In both, every field is optional and a field left out keeps its current value.
+- **Bounds:** every duration is a whole number of milliseconds from **1000 (1 s) to 300000 (5 min)**, inclusive. Out of range: `400` with `"timers.<field> must be between 1000 and 300000"` on create, or `INVALID_REQUEST` with `"<field> must be between 1000 and 300000"` on `update-timers` (several invalid fields are joined with `", "`). Nothing changes when any field is invalid.
 
 Every response (broadcast and `GET /api/game-sessions/{id}`) carries the current phase's timing:
 
@@ -331,6 +394,61 @@ Every response (broadcast and `GET /api/game-sessions/{id}`) carries the current
 - Both are `null` in a state without a timer.
 
 They're durations, not timestamps, so the client's clock doesn't need to match the server's. To show a countdown, note your own time when the response arrives (`performance.now()`) and count down from `phaseRemainingMs`. It will end late by the network delay of that response, which is usually small. Final Jeopardy wagers and answers don't restart their phase: their broadcasts show the same deadline with less time left. The phase can end a few milliseconds after the countdown reaches 0, when the next broadcast arrives.
+
+### 6.4 Host, kicking and leaving
+
+**Host**
+
+- The first player to join is the host (`hostPlayerId`). Only the host can `start`, `update-timers` and `kick`; anyone else gets `NOT_HOST`.
+- When the host leaves or is kicked, the remaining player with the **lowest id** who hasn't left becomes host at once, in the same broadcast. (So the host is always the active player with the lowest id.)
+- When nobody is left, the session closes (§6.5).
+
+**Kicking.** The host sends `kick` with another player's id. The kicked player is treated **exactly** like a player who leaves (below). Kicking yourself is rejected with `INVALID_REQUEST` (use `leave`). Kicking an id that isn't an active player in the session, including one who has already left, is rejected with `PLAYER_NOT_FOUND`.
+
+**Leaving.** A player leaves only by sending `leave` (or being kicked). A closed tab or a dropped connection is not leaving: the player keeps their place, the timers act for them, and they can reconnect with their token. There is no grace period after which a disconnected player counts as gone.
+
+As soon as a player leaves:
+
+- **Their token stops working** and their open connections are closed (§4.1). They can't act any more, even in a role they still hold; an action from a stale connection gets `PLAYER_NOT_IN_SESSION`.
+- **The host passes on** if they were the host.
+- **Then they're either removed at once or marked `leaving`:**
+
+| When they leave | What happens |
+|---|---|
+| `WAITING_FOR_START` | Removed at once |
+| During the clue rounds, without a role | Removed at once |
+| While they're `playerChoosingClue` (any clue-round state, including during a clue they chose, a Daily Double, or the reveal) | Stay with `leaving: true` until another player takes control by answering correctly. Until then the timers choose clues and wager for them, and they keep control exactly as an absent chooser would (§6.2). |
+| While they're `playerAnswering` (the buzzer, or the chooser on a Daily Double) | Stay with `leaving: true` until their answer time runs out, which counts as a wrong answer (or a wrong Daily Double). If they're also the chooser, they stay until control passes, as above. |
+| Final Jeopardy (any of its states) | Removed at once. There are no roles in Final Jeopardy. |
+| `FINISHED_GAME` | Removed at once |
+
+A chooser marked `leaving` when the clue rounds end (Final Jeopardy starts, or the game finishes without one) is removed then, and `playerChoosingClue` becomes `null`.
+
+**Score and answers.** While a player is marked `leaving` they stay in `players` and their score still changes: running out of time on an answer subtracts the clue's value (or their Daily Double wager, which the timer sets to 5). When a player is removed, they disappear from the snapshot entirely: from `players` (their score is gone, they don't appear in the final standings), from `clueAnswers` (their answers to the current clue are deleted), from `playersLockedOut`, and from `finalJeopardy.players` (any Final Jeopardy wager or answer is discarded; they aren't scored).
+
+**Buzzing.** `playersLockedOut` only lists players who are still in `players`. A player marked `leaving` can't buzz, and "everyone has buzzed" (§6.2) only counts players who haven't left.
+
+**Rejoining.** Someone who left can join again with `POST /api/game-sessions/{id}/players`, under any name, as a new player (new id, new token, score 0, §3.2).
+
+**The last player.** When the last player who hasn't left leaves (or every remaining player is marked `leaving`), the session is closed at once, even in the lobby (§6.5).
+
+### 6.5 Session cleanup
+
+Sessions live in memory and are removed automatically:
+
+| Session | Removed | `closeReason` |
+|---|---|---|
+| Every player has left, or every remaining player is marked `leaving` | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
+| `WAITING_FOR_START` with no change for **30 minutes** (a change is anything that's broadcast: a join, a leave, a kick, new timers). A session nobody joins counts from its creation. | After 30 minutes without a change | `IDLE` |
+| `FINISHED_GAME` with no change for **10 minutes** (counted from the end of the game, or from the last player leaving after it) | After 10 minutes without a change | `FINISHED` |
+
+A game in progress is never removed by a timer: every phase is timed, so even a game whose players all closed their tabs plays itself out to `FINISHED_GAME` and is removed 10 minutes later. All sessions are also lost when the backend restarts.
+
+**What clients see:**
+
+1. One last broadcast on `/topic/sessions/{id}`: a normal `GameSessionResponse` with the next `version`, `state: "CLOSED"`, `closeReason` set, `phaseDurationMs`/`phaseRemainingMs` `null`, and `currentClue`/`finalJeopardy` `null`. `players`, their scores and `board` are as they were, so a final scoreboard can still be shown. Show something like "This game has ended" (or "Everyone left").
+2. The session is gone: `GET /api/game-sessions/{id}` returns 404, it disappears from `GET /api/game-sessions`, joining returns 404, and any action gets `SESSION_NOT_FOUND`.
+3. Every token in it stops working. Open connections stay open (they just receive nothing more), but a reconnect is rejected on CONNECT exactly as after a backend restart.
 
 ---
 
@@ -341,14 +459,16 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 | Code | Typical cause |
 |---|---|
 | `UNAUTHENTICATED` | Acting on a connection without a player token |
-| `PLAYER_NOT_IN_SESSION` | Your token belongs to a different session |
-| `SESSION_NOT_FOUND` | The session no longer exists |
-| `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed) |
+| `PLAYER_NOT_IN_SESSION` | Your token belongs to a different session, or you have left the session (or were kicked) and are acting from a connection that hasn't been closed yet |
+| `SESSION_NOT_FOUND` | The session no longer exists (§6.5) |
+| `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed, or changing timers after the start) |
 | `NOT_YOUR_TURN` | Another player is choosing or answering, or you already buzzed on this clue |
+| `NOT_HOST` | Only the host can do that: `start`, `update-timers` or `kick` (§6.4) |
+| `PLAYER_NOT_FOUND` | The player you tried to kick isn't in the session or has already left |
 | `CLUE_NOT_FOUND` | That clue isn't on this round's board |
 | `CLUE_ALREADY_PLAYED` | That clue was already chosen |
 | `INVALID_WAGER` | The wager is outside the allowed range (§6.2) |
-| `INVALID_REQUEST` | The payload is missing a field or malformed (the message names the field) |
+| `INVALID_REQUEST` | The payload is missing a field or malformed, or a timer is out of bounds (the message names the field, §6.3); also kicking yourself |
 
 Timing races are normal: two players buzzing at the same moment means one wins and the other gets `INVALID_STATE`. Treat these errors as non-fatal.
 
@@ -372,7 +492,10 @@ type GameSessionState =
   | "FINAL_JEOPARDY_WAGERING"
   | "FINAL_JEOPARDY_ANSWERING"
   | "FINAL_JEOPARDY_REVEALING"
-  | "FINISHED_GAME";
+  | "FINISHED_GAME"
+  | "CLOSED";              // only in a removed session's last broadcast (§6.5)
+
+type SessionCloseReason = "ABANDONED" | "IDLE" | "FINISHED";
 
 type GameErrorCode =
   | "SESSION_NOT_FOUND"
@@ -383,7 +506,9 @@ type GameErrorCode =
   | "PLAYER_NOT_IN_SESSION"
   | "INVALID_WAGER"
   | "INVALID_REQUEST"
-  | "UNAUTHENTICATED";
+  | "UNAUTHENTICATED"
+  | "NOT_HOST"
+  | "PLAYER_NOT_FOUND";
 
 // ---------- REST: browsing ----------
 interface ApiErrorResponse {
@@ -466,8 +591,43 @@ interface ClueResponse {
 }
 
 // ---------- REST: sessions ----------
-interface CreateGameSessionRequest { gameId: number; }
+// Phase durations in milliseconds, each 1000–300000 (§6.3).
+interface SessionTimers {
+  clueChoiceMs: number;
+  clueRevealMs: number;
+  dailyDoubleWagerMs: number;
+  buzzerMs: number;
+  answerMs: number;
+  answerRevealMs: number;
+  finalJeopardyWagerMs: number;
+  finalJeopardyAnswerMs: number;
+  finalJeopardyRevealMs: number;
+}
+
+interface CreateGameSessionRequest {
+  gameId: number;
+  timers?: Partial<SessionTimers>;  // omitted fields keep their defaults
+}
 interface CreateGameSessionResponse { id: string; }
+
+// Query params of GET /api/game-sessions (all optional)
+interface GameSessionListParams {
+  page?: number;              // default 0
+  size?: number;              // default 20, max 100
+  includeFinished?: boolean;  // default false
+}
+
+// GET /api/game-sessions returns PageResponse<GameSessionSummaryResponse>
+interface GameSessionSummaryResponse {
+  id: string;
+  gameId: number | null;
+  gameTitle: string | null;
+  state: GameSessionState;
+  round: GameRound;
+  playerCount: number;        // players who haven't left
+  hostName: string | null;    // null before anyone joins
+  createdAt: string;          // ISO-8601 UTC, e.g. "2026-10-09T12:30:00Z"
+}
 
 interface JoinSessionRequest { playerName: string; }
 interface JoinSessionResponse {
@@ -481,13 +641,16 @@ interface AnswerClueRequest { answer: string; }
 interface PlaceDailyDoubleWagerRequest { wager: number; }
 interface PlaceFinalJeopardyWagerRequest { wager: number; }
 interface AnswerFinalJeopardyRequest { answer: string; }
-// start and buzz have no body
+type UpdateTimersRequest = Partial<SessionTimers>;  // host only, WAITING_FOR_START
+interface KickPlayerRequest { playerId: number; }  // host only
+// start, buzz and leave have no body
 
 // ---------- WebSocket: state ----------
 interface PlayerResponse {
   id: number;
   name: string;
   score: number;
+  leaving: boolean;      // left but still holds a role; removed when it ends (§6.4)
 }
 
 type ClueSlotStatus = "AVAILABLE" | "PLAYED" | "EMPTY";
@@ -544,9 +707,12 @@ interface GameSessionResponse {
   version: number;       // keep the highest one seen
   round: GameRound;
   state: GameSessionState;
+  closeReason: SessionCloseReason | null;  // set only when state is "CLOSED"
   phaseDurationMs: number | null;   // null: no timer in this state
   phaseRemainingMs: number | null;  // measured when the server built the response
+  timers: SessionTimers;            // this session's configured durations
   players: PlayerResponse[];
+  hostPlayerId: number | null;      // null only before anyone joins
   playerChoosingClue: number | null;
   playerAnswering: number | null;
   playersLockedOut: number[];
@@ -570,6 +736,6 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Exact answer matching** (§6.2). Answers must match the stored text exactly, including capitalisation.
-- **Timeouts aren't configurable** (§6.3).
-- **Sessions are never cleaned up** and are lost when the backend restarts, along with every token.
+- **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast.
+- **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4); the timers keep the game moving around an absent player.
 - **No limits** on the number of players, duplicate names or name length.

@@ -20,11 +20,21 @@ import java.util.stream.Collectors;
  */
 public final class GameBoard {
 
+    // The stored game this board was copied from, or null for a board that
+    // isn't in the database (such as a custom game).
+    private final Long gameId;
+    private final String title;
     private final List<BoardRound> rounds;
     private final Map<GameRound, BoardRound> roundsByType;
     private final Map<Long, BoardClue> cluesById;
 
     public GameBoard(List<BoardRound> rounds) {
+        this(null, null, rounds);
+    }
+
+    public GameBoard(Long gameId, String title, List<BoardRound> rounds) {
+        this.gameId = gameId;
+        this.title = title;
         this.rounds = rounds.stream()
                 .sorted(Comparator.comparing(BoardRound::round))
                 .toList();
@@ -90,11 +100,23 @@ public final class GameBoard {
         }
 
         return new GameBoard(
+                game.getId(),
+                game.getTitle(),
                 categoriesByRound.entrySet()
                         .stream()
                         .map(entry -> new BoardRound(entry.getKey(), entry.getValue()))
                         .toList()
         );
+    }
+
+    /** The stored game's id, or null if the board isn't from the database. */
+    public Long getGameId() {
+        return gameId;
+    }
+
+    /** The game's title, or null if it has none. */
+    public String getTitle() {
+        return title;
     }
 
     public List<BoardRound> getRounds() {

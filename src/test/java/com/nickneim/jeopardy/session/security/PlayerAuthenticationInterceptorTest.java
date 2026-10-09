@@ -11,11 +11,14 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor.TOKEN_HEADER;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -23,6 +26,7 @@ class PlayerAuthenticationInterceptorTest {
 
     private PlayerTokenRegistry registry;
     private MessageChannel clientOutboundChannel;
+    private PlayerConnections connections;
     private PlayerAuthenticationInterceptor interceptor;
 
     private final PlayerPrincipal player =
@@ -33,7 +37,51 @@ class PlayerAuthenticationInterceptorTest {
         registry = new PlayerTokenRegistry();
         registry.register("valid-token", player);
         clientOutboundChannel = mock(MessageChannel.class);
-        interceptor = new PlayerAuthenticationInterceptor(registry, clientOutboundChannel);
+        connections = new PlayerConnections(clientOutboundChannel);
+        interceptor = new PlayerAuthenticationInterceptor(registry, connections);
+    }
+
+    @Test
+    void closingAPlayer_sendsAnErrorFrameToEachOfTheirConnections() {
+        interceptor.preSend(message(StompCommand.CONNECT, "valid-token", "ws-1"), null);
+        interceptor.preSend(message(StompCommand.CONNECT, "valid-token", "ws-2"), null);
+        interceptor.preSend(message(StompCommand.CONNECT, null, "ws-anonymous"), null);
+
+        connections.close(player, "You left the session");
+
+        ArgumentCaptor<Message<?>> sent = ArgumentCaptor.forClass(Message.class);
+        verify(clientOutboundChannel, times(2)).send(sent.capture());
+
+        assertEquals(
+                Set.of("ws-1", "ws-2"),
+                sent.getAllValues().stream()
+                        .map(StompHeaderAccessor::wrap)
+                        .peek(error -> assertEquals(StompCommand.ERROR, error.getCommand()))
+                        .peek(error -> assertEquals("You left the session", error.getMessage()))
+                        .map(StompHeaderAccessor::getSessionId)
+                        .collect(Collectors.toSet())
+        );
+    }
+
+    @Test
+    void closedConnection_isForgotten() {
+        interceptor.preSend(message(StompCommand.CONNECT, "valid-token", "ws-1"), null);
+        interceptor.preSend(message(StompCommand.DISCONNECT, null, "ws-1"), null);
+
+        connections.close(player, "You left the session");
+
+        verifyNoInteractions(clientOutboundChannel);
+    }
+
+    @Test
+    void closingAPlayer_leavesOtherPlayersConnected() {
+        PlayerPrincipal other = new PlayerPrincipal(player.sessionId(), 43L);
+        registry.register("other-token", other);
+        interceptor.preSend(message(StompCommand.CONNECT, "other-token", "ws-other"), null);
+
+        connections.close(player, "You left the session");
+
+        verifyNoInteractions(clientOutboundChannel);
     }
 
     @Test
@@ -91,13 +139,17 @@ class PlayerAuthenticationInterceptorTest {
     }
 
     private Message<byte[]> message(StompCommand command, String token) {
+        return message(command, token, "ws-session-1");
+    }
+
+    private Message<byte[]> message(StompCommand command, String token, String connectionId) {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
 
         if (token != null) {
             accessor.setNativeHeader(TOKEN_HEADER, token);
         }
 
-        accessor.setSessionId("ws-session-1");
+        accessor.setSessionId(connectionId);
 
         // Keeps the headers mutable, as Spring does for inbound messages.
         accessor.setLeaveMutable(true);

@@ -168,7 +168,9 @@ class GameSessionResponseTest {
             assertFalse(json.contains(clue.question()), "leaked question: " + clue.question());
             assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
         }
-        assertFalse(json.toLowerCase().contains("dailydouble"), "leaked Daily Double flag: " + json);
+        // timers.dailyDoubleWagerMs is a public setting, not a flag.
+        String withoutTimers = json.replace("\"dailyDoubleWagerMs\"", "");
+        assertFalse(withoutTimers.toLowerCase().contains("dailydouble"), "leaked Daily Double flag: " + json);
     }
 
     // -------------------------------------------------------------------------
@@ -443,6 +445,16 @@ class GameSessionResponseTest {
                 .writeValueAsString(GameSessionResponse.from(session));
 
         // Guard against a vacuous pass: the player is in the JSON.
+        assertTrue(json.contains("\"Nico\""), json);
+        assertFalse(json.contains(player.getToken()), "leaked a player token: " + json);
+    }
+
+    @Test
+    void serializedSummary_neverContainsTokens() {
+        String json = JsonMapper.builder().build()
+                .writeValueAsString(GameSessionSummaryResponse.from(session));
+
+        // Guard against a vacuous pass: the host's name is in the JSON.
         assertTrue(json.contains("\"Nico\""), json);
         assertFalse(json.contains(player.getToken()), "leaked a player token: " + json);
     }

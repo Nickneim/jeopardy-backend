@@ -6,11 +6,14 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
+import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
+import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,7 +69,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(gameId))
                 .thenReturn(board);
 
-        when(gameSessionService.createSession(board))
+        when(gameSessionService.createSession(board, GameSessionTimeouts.defaults()))
                 .thenReturn(session);
 
         mockMvc.perform(post("/api/game-sessions")
@@ -78,7 +83,7 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.id").value(sessionId.toString()));
 
         verify(gameBoardService).loadBoard(gameId);
-        verify(gameSessionService).createSession(board);
+        verify(gameSessionService).createSession(board, GameSessionTimeouts.defaults());
     }
 
     @Test
@@ -265,6 +270,168 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.players[0].id").value(1))
                 .andExpect(jsonPath("$.players[0].name").value("Nico"))
                 .andExpect(jsonPath("$.board[0].name").value("HISTORY"));
+    }
+
+    @Test
+    void getSession_includesTheHostTimersAndLeavingFlags() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameSession session = new GameSession(sessionId, oneClueBoard());
+        session.addPlayer("Nico");
+        session.addPlayer("John");
+
+        when(gameSessionService.getSessionState(sessionId))
+                .thenReturn(GameSessionResponse.from(session));
+
+        mockMvc.perform(get("/api/game-sessions/" + sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hostPlayerId").value(1))
+                .andExpect(jsonPath("$.closeReason").isEmpty())
+                .andExpect(jsonPath("$.players[1].leaving").value(false))
+                .andExpect(jsonPath("$.timers.clueChoiceMs").value(30000))
+                .andExpect(jsonPath("$.timers.clueRevealMs").value(3000))
+                .andExpect(jsonPath("$.timers.dailyDoubleWagerMs").value(30000))
+                .andExpect(jsonPath("$.timers.buzzerMs").value(10000))
+                .andExpect(jsonPath("$.timers.answerMs").value(5000))
+                .andExpect(jsonPath("$.timers.answerRevealMs").value(3000))
+                .andExpect(jsonPath("$.timers.finalJeopardyWagerMs").value(30000))
+                .andExpect(jsonPath("$.timers.finalJeopardyAnswerMs").value(30000))
+                .andExpect(jsonPath("$.timers.finalJeopardyRevealMs").value(10000));
+    }
+
+    // -------------------------------------------------------------------------
+    // Timers on create
+    // -------------------------------------------------------------------------
+
+    @Test
+    void createSession_withTimers_keepsTheDefaultsForTheRest() throws Exception {
+        GameBoard board = oneClueBoard();
+        GameSession session = new GameSession(UUID.randomUUID(), board);
+        GameSessionTimeouts defaults = GameSessionTimeouts.defaults();
+        GameSessionTimeouts expected = new GameSessionTimeouts(
+                defaults.clueChoice(), defaults.clueReveal(), defaults.dailyDoubleWager(),
+                Duration.ofMillis(2_500), defaults.answer(), defaults.answerReveal(),
+                defaults.finalJeopardyWager(), Duration.ofMinutes(1), defaults.finalJeopardyReveal()
+        );
+
+        when(gameBoardService.loadBoard(123L)).thenReturn(board);
+        when(gameSessionService.createSession(board, expected)).thenReturn(session);
+
+        mockMvc.perform(post("/api/game-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "gameId": 123,
+                            "timers": { "buzzerMs": 2500, "finalJeopardyAnswerMs": 60000 }
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(session.getId().toString()));
+
+        verify(gameSessionService).createSession(board, expected);
+    }
+
+    @Test
+    void createSession_rejectsTimersOutsideTheBounds() throws Exception {
+        mockMvc.perform(post("/api/game-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "gameId": 123,
+                            "timers": { "buzzerMs": 999, "clueChoiceMs": 300001, "answerMs": 300000 }
+                        }
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "timers.buzzerMs must be between 1000 and 300000, timers.clueChoiceMs must be between 1000 and 300000"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameBoardService, gameSessionService);
+    }
+
+    // -------------------------------------------------------------------------
+    // Listing
+    // -------------------------------------------------------------------------
+
+    @Test
+    void listSessions_returnsAPageOfSummaries() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameSession session = new GameSession(
+                sessionId,
+                new GameBoard(7L, "Show #7", oneClueBoard().getRounds()),
+                GameSessionTimeouts.defaults(),
+                Instant.parse("2026-10-09T12:30:00Z")
+        );
+        session.addPlayer("Nico");
+
+        when(gameSessionService.listSessions(false, 0, 20)).thenReturn(new PageResponse<>(
+                List.of(GameSessionSummaryResponse.from(session)), 0, 20, 1, 1
+        ));
+
+        mockMvc.perform(get("/api/game-sessions"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                        {
+                            "content": [{
+                                "id": "%s",
+                                "gameId": 7,
+                                "gameTitle": "Show #7",
+                                "state": "WAITING_FOR_START",
+                                "round": "JEOPARDY",
+                                "playerCount": 1,
+                                "hostName": "Nico",
+                                "createdAt": "2026-10-09T12:30:00Z"
+                            }],
+                            "page": 0,
+                            "size": 20,
+                            "totalElements": 1,
+                            "totalPages": 1
+                        }
+                        """.formatted(sessionId), JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void listSessions_passesThePagingAndFilter() throws Exception {
+        when(gameSessionService.listSessions(true, 2, 5))
+                .thenReturn(new PageResponse<>(List.of(), 2, 5, 0, 0));
+
+        mockMvc.perform(get("/api/game-sessions?page=2&size=5&includeFinished=true"))
+                .andExpect(status().isOk());
+
+        verify(gameSessionService).listSessions(true, 2, 5);
+    }
+
+    @Test
+    void listSessions_rejectsInvalidPaging() throws Exception {
+        mockMvc.perform(get("/api/game-sessions?size=101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request parameters"));
+
+        mockMvc.perform(get("/api/game-sessions?page=-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void listSessions_rejectsANonBooleanFilter() throws Exception {
+        mockMvc.perform(get("/api/game-sessions?includeFinished=maybe"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid value for 'includeFinished': expected true or false"));
+    }
+
+    private GameBoard oneClueBoard() {
+        return new GameBoard(List.of(
+                new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory(
+                                "HISTORY",
+                                List.of(new BoardClue(10L, 1, "Question", "Answer", 200, false))
+                        ))
+                )
+        ));
     }
 
     @Test
