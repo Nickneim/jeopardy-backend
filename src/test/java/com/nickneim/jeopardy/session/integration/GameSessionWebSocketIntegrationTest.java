@@ -1558,6 +1558,106 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     // The server closes a connection by sending an ERROR frame.
+    // The departing player's own connection is subscribed, so the departure
+    // broadcast is being written to it when the ERROR frame is sent: the race
+    // that used to drop the frame. Repeated, because it didn't fail every time.
+    @Test
+    void leavingPlayer_alwaysReceivesTheErrorFrameWithTheReason()
+            throws Exception {
+
+        for (int attempt = 0; attempt < 15; attempt++) {
+            GameSession session = createSessionWithPlayer();
+            gameSessionService.joinSession(session.getId(), "John");
+
+            BlockingQueue<String> errorFrames = new LinkedBlockingQueue<>();
+            StompSession leaving = connect(tokenOf(session), errorFrames);
+            subscribeToSession(leaving, session.getId());
+            subscribeToErrors(leaving);
+            awaitSubscriptions(leaving, session.getId());
+
+            leaving.send("/app/sessions/" + session.getId() + "/leave", Map.of());
+
+            assertEquals(
+                    "You left the session",
+                    errorFrames.poll(5, TimeUnit.SECONDS),
+                    "attempt " + attempt
+            );
+            awaitDisconnected(leaving);
+        }
+    }
+
+    @Test
+    void kickedPlayer_alwaysReceivesTheErrorFrameWithTheReason()
+            throws Exception {
+
+        for (int attempt = 0; attempt < 15; attempt++) {
+            GameSession session = createSessionWithPlayer();
+            GameSessionPlayer other =
+                    gameSessionService.joinSession(session.getId(), "John");
+
+            StompSession host = connect(tokenOf(session));
+            subscribeToErrors(host);
+
+            BlockingQueue<String> errorFrames = new LinkedBlockingQueue<>();
+            StompSession kicked = connect(other.getToken(), errorFrames);
+            subscribeToSession(kicked, session.getId());
+            awaitSubscriptions(kicked, session.getId());
+
+            host.send(
+                    "/app/sessions/" + session.getId() + "/kick",
+                    Map.of("playerId", other.getId())
+            );
+
+            assertEquals(
+                    "You were removed from the session by the host",
+                    errorFrames.poll(5, TimeUnit.SECONDS),
+                    "attempt " + attempt
+            );
+            awaitDisconnected(kicked);
+        }
+    }
+
+    // Connects and records the "message" header of every ERROR frame received.
+    private StompSession connect(String playerToken, BlockingQueue<String> errorFrames)
+            throws Exception {
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add(PlayerAuthenticationInterceptor.TOKEN_HEADER, playerToken);
+
+        return stompClient
+                .connectAsync(
+                        "ws://localhost:" + port + "/ws",
+                        new WebSocketHttpHeaders(),
+                        connectHeaders,
+                        new StompSessionHandlerAdapter() {
+                            @Override
+                            public void handleFrame(StompHeaders headers, Object payload) {
+                                errorFrames.add(String.valueOf(headers.getFirst("message")));
+                            }
+                        }
+                )
+                .get(5, TimeUnit.SECONDS);
+    }
+
+    // SUBSCRIBE has no reply, so wait until the server has registered the
+    // topic subscription: a broadcast must reach this connection.
+    private void awaitSubscriptions(StompSession stompSession, UUID sessionId)
+            throws Exception {
+
+        BlockingQueue<GameSessionResponse> probe =
+                subscribeToSession(stompSession, sessionId);
+
+        for (int i = 0; i < 50; i++) {
+            gameSessionService.joinSession(sessionId, "Probe");
+
+            if (probe.poll(100, TimeUnit.MILLISECONDS) != null) {
+                return;
+            }
+        }
+
+        throw new AssertionError("The subscription never received a broadcast");
+    }
+
     private void awaitDisconnected(StompSession stompSession) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
 

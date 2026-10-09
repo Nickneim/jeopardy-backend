@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.config;
 
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
+import com.nickneim.jeopardy.session.security.PlayerConnections;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -14,13 +15,16 @@ public class WebSocketConfig
         implements WebSocketMessageBrokerConfigurer {
 
     private final PlayerAuthenticationInterceptor playerAuthenticationInterceptor;
+    private final PlayerConnections playerConnections;
     private final CorsProperties corsProperties;
 
     public WebSocketConfig(
             PlayerAuthenticationInterceptor playerAuthenticationInterceptor,
+            PlayerConnections playerConnections,
             CorsProperties corsProperties
     ) {
         this.playerAuthenticationInterceptor = playerAuthenticationInterceptor;
+        this.playerConnections = playerConnections;
         this.corsProperties = corsProperties;
     }
 
@@ -54,5 +58,14 @@ public class WebSocketConfig
             ChannelRegistration registration
     ) {
         registration.interceptors(playerAuthenticationInterceptor);
+    }
+
+    // Lets PlayerConnections hold back a departing player's ERROR frame until
+    // everything already sent to them has been written, so it isn't lost.
+    @Override
+    public void configureClientOutboundChannel(
+            ChannelRegistration registration
+    ) {
+        registration.interceptors(playerConnections);
     }
 }
