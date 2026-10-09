@@ -136,3 +136,25 @@ JOIN game ON game.id = category.game_id
 WHERE game.title = 'Game Session Integration Test Game'
   AND category.column_number = 1
   AND clue.row_number = 2;
+
+-- A game that was imported without clues, like some of the newest ones.
+INSERT INTO game (title, game_date, season)
+VALUES (
+    'Game Session Integration Test Game Without Clues',
+    '2025-03-02',
+    'jm'
+);
+
+INSERT INTO category (
+    name,
+    column_number,
+    comments,
+    game_id
+)
+SELECT
+    'HISTORY',
+    1,
+    NULL,
+    id
+FROM game
+WHERE title = 'Game Session Integration Test Game Without Clues';

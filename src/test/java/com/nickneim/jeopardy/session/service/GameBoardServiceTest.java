@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -49,6 +50,31 @@ class GameBoardServiceTest {
         assertThrows(
                 GameNotFoundException.class,
                 () -> gameBoardService.loadBoard(999L)
+        );
+    }
+
+    @Test
+    void loadBoard_rejectsAGameWhoseCategoriesHaveNoClues() {
+        Game game = new Game("Masters #71", LocalDate.of(2026, 5, 1), "jm");
+        game.getCategories().add(new Category("HISTORY", (short) 1, null, game));
+        when(gameService.getGame(725L)).thenReturn(game);
+
+        UnplayableGameException exception = assertThrows(
+                UnplayableGameException.class,
+                () -> gameBoardService.loadBoard(725L)
+        );
+
+        assertEquals("Game 725 has no clues and can't be played", exception.getMessage());
+    }
+
+    @Test
+    void loadBoard_rejectsAGameWithoutCategories() {
+        when(gameService.getGame(725L))
+                .thenReturn(new Game("Masters #71", LocalDate.of(2026, 5, 1), "jm"));
+
+        assertThrows(
+                UnplayableGameException.class,
+                () -> gameBoardService.loadBoard(725L)
         );
     }
 

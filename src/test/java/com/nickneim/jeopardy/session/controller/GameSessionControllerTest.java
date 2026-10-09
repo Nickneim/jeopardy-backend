@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameBoardService;
@@ -99,6 +100,31 @@ class GameSessionControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(gameBoardService).loadBoard(gameId);
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void createSession_returnsUnprocessableContentWhenGameHasNoClues()
+            throws Exception {
+
+        when(gameBoardService.loadBoard(725L))
+                .thenThrow(new UnplayableGameException(725L));
+
+        mockMvc.perform(post("/api/game-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "gameId": 725
+                        }
+                        """))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().json("""
+                        {
+                            "status": 422,
+                            "message": "Game 725 has no clues and can't be played"
+                        }
+                        """, JsonCompareMode.STRICT));
+
         verifyNoInteractions(gameSessionService);
     }
 

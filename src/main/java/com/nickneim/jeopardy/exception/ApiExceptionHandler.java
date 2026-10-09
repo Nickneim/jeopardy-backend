@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,6 +45,18 @@ public class ApiExceptionHandler {
     ) {
         return new ApiErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
+                exception.getMessage()
+        );
+    }
+
+    // 422 rather than 409: the request is well formed and the game exists, but
+    // its content can't be used to create a session. Nothing about the
+    // server's state conflicts with it, and retrying won't help.
+    @ExceptionHandler(UnplayableGameException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    public ApiErrorResponse handleUnplayableGame(UnplayableGameException exception) {
+        return new ApiErrorResponse(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
                 exception.getMessage()
         );
     }

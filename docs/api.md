@@ -93,6 +93,7 @@ Creates a live session from a stored game.
 - Request: `{ "gameId": 123 }`
 - `201 { "id": "8f6c…-uuid" }`
 - Unknown game: 404.
+- Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
 
 #### `GET /api/game-sessions/{sessionId}`

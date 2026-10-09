@@ -92,6 +92,29 @@ class GameSessionEndToEndIntegrationTest {
     }
 
     @Test
+    void creatingSessionFromGameWithoutClues_returnsUnprocessableContent() {
+        Long gameId = jdbcTemplate.queryForObject(
+                "SELECT id FROM game WHERE title = ?",
+                Long.class,
+                GAME_TITLE + " Without Clues"
+        );
+
+        restTestClient.post()
+                .uri("/api/game-sessions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new CreateGameSessionRequest(gameId))
+                .exchange()
+                .expectStatus().isEqualTo(422)
+                .expectBody()
+                .json("""
+                    {
+                        "status": 422,
+                        "message": "Game %d has no clues and can't be played"
+                    }
+                    """.formatted(gameId), JsonCompareMode.STRICT);
+    }
+
+    @Test
     void joiningWithBlankName_returnsApiErrorNamingTheField() {
         Long gameId = jdbcTemplate.queryForObject(
                 "SELECT id FROM game WHERE title = ?",
