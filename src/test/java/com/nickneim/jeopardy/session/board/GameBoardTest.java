@@ -181,6 +181,29 @@ class GameBoardTest {
         );
     }
 
+    @Test
+    void clue_isTextWithoutMediaByDefault() {
+        BoardClue clue = new BoardClue(5L, 1, "Q", "A", 200, false);
+
+        assertEquals(ClueType.TEXT, clue.clueType());
+        assertNull(clue.mediaUrl());
+    }
+
+    @Test
+    void clue_requiresAMediaUrlExactlyWhenItIsNotText() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.TEXT, "https://media.example/a.png")
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.IMAGE, null)
+        );
+        assertDoesNotThrow(
+                () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.VIDEO, "https://media.example/a.mp4")
+        );
+    }
+
     // -------------------------------------------------------------------------
     // from(Game)
     // -------------------------------------------------------------------------
@@ -229,6 +252,21 @@ class GameBoardTest {
     }
 
     @Test
+    void from_copiesClueTypeAndMediaUrl() {
+        GameBoard board = GameBoard.from(createGame());
+
+        assertEquals(
+                new BoardClue(
+                        202L, 1, "This playwright is pictured here.", "William Shakespeare", 400, false,
+                        ClueType.IMAGE, "https://media.example/shakespeare.jpg"
+                ),
+                board.getClue(202L)
+        );
+        assertEquals(ClueType.TEXT, board.getClue(101L).clueType());
+        assertNull(board.getClue(101L).mediaUrl());
+    }
+
+    @Test
     void from_marksDailyDoubles() {
         GameBoard board = GameBoard.from(createGame());
 
@@ -260,6 +298,10 @@ class GameBoardTest {
         Clue dailyDouble =
                 addClue(history, 103L, "Who was the second president?", "John Adams", 5);
         addClue(literature, 201L, "He wrote Hamlet.", "William Shakespeare", 2);
+        addClue(
+                literature, 202L, "This playwright is pictured here.", "William Shakespeare", 1,
+                ClueType.IMAGE, "https://media.example/shakespeare.jpg"
+        );
         addClue(finalCategory, 301L, "This war began in 1775.", "The American Revolution", 1);
 
         game.getDailyDoubles().add(new GameDailyDouble(game, dailyDouble));
@@ -274,7 +316,19 @@ class GameBoardTest {
     }
 
     private Clue addClue(Category category, Long id, String question, String answer, int row) {
-        Clue clue = new Clue(question, answer, (short) row, ClueType.TEXT, null, category);
+        return addClue(category, id, question, answer, row, ClueType.TEXT, null);
+    }
+
+    private Clue addClue(
+            Category category,
+            Long id,
+            String question,
+            String answer,
+            int row,
+            ClueType clueType,
+            String mediaUrl
+    ) {
+        Clue clue = new Clue(question, answer, (short) row, clueType, mediaUrl, category);
         ReflectionTestUtils.setField(clue, "id", id);
         category.getClues().add(clue);
         return clue;

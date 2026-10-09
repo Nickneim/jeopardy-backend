@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.dto;
 
+import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -183,6 +184,8 @@ class GameSessionResponseTest {
                 false,
                 null,
                 "Symbol for gold?",
+                ClueType.TEXT,
+                null,
                 null
         );
 
@@ -204,7 +207,7 @@ class GameSessionResponseTest {
         session.timeoutBuzzer();
 
         assertEquals(
-                new CurrentClueResponse(scienceRow1.id(), 200, false, null, "Symbol for gold?", "Au"),
+                new CurrentClueResponse(scienceRow1.id(), 200, false, null, "Symbol for gold?", ClueType.TEXT, null, "Au"),
                 GameSessionResponse.from(session).currentClue()
         );
     }
@@ -215,7 +218,7 @@ class GameSessionResponseTest {
         session.chooseClue(player.getId(), historyRow3.id());
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null, null, null),
                 GameSessionResponse.from(session).currentClue()
         );
 
@@ -229,7 +232,7 @@ class GameSessionResponseTest {
         session.placeDailyDoubleWager(player.getId(), 500);
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, 500, "Second president?", null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, 500, "Second president?", ClueType.TEXT, null, null),
                 GameSessionResponse.from(session).currentClue()
         );
     }
@@ -252,6 +255,57 @@ class GameSessionResponseTest {
             assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
         }
         assertFalse(json.contains("\"dailyDouble\":true"), "leaked a Daily Double: " + json);
+    }
+
+    @Test
+    void currentClue_hidesMediaOfADailyDoubleUntilTheWagerIsPlaced() {
+        BoardClue imageDailyDouble = new BoardClue(
+                401L, 1, "This painting hangs in the Louvre.", "Mona Lisa", 1000, true,
+                ClueType.IMAGE, "https://media.example/secret-painting.jpg"
+        );
+        GameSession mediaSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("ART", List.of(imageDailyDouble))
+                ))
+        )));
+        mediaSession.addPlayer(player);
+        mediaSession.startGame(player.getId());
+        mediaSession.chooseClue(player.getId(), imageDailyDouble.id());
+
+        GameSessionResponse wagering = GameSessionResponse.from(mediaSession);
+        assertNull(wagering.currentClue().clueType());
+        assertNull(wagering.currentClue().mediaUrl());
+
+        String json = toJson(wagering);
+        assertFalse(json.contains("secret-painting"), "leaked the media URL: " + json);
+        assertFalse(json.contains("IMAGE"), "leaked the clue type: " + json);
+
+        mediaSession.placeDailyDoubleWager(player.getId(), 500);
+
+        CurrentClueResponse revealed = GameSessionResponse.from(mediaSession).currentClue();
+        assertEquals(ClueType.IMAGE, revealed.clueType());
+        assertEquals("https://media.example/secret-painting.jpg", revealed.mediaUrl());
+        assertNull(revealed.answer());
+    }
+
+    @Test
+    void currentClue_showsMediaFromTheClueReveal() {
+        BoardClue soundClue = new BoardClue(
+                402L, 1, "Name this tune.", "Happy Birthday", 200, false,
+                ClueType.SOUND, "https://media.example/tune.mp3"
+        );
+        GameSession mediaSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("MUSIC", List.of(soundClue))
+                ))
+        )));
+        mediaSession.addPlayer(player);
+        mediaSession.startGame(player.getId());
+        mediaSession.chooseClue(player.getId(), soundClue.id());
+
+        CurrentClueResponse revealing = GameSessionResponse.from(mediaSession).currentClue();
+        assertEquals(ClueType.SOUND, revealing.clueType());
+        assertEquals("https://media.example/tune.mp3", revealing.mediaUrl());
     }
 
     // -------------------------------------------------------------------------

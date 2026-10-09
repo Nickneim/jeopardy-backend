@@ -75,7 +75,9 @@ public final class GameBoard {
                             clue.getQuestion(),
                             clue.getAnswer(),
                             clue.getValue(),
-                            game.isDailyDouble(clue.getId())
+                            game.isDailyDouble(clue.getId()),
+                            clue.getClueType(),
+                            clue.getMediaUrl()
                     ))
                     .toList();
 

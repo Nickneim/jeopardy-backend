@@ -222,6 +222,8 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | `dailyDouble` | `true` for a Daily Double. It's public at this point, since the wager phase reveals it. |
 | `wager` | The Daily Double wager once it's placed; otherwise `null` |
 | `question` | Hidden (`null`) while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on |
+| `clueType` | `TEXT` \| `IMAGE` \| `SOUND` \| `VIDEO`. Hidden exactly like `question`. |
+| `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
 | `answer` | Only in `REVEALING_ANSWER` |
 
 ### 5.3 `finalJeopardy`
@@ -494,6 +496,8 @@ interface CurrentClueResponse {
   dailyDouble: boolean;
   wager: number | null;
   question: string | null;
+  clueType: ClueType | null;   // null while the question is hidden
+  mediaUrl: string | null;     // null while hidden, and always for TEXT
   answer: string | null;
 }
 
@@ -549,7 +553,6 @@ interface GameSessionErrorResponse {
 These are tracked on the backend roadmap. Work around them in the UI only where noted.
 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
-- **Media clues aren't playable in sessions.** `currentClue` has no `clueType` or `mediaUrl` yet. Browsing (`GET /api/games/{id}`) does include them.
 - **Exact answer matching** (§6.2). Answers must match the stored text exactly, including capitalisation.
 - **Timeouts aren't configurable** (§6.3).
 - **Sessions are never cleaned up** and are lost when the backend restarts, along with every token.
