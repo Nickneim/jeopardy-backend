@@ -32,7 +32,7 @@ Key ideas:
 - **Catching up after connecting.** Subscribe first, then fetch `GET /api/game-sessions/{id}`. Every response carries a `version` that goes up with each change, so whether the fetch result or a broadcast arrives first, **keep whichever has the higher `version`** and ignore the other. Use the same approach after a refresh or reconnect.
 - **Who you are comes from your connection, not your messages.** You prove your identity once, with your token, when you connect. Action payloads never contain a player id, so a player can't act as someone else.
 - **Anyone can watch.** A connection without a token can subscribe to a session's topic but can't act.
-- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. See §6.3 for the durations.
+- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. See §6.3.
 
 ---
 
@@ -188,6 +188,8 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `version` | Goes up by one with every change (0 for a new session). Keep the response with the highest version (§2). |
 | `round` | `JEOPARDY` \| `DOUBLE_JEOPARDY` \| `FINAL_JEOPARDY`, the round being played (or about to be, before the start) |
 | `state` | See §6 |
+| `phaseDurationMs` | Full length of the current phase in milliseconds, or `null` if the state has no timer (§6.3) |
+| `phaseRemainingMs` | Milliseconds left in the current phase when the server built this response (never negative), or `null` if the state has no timer |
 | `players` | `{ id, name, score }` in join order |
 | `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board. |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
@@ -306,7 +308,15 @@ FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
 | Final Jeopardy answering | 30 s |
 | Final Jeopardy reveal | 10 s |
 
-These aren't sent to the client yet. To show countdowns, use these values and start counting when a broadcast enters the state.
+`WAITING_FOR_START` and `FINISHED_GAME` have no timer.
+
+Every response (broadcast and `GET /api/game-sessions/{id}`) carries the current phase's timing:
+
+- `phaseDurationMs`: the full length of the phase, for example `10000` in `WAITING_FOR_BUZZER`.
+- `phaseRemainingMs`: how much of it was left when the server built the response, from `0` up to `phaseDurationMs`.
+- Both are `null` in a state without a timer.
+
+They're durations, not timestamps, so the client's clock doesn't need to match the server's. To show a countdown, note your own time when the response arrives (`performance.now()`) and count down from `phaseRemainingMs`. It will end late by the network delay of that response, which is usually small. Final Jeopardy wagers and answers don't restart their phase: their broadcasts show the same deadline with less time left. The phase can end a few milliseconds after the countdown reaches 0, when the next broadcast arrives.
 
 ---
 
@@ -514,6 +524,8 @@ interface GameSessionResponse {
   version: number;       // keep the highest one seen
   round: GameRound;
   state: GameSessionState;
+  phaseDurationMs: number | null;   // null: no timer in this state
+  phaseRemainingMs: number | null;  // measured when the server built the response
   players: PlayerResponse[];
   playerChoosingClue: number | null;
   playerAnswering: number | null;
@@ -539,6 +551,6 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Media clues aren't playable in sessions.** `currentClue` has no `clueType` or `mediaUrl` yet. Browsing (`GET /api/games/{id}`) does include them.
 - **Exact answer matching** (§6.2). Answers must match the stored text exactly, including capitalisation.
-- **Timeouts aren't configurable or sent to clients** (§6.3).
+- **Timeouts aren't configurable** (§6.3).
 - **Sessions are never cleaned up** and are lost when the backend restarts, along with every token.
 - **No limits** on the number of players, duplicate names or name length.

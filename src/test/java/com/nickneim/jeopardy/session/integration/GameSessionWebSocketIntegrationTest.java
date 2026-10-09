@@ -427,6 +427,13 @@ class GameSessionWebSocketIntegrationTest {
                 ),
                 response.board().getFirst().slots()
         );
+
+        // The clue reveal lasts 3 seconds and has only just started.
+        assertEquals(3000L, response.phaseDurationMs());
+        assertTrue(
+                response.phaseRemainingMs() > 0 && response.phaseRemainingMs() <= 3000,
+                "phaseRemainingMs: " + response.phaseRemainingMs()
+        );
     }
 
     @Test

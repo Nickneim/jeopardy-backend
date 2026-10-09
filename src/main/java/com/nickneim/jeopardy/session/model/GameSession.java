@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
+import java.time.Duration;
 import java.util.*;
 
 public class GameSession {
@@ -19,6 +20,11 @@ public class GameSession {
     private GameRound round;
     private GameSessionState state;
     private long version;
+
+    // The timer of the current phase, set by GameSessionService whenever it
+    // arms one. The deadline is in System.nanoTime() terms, which never jumps.
+    private Duration phaseDuration;
+    private long phaseDeadlineNanos;
 
     private Long playerChoosingClue;
     private Long chosenClueId;
@@ -167,6 +173,34 @@ public class GameSession {
 
     public void incrementVersion() {
         version++;
+    }
+
+    /** Records that the current phase ends {@code duration} after {@code nowNanos}. */
+    public void startPhaseTimer(Duration duration, long nowNanos) {
+        phaseDuration = duration;
+        phaseDeadlineNanos = nowNanos + duration.toNanos();
+    }
+
+    /** Records that the current phase has no timer. */
+    public void clearPhaseTimer() {
+        phaseDuration = null;
+    }
+
+    /** The full length of the current phase, or null if it has no timer. */
+    public Duration getPhaseDuration() {
+        return phaseDuration;
+    }
+
+    /**
+     * How long the current phase has left at {@code nowNanos} (never
+     * negative), or null if it has no timer.
+     */
+    public Duration getPhaseRemaining(long nowNanos) {
+        if (phaseDuration == null) {
+            return null;
+        }
+
+        return Duration.ofNanos(Math.max(0, phaseDeadlineNanos - nowNanos));
     }
 
     public void startGame(Long playerId) {

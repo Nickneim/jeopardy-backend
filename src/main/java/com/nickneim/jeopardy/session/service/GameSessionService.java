@@ -7,10 +7,12 @@ import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -350,75 +352,61 @@ public class GameSessionService {
 
     private void scheduleTimeout(GameSession session) {
         UUID sessionId = session.getId();
+        GameSessionTimeouts timeouts = session.getTimeouts();
 
         timer.cancel(sessionId);
 
-        switch (session.getState()) {
-            case CHOOSING_CLUE ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().clueChoice(),
-                            () -> timeoutChoosingClue(sessionId)
-                    );
+        PhaseTimeout timeout = switch (session.getState()) {
+            case CHOOSING_CLUE -> new PhaseTimeout(
+                    timeouts.clueChoice(),
+                    () -> timeoutChoosingClue(sessionId)
+            );
+            case REVEALING_CLUE -> new PhaseTimeout(
+                    timeouts.clueReveal(),
+                    () -> finishRevealingClue(sessionId)
+            );
+            case WAITING_FOR_BUZZER -> new PhaseTimeout(
+                    timeouts.buzzer(),
+                    () -> timeoutBuzzer(sessionId)
+            );
+            case WAITING_FOR_ANSWER -> new PhaseTimeout(
+                    timeouts.answer(),
+                    () -> timeoutAnswer(sessionId)
+            );
+            case REVEALING_ANSWER -> new PhaseTimeout(
+                    timeouts.answerReveal(),
+                    () -> finishRevealingAnswer(sessionId)
+            );
+            case WAITING_FOR_DAILY_DOUBLE_WAGER -> new PhaseTimeout(
+                    timeouts.dailyDoubleWager(),
+                    () -> timeoutDailyDoubleWager(sessionId)
+            );
+            case FINAL_JEOPARDY_WAGERING -> new PhaseTimeout(
+                    timeouts.finalJeopardyWager(),
+                    () -> timeoutFinalJeopardyWagering(sessionId)
+            );
+            case FINAL_JEOPARDY_ANSWERING -> new PhaseTimeout(
+                    timeouts.finalJeopardyAnswer(),
+                    () -> timeoutFinalJeopardyAnswering(sessionId)
+            );
+            case FINAL_JEOPARDY_REVEALING -> new PhaseTimeout(
+                    timeouts.finalJeopardyReveal(),
+                    () -> finishFinalJeopardyReveal(sessionId)
+            );
+            // No timeout for this state.
+            case WAITING_FOR_START, FINISHED_GAME -> null;
+        };
 
-            case REVEALING_CLUE ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().clueReveal(),
-                            () -> finishRevealingClue(sessionId)
-                    );
-
-            case WAITING_FOR_BUZZER ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().buzzer(),
-                            () -> timeoutBuzzer(sessionId)
-                    );
-
-            case WAITING_FOR_ANSWER ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().answer(),
-                            () -> timeoutAnswer(sessionId)
-                    );
-
-            case REVEALING_ANSWER ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().answerReveal(),
-                            () -> finishRevealingAnswer(sessionId)
-                    );
-            case WAITING_FOR_DAILY_DOUBLE_WAGER ->
-                    timer.schedule(
-                            session.getId(),
-                            session.getTimeouts().dailyDoubleWager(),
-                            () -> timeoutDailyDoubleWager(session.getId())
-                    );
-
-            case FINAL_JEOPARDY_WAGERING ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().finalJeopardyWager(),
-                            () -> timeoutFinalJeopardyWagering(sessionId)
-                    );
-
-            case FINAL_JEOPARDY_ANSWERING ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().finalJeopardyAnswer(),
-                            () -> timeoutFinalJeopardyAnswering(sessionId)
-                    );
-
-            case FINAL_JEOPARDY_REVEALING ->
-                    timer.schedule(
-                            sessionId,
-                            session.getTimeouts().finalJeopardyReveal(),
-                            () -> finishFinalJeopardyReveal(sessionId)
-                    );
-
-            default -> {
-                // No timeout for this state.
-            }
+        if (timeout == null) {
+            session.clearPhaseTimer();
+            return;
         }
+
+        // Recorded on the session so every response can say how long the
+        // phase has left.
+        session.startPhaseTimer(timeout.duration(), System.nanoTime());
+        timer.schedule(sessionId, timeout.duration(), timeout.action());
     }
+
+    private record PhaseTimeout(Duration duration, Runnable action) {}
 }

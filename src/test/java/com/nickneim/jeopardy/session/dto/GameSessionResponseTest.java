@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -251,6 +252,37 @@ class GameSessionResponseTest {
             assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
         }
         assertFalse(json.contains("\"dailyDouble\":true"), "leaked a Daily Double: " + json);
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase timing
+    // -------------------------------------------------------------------------
+
+    @Test
+    void phaseTiming_isNullWithoutATimer() {
+        GameSessionResponse response = GameSessionResponse.from(session);
+
+        assertNull(response.phaseDurationMs());
+        assertNull(response.phaseRemainingMs());
+
+        String json = toJson(response);
+        assertTrue(json.contains("\"phaseDurationMs\":null"), json);
+        assertTrue(json.contains("\"phaseRemainingMs\":null"), json);
+    }
+
+    @Test
+    void phaseTiming_isMeasuredWhenTheResponseIsBuilt() {
+        session.startGame(player.getId());
+        session.startPhaseTimer(Duration.ofSeconds(30), 0);
+
+        GameSessionResponse atStart = GameSessionResponse.from(session, 0);
+        assertEquals(30_000L, atStart.phaseDurationMs());
+        assertEquals(30_000L, atStart.phaseRemainingMs());
+
+        // A client fetching the state later gets the same duration but less time.
+        GameSessionResponse later = GameSessionResponse.from(session, 12_345_000_000L);
+        assertEquals(30_000L, later.phaseDurationMs());
+        assertEquals(17_655L, later.phaseRemainingMs());
     }
 
     // -------------------------------------------------------------------------

@@ -1336,6 +1336,61 @@ class GameSessionServiceTest {
         assertEquals(1, state.version());
         assertEquals(GameSessionState.WAITING_FOR_START, state.state());
         assertEquals("Nico", state.players().getFirst().name());
+        assertNull(state.phaseDurationMs());
+        assertNull(state.phaseRemainingMs());
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase timing
+    // -------------------------------------------------------------------------
+
+    @Test
+    void scheduledTimeout_isRecordedAsThePhaseTimer() {
+        GameSession session = createStartedSession();
+
+        long before = System.nanoTime();
+        gameSessionService.chooseClue(session.getId(), getFirstPlayerId(session), CLUE_ID);
+
+        assertEquals(Duration.ofSeconds(3), session.getPhaseDuration());
+        Duration remaining = session.getPhaseRemaining(before);
+        assertTrue(remaining.compareTo(Duration.ofSeconds(3)) >= 0, remaining.toString());
+
+        GameSessionResponse state = gameSessionService.getSessionState(session.getId());
+        assertEquals(3000L, state.phaseDurationMs());
+        assertTrue(state.phaseRemainingMs() > 0 && state.phaseRemainingMs() <= 3000, state.toString());
+    }
+
+    @Test
+    void finalJeopardySubmissions_keepThePhaseDeadline() {
+        GameSession session = createSessionInFinalJeopardy();
+        long later = System.nanoTime() + Duration.ofSeconds(1).toNanos();
+        Duration remainingBefore = session.getPhaseRemaining(later);
+
+        gameSessionService.placeFinalJeopardyWager(session.getId(), PLAYER_ID, 100);
+
+        assertEquals(Duration.ofSeconds(30), session.getPhaseDuration());
+        assertEquals(remainingBefore, session.getPhaseRemaining(later));
+    }
+
+    @Test
+    void finishingTheGame_clearsThePhaseTimer() {
+        GameSession session = createSessionInFinalJeopardy();
+        Runnable wagerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+        clearInvocations(timer);
+        wagerTimeout.run();
+
+        Runnable answerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+        clearInvocations(timer);
+        answerTimeout.run();
+
+        Runnable revealTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(10));
+        revealTimeout.run();
+
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+        assertNull(session.getPhaseDuration());
     }
 
     @Test

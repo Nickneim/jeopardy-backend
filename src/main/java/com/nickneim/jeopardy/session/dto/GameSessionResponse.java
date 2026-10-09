@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -13,6 +14,8 @@ public record GameSessionResponse(
         long version,
         GameRound round,
         GameSessionState state,
+        Long phaseDurationMs,
+        Long phaseRemainingMs,
         List<PlayerResponse> players,
         Long playerChoosingClue,
         Long playerAnswering,
@@ -23,11 +26,25 @@ public record GameSessionResponse(
         FinalJeopardyResponse finalJeopardy
 ) {
     static public GameSessionResponse from(GameSession session) {
+        return from(session, System.nanoTime());
+    }
+
+    /**
+     * Builds the response as of {@code nowNanos} (in System.nanoTime() terms),
+     * which is when {@code phaseRemainingMs} is measured. Timing is sent as
+     * durations rather than a deadline, so a client's clock doesn't matter.
+     */
+    static public GameSessionResponse from(GameSession session, long nowNanos) {
+        Duration phaseDuration = session.getPhaseDuration();
+        Duration phaseRemaining = session.getPhaseRemaining(nowNanos);
+
         return new GameSessionResponse(
                 session.getId(),
                 session.getVersion(),
                 session.getRound(),
                 session.getState(),
+                phaseDuration == null ? null : phaseDuration.toMillis(),
+                phaseRemaining == null ? null : phaseRemaining.toMillis(),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)
                         .toList(),

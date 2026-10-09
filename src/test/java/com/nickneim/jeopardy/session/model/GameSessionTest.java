@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -1373,6 +1374,43 @@ class GameSessionTest {
         // Player 1 still has a stored wager, but this clue isn't a Daily Double.
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         assertNull(session.getDailyDoubleWager());
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase timer
+    // -------------------------------------------------------------------------
+
+    @Test
+    void phaseTimer_isUnsetForANewSession() {
+        assertNull(session.getPhaseDuration());
+        assertNull(session.getPhaseRemaining(0));
+    }
+
+    @Test
+    void phaseTimer_countsDownFromWhenItStarted() {
+        long start = 1_000_000_000L;
+
+        session.startPhaseTimer(Duration.ofSeconds(10), start);
+
+        assertEquals(Duration.ofSeconds(10), session.getPhaseDuration());
+        assertEquals(Duration.ofSeconds(10), session.getPhaseRemaining(start));
+        assertEquals(Duration.ofMillis(6500), session.getPhaseRemaining(start + 3_500_000_000L));
+    }
+
+    @Test
+    void phaseTimer_neverGoesNegative() {
+        session.startPhaseTimer(Duration.ofSeconds(3), 0);
+
+        assertEquals(Duration.ZERO, session.getPhaseRemaining(5_000_000_000L));
+    }
+
+    @Test
+    void phaseTimer_canBeCleared() {
+        session.startPhaseTimer(Duration.ofSeconds(3), 0);
+        session.clearPhaseTimer();
+
+        assertNull(session.getPhaseDuration());
+        assertNull(session.getPhaseRemaining(0));
     }
 
     // -------------------------------------------------------------------------
