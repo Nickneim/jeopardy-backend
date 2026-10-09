@@ -1,0 +1,10 @@
+# Local debugging only: never activate in a deployed environment. Turn on
+# with SPRING_PROFILES_ACTIVE=dev (for example in .env) or the IntelliJ run
+# configuration's "Active profiles". Spring's default error body then includes
+# the exception message, binding errors and the full stack trace.
+spring:
+  web:
+    error:
+      include-stacktrace: always
+      include-message: always
+      include-binding-errors: always

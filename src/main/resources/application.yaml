@@ -10,6 +10,18 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  # Spring's default error body (for errors ApiExceptionHandler doesn't
+  # handle) must not expose internals. These are already Spring's defaults,
+  # but spring-boot-devtools switches all three to "always" whenever the app
+  # runs from the IDE or bootRun, which sent stack traces to the frontend.
+  # Explicit settings win over devtools. To see them while developing, run
+  # with the "dev" profile (application-dev.yaml).
+  web:
+    error:
+      include-stacktrace: never
+      include-message: never
+      include-binding-errors: never
+
 app:
   cors:
     # Browser origins allowed to call the REST API and open /ws. Comma-separated

@@ -59,13 +59,18 @@ for path in sorted(glob.glob("build/test-results/test/*.xml")):
         text,
     ):
         name, classname, message, trace = case.groups()
-        first_line = html.unescape(message).strip().splitlines()[0] if message.strip() else ""
+        # AssertJ messages start with a near-empty line, so show the first
+        # few non-empty lines.
+        lines = [line.strip() for line in html.unescape(message).splitlines() if line.strip()]
+        summary = " | ".join(lines[:3])
+        if len(summary) > 300:
+            summary = summary[:300] + "..."
         location = next(
             (line.strip() for line in html.unescape(trace).splitlines()
-             if "at com.nickneim." in line),
+             if line.strip().startswith("at com.nickneim.")),
             "",
         )
-        failures.append((classname.rsplit(".", 1)[-1], name, first_line[:300], location))
+        failures.append((classname.rsplit(".", 1)[-1], name, summary, location))
 
 if failed == 0 and status == 0:
     print(f"PASSED: {tests} tests ({skipped} skipped)")

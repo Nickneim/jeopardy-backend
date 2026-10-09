@@ -11,6 +11,7 @@ The contract between this backend and the React frontend. It covers the REST API
 - Base URL: `http://localhost:8080`. The WebSocket endpoint is `ws://localhost:8080/ws`.
 - Required environment variables: `DATABASE_URL`, `DATABASE_USERNAME` and `DATABASE_PASSWORD`. They live in the backend's git-ignored `.env`. The IntelliJ run configuration (`.run/JeopardyApplication.run.xml`) loads them, but `./gradlew bootRun` does **not**, so export them first if you use Gradle.
 - **Browser origins (CORS):** the backend accepts browser requests and WebSocket connections from `http://localhost:5173` (the Vite dev server) by default. To allow other origins, set `ALLOWED_ORIGINS` to a comma-separated list, for example `ALLOWED_ORIGINS=https://jeopardy.example,http://localhost:5173`.
+- **Debugging server errors:** error bodies never include stack traces or exception messages. To see them while developing the backend, run it with the `dev` profile (`SPRING_PROFILES_ACTIVE=dev`, for example in `.env`). Never use it anywhere else.
 
 ---
 
@@ -39,6 +40,8 @@ Key ideas:
 ## 3. REST API
 
 All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language`.
+
+Any other error (an unexpected server error, or a malformed path such as a session id that isn't a UUID) uses Spring's default body instead: `{ "timestamp", "status", "error", "path" }`. It has no stack trace and no exception message, so show a generic error for it.
 
 ### 3.1 Browsing games
 
