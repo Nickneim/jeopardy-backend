@@ -18,7 +18,7 @@ scripts/test.sh --tests "*GameSessionTest*"        # a class or pattern
 TASK=build scripts/test.sh                         # compile + all tests
 ```
 
-Otherwise use the Gradle wrapper (`./gradlew` in bash, `.\gradlew.bat` in PowerShell). It doesn't load `.env`, so most tests fail to connect without the variables exported.
+Otherwise use the Gradle wrapper (`./gradlew` in bash, `.\gradlew.bat` in PowerShell). The app and tests read `.env` themselves (see below), as long as Gradle runs from the project root.
 
 ```bash
 ./gradlew build                     # compile + run all tests
@@ -32,7 +32,7 @@ There is no linter or formatter configured.
 
 ### Environment / database
 
-- The app reads `DATABASE_URL`, `DATABASE_USERNAME` and `DATABASE_PASSWORD` (`application.yaml`). Locally they come from the git-ignored `.env`, which the IntelliJ run config `.run/JeopardyApplication.run.xml` loads. `bootRun` does **not** load `.env` on its own.
+- The app reads `DATABASE_URL`, `DATABASE_USERNAME` and `DATABASE_PASSWORD` (`application.yaml`). Locally they come from the git-ignored `.env`, which `application.yaml` imports as a properties file (`spring.config.import: optional:file:.env[.properties]`, relative to the working directory), so IntelliJ (any run config), `bootRun`, `java -jar` and Gradle tests all find it. Real environment variables take precedence, and without the file nothing changes. Keys in `.env` become plain properties, so `${DATABASE_URL}` placeholders resolve, but Spring's environment-variable name mapping doesn't apply: `SPRING_PROFILES_ACTIVE=dev` in `.env` only works when something exports it as a real variable (the saved IntelliJ config `.run/JeopardyApplication.run.xml` does).
 - Tests annotated `@ActiveProfiles("test")` use `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME` and `TEST_DATABASE_PASSWORD` (`src/test/resources/application-test.yml`). They need a real, reachable Postgres. There is no H2 or Testcontainers.
 - `JeopardyApplicationTests` has no test profile, so it needs the main `DATABASE_*` variables.
 - **Error details:** `spring-boot-devtools` (`developmentOnly`, so active in the IDE and `bootRun`) turns on `spring.web.error.include-stacktrace`, `include-message` and `include-binding-errors`, which sent stack traces to clients. `application.yaml` sets all three to `never` explicitly, which wins over devtools; the `dev` profile (`application-dev.yaml`, `SPRING_PROFILES_ACTIVE=dev`) turns them back on for local debugging. `ErrorResponseIntegrationTest` adds devtools' defaults the way devtools does and checks nothing leaks.

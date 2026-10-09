@@ -1,6 +1,12 @@
 spring:
   application:
     name: jeopardy
+  # Reads the git-ignored .env (KEY=value lines) from the working directory
+  # as properties, so the app finds DATABASE_* however it's started: IntelliJ
+  # (any run config, even the gutter arrow), bootRun or java -jar. Optional,
+  # so without the file nothing changes. Real environment variables still win.
+  config:
+    import: "optional:file:.env[.properties]"
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
