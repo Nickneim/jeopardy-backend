@@ -187,6 +187,8 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 
 A successful action produces a broadcast. A failed one produces an error on `/user/queue/errors` and nothing else.
 
+**Messages from one connection are handled in the order they were sent.** For example, two `place-final-jeopardy-wager` messages sent back to back always leave the second wager in place, so there's no need to wait for a broadcast before sending the next message. There's no ordering between different connections: when two players act at the same moment, either can be first (see §7).
+
 ---
 
 ## 5. The game state (`GameSessionResponse`)

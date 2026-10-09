@@ -1210,6 +1210,38 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
+    void finalJeopardyWagersSentBackToBack_areAppliedInOrder()
+            throws Exception {
+
+        GameSession session = createSessionInFinalJeopardy();
+        Long playerId = session.getPlayers().getFirst().getId();
+
+        StompSession stompSession = connect(tokenOf(session));
+
+        BlockingQueue<GameSessionResponse> receivedMessages =
+                subscribeToSession(
+                        stompSession,
+                        session.getId()
+                );
+
+        // One pair would usually arrive in order by luck; many messages
+        // sent without waiting make a reordering show up reliably.
+        int lastWager = 200;
+        for (int wager = 1; wager <= lastWager; wager++) {
+            stompSession.send(
+                    "/app/sessions/" + session.getId() + "/place-final-jeopardy-wager",
+                    new PlaceFinalJeopardyWagerRequest(wager)
+            );
+        }
+
+        for (int i = 0; i < lastWager; i++) {
+            awaitMessage(receivedMessages);
+        }
+
+        assertEquals(lastWager, session.getFinalJeopardyWager(playerId));
+    }
+
+    @Test
     void placingFinalJeopardyWagerAboveScore_returnsError()
             throws Exception {
 

@@ -2,8 +2,9 @@ package com.nickneim.jeopardy.session.security;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
@@ -14,10 +15,14 @@ import java.util.UUID;
 
 import static com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor.TOKEN_HEADER;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class PlayerAuthenticationInterceptorTest {
 
     private PlayerTokenRegistry registry;
+    private MessageChannel clientOutboundChannel;
     private PlayerAuthenticationInterceptor interceptor;
 
     private final PlayerPrincipal player =
@@ -27,7 +32,8 @@ class PlayerAuthenticationInterceptorTest {
     void setUp() {
         registry = new PlayerTokenRegistry();
         registry.register("valid-token", player);
-        interceptor = new PlayerAuthenticationInterceptor(registry);
+        clientOutboundChannel = mock(MessageChannel.class);
+        interceptor = new PlayerAuthenticationInterceptor(registry, clientOutboundChannel);
     }
 
     @Test
@@ -39,13 +45,21 @@ class PlayerAuthenticationInterceptorTest {
     }
 
     @Test
-    void connectWithUnknownToken_isRejectedWithoutRevealingTheToken() {
-        MessagingException exception = assertThrows(
-                MessagingException.class,
-                () -> interceptor.preSend(message(StompCommand.CONNECT, "forged-token"), null)
-        );
+    void connectWithUnknownToken_isDroppedAndAnsweredWithAnErrorFrame() {
+        Message<?> result =
+                interceptor.preSend(message(StompCommand.CONNECT, "forged-token"), null);
 
-        assertFalse(exception.getMessage().contains("forged-token"), exception.getMessage());
+        assertNull(result);
+
+        ArgumentCaptor<Message<?>> sent = ArgumentCaptor.forClass(Message.class);
+        verify(clientOutboundChannel).send(sent.capture());
+
+        StompHeaderAccessor error =
+                StompHeaderAccessor.wrap(sent.getValue());
+        assertEquals(StompCommand.ERROR, error.getCommand());
+        assertEquals("ws-session-1", error.getSessionId());
+        assertEquals("Unknown player token", error.getMessage());
+        assertFalse(error.toString().contains("forged-token"), error.toString());
     }
 
     @Test
@@ -54,6 +68,7 @@ class PlayerAuthenticationInterceptorTest {
                 interceptor.preSend(message(StompCommand.CONNECT, null), null);
 
         assertNull(userOf(result));
+        verifyNoInteractions(clientOutboundChannel);
     }
 
     @Test
@@ -81,6 +96,8 @@ class PlayerAuthenticationInterceptorTest {
         if (token != null) {
             accessor.setNativeHeader(TOKEN_HEADER, token);
         }
+
+        accessor.setSessionId("ws-session-1");
 
         // Keeps the headers mutable, as Spring does for inbound messages.
         accessor.setLeaveMutable(true);

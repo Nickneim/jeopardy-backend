@@ -32,6 +32,12 @@ public class WebSocketConfig
         // Spring only accepts its own origin unless told otherwise.
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(corsProperties.allowedOriginsArray());
+
+        // The inbound channel runs on a thread pool, so without this two
+        // messages from one client can be handled out of order: a player's
+        // second Final Jeopardy wager could be overwritten by their first.
+        // Order is kept per connection, not across connections.
+        registry.setPreserveReceiveOrder(true);
     }
 
     @Override
