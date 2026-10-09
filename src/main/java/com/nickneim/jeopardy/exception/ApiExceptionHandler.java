@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,17 @@ public class ApiExceptionHandler {
     public ApiErrorResponse handleUnplayableGame(UnplayableGameException exception) {
         return new ApiErrorResponse(
                 HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                exception.getMessage()
+        );
+    }
+
+    // 409: the request is fine, but the session's state (started, with late
+    // joining blocked by the host) doesn't allow it.
+    @ExceptionHandler(LateJoinNotAllowedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleLateJoinNotAllowed(LateJoinNotAllowedException exception) {
+        return new ApiErrorResponse(
+                HttpStatus.CONFLICT.value(),
                 exception.getMessage()
         );
     }

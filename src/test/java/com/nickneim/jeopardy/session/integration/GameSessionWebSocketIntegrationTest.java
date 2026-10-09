@@ -17,6 +17,7 @@ import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlayerResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -1437,6 +1438,33 @@ class GameSessionWebSocketIntegrationTest {
 
         assertEquals(4000, response.timers().buzzerMs());
         assertEquals(30000, response.timers().clueChoiceMs());
+    }
+
+    @Test
+    void hostBlockingLateJoins_broadcastsIt_andJoiningAfterTheStartFails()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(stompSession, session.getId());
+        subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-settings",
+                Map.of("allowLateJoin", false)
+        );
+
+        assertFalse(awaitMessage(messages).allowLateJoin());
+
+        startGame(stompSession, session.getId());
+        awaitMessage(messages);
+
+        assertThrows(
+                LateJoinNotAllowedException.class,
+                () -> gameSessionService.joinSession(session.getId(), "Late")
+        );
     }
 
     @Test

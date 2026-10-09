@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
+import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -61,13 +62,10 @@ public class GameSessionService {
         this.clock = clock;
     }
 
+    /** A new session with the default timers; the host can change them in the lobby. */
     public GameSession createSession(GameBoard board) {
-        return createSession(board, GameSessionTimeouts.defaults());
-    }
-
-    public GameSession createSession(GameBoard board, GameSessionTimeouts timeouts) {
         UUID id = UUID.randomUUID();
-        GameSession session = new GameSession(id, board, timeouts, clock.instant());
+        GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
         sessions.put(session.getId(), session);
 
@@ -196,6 +194,21 @@ public class GameSessionService {
 
         synchronized (session) {
             session.updateTimeouts(playerId, request.applyTo(session.getTimeouts()));
+
+            broadcast(session);
+        }
+    }
+
+    /** The host's lobby settings. Like the timers, they have no timer to re-arm. */
+    public void updateSettings(
+            UUID sessionId,
+            Long playerId,
+            SessionSettingsRequest request
+    ) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            session.updateLateJoin(playerId, request.allowLateJoin());
 
             broadcast(session);
         }

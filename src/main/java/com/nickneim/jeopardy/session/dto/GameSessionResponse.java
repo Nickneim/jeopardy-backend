@@ -19,6 +19,8 @@ public record GameSessionResponse(
         Long phaseDurationMs,
         Long phaseRemainingMs,
         SessionTimersResponse timers,
+        boolean allowLateJoin,
+        int joinScore,
         List<PlayerResponse> players,
         Long hostPlayerId,
         Long playerChoosingClue,
@@ -51,6 +53,8 @@ public record GameSessionResponse(
                 phaseDuration == null ? null : phaseDuration.toMillis(),
                 phaseRemaining == null ? null : phaseRemaining.toMillis(),
                 SessionTimersResponse.from(session.getTimeouts()),
+                session.isLateJoinAllowed(),
+                session.getJoinScore(),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)
                         .toList(),

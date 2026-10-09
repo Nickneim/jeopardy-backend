@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -69,7 +70,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(gameId))
                 .thenReturn(board);
 
-        when(gameSessionService.createSession(board, GameSessionTimeouts.defaults()))
+        when(gameSessionService.createSession(board))
                 .thenReturn(session);
 
         mockMvc.perform(post("/api/game-sessions")
@@ -83,7 +84,7 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.id").value(sessionId.toString()));
 
         verify(gameBoardService).loadBoard(gameId);
-        verify(gameSessionService).createSession(board, GameSessionTimeouts.defaults());
+        verify(gameSessionService).createSession(board);
     }
 
     @Test
@@ -298,57 +299,65 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.timers.finalJeopardyRevealMs").value(10000));
     }
 
-    // -------------------------------------------------------------------------
-    // Timers on create
-    // -------------------------------------------------------------------------
+    @Test
+    void joinSession_returnsConflictWhenLateJoiningIsBlocked() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        when(gameSessionService.joinSession(sessionId, "Nico"))
+                .thenThrow(new LateJoinNotAllowedException());
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "playerName": "Nico" }
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(content().json("""
+                        {
+                            "status": 409,
+                            "message": "This game has already started and doesn't accept new players"
+                        }
+                        """, JsonCompareMode.STRICT));
+    }
 
     @Test
-    void createSession_withTimers_keepsTheDefaultsForTheRest() throws Exception {
+    void getSession_includesTheJoinSettings() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameSession session = new GameSession(sessionId, oneClueBoard());
+        session.addPlayer("Nico");
+        session.updateLateJoin(1L, false);
+
+        when(gameSessionService.getSessionState(sessionId))
+                .thenReturn(GameSessionResponse.from(session));
+
+        mockMvc.perform(get("/api/game-sessions/" + sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.allowLateJoin").value(false))
+                .andExpect(jsonPath("$.joinScore").value(0));
+    }
+
+    // Timers are set in the lobby. A client that still sends them on create
+    // gets a session with the defaults, not an error.
+    @Test
+    void createSession_ignoresTimersInTheRequest() throws Exception {
         GameBoard board = oneClueBoard();
         GameSession session = new GameSession(UUID.randomUUID(), board);
-        GameSessionTimeouts defaults = GameSessionTimeouts.defaults();
-        GameSessionTimeouts expected = new GameSessionTimeouts(
-                defaults.clueChoice(), defaults.clueReveal(), defaults.dailyDoubleWager(),
-                Duration.ofMillis(2_500), defaults.answer(), defaults.answerReveal(),
-                defaults.finalJeopardyWager(), Duration.ofMinutes(1), defaults.finalJeopardyReveal()
-        );
 
         when(gameBoardService.loadBoard(123L)).thenReturn(board);
-        when(gameSessionService.createSession(board, expected)).thenReturn(session);
+        when(gameSessionService.createSession(board)).thenReturn(session);
 
         mockMvc.perform(post("/api/game-sessions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
                             "gameId": 123,
-                            "timers": { "buzzerMs": 2500, "finalJeopardyAnswerMs": 60000 }
+                            "timers": { "buzzerMs": 10 }
                         }
                         """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(session.getId().toString()));
 
-        verify(gameSessionService).createSession(board, expected);
-    }
-
-    @Test
-    void createSession_rejectsTimersOutsideTheBounds() throws Exception {
-        mockMvc.perform(post("/api/game-sessions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                        {
-                            "gameId": 123,
-                            "timers": { "buzzerMs": 999, "clueChoiceMs": 300001, "answerMs": 300000 }
-                        }
-                        """))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().json("""
-                        {
-                            "status": 400,
-                            "message": "timers.buzzerMs must be between 1000 and 300000, timers.clueChoiceMs must be between 1000 and 300000"
-                        }
-                        """, JsonCompareMode.STRICT));
-
-        verifyNoInteractions(gameBoardService, gameSessionService);
+        verify(gameSessionService).createSession(board);
     }
 
     // -------------------------------------------------------------------------
@@ -382,7 +391,10 @@ class GameSessionControllerTest {
                                 "round": "JEOPARDY",
                                 "playerCount": 1,
                                 "hostName": "Nico",
-                                "createdAt": "2026-10-09T12:30:00Z"
+                                "createdAt": "2026-10-09T12:30:00Z",
+                                "joinable": true,
+                                "allowLateJoin": true,
+                                "joinScore": 0
                             }],
                             "page": 0,
                             "size": 20,

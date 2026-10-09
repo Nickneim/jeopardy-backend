@@ -136,6 +136,19 @@ public class GameSessionWebSocketController {
         );
     }
 
+    @MessageMapping("/sessions/{sessionId}/update-settings")
+    public void updateSettings(
+            @DestinationVariable UUID sessionId,
+            @Valid SessionSettingsRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.updateSettings(
+                sessionId,
+                playerId(sessionId, headers),
+                request
+        );
+    }
+
     @MessageMapping("/sessions/{sessionId}/leave")
     public void leave(
             @DestinationVariable UUID sessionId,

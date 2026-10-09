@@ -14,10 +14,14 @@ public class GameSessionPlayer {
     private boolean leaving;
 
     public GameSessionPlayer(Long id, String name) {
+        this(id, name, 0);
+    }
+
+    public GameSessionPlayer(Long id, String name, int score) {
         this.id = id;
         this.name = name;
         this.token = PlayerTokens.generate();
-        this.score = 0;
+        this.score = score;
         this.wager = 0;
     }
 

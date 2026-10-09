@@ -1581,16 +1581,15 @@ class GameSessionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void createSession_usesTheGivenTimers() {
-        GameSessionTimeouts timeouts = GameSessionTimeouts.defaults();
-        GameSessionTimeouts custom = new GameSessionTimeouts(
-                Duration.ofSeconds(45), timeouts.clueReveal(), timeouts.dailyDoubleWager(),
-                timeouts.buzzer(), timeouts.answer(), timeouts.answerReveal(),
-                timeouts.finalJeopardyWager(), timeouts.finalJeopardyAnswer(), timeouts.finalJeopardyReveal()
+    void timersSetInTheLobby_areUsedOnceTheGameStarts() {
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        gameSessionService.updateTimers(
+                session.getId(),
+                player.getId(),
+                new SessionTimersRequest(45_000L, null, null, null, null, null, null, null, null)
         );
 
-        GameSession session = gameSessionService.createSession(createBoard(), custom);
-        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
         gameSessionService.startGame(session.getId(), player.getId());
 
         verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(45)), any(Runnable.class));

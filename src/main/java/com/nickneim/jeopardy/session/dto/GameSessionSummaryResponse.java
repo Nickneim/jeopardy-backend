@@ -20,7 +20,11 @@ public record GameSessionSummaryResponse(
         GameRound round,
         int playerCount,
         String hostName,
-        Instant createdAt
+        Instant createdAt,
+        // Whether a join would be accepted right now.
+        boolean joinable,
+        boolean allowLateJoin,
+        int joinScore
 ) {
 
     public static GameSessionSummaryResponse from(GameSession session) {
@@ -40,7 +44,10 @@ public record GameSessionSummaryResponse(
                 session.getRound(),
                 session.getActivePlayers().size(),
                 hostName,
-                session.getCreatedAt()
+                session.getCreatedAt(),
+                session.isJoinable(),
+                session.isLateJoinAllowed(),
+                session.getJoinScore()
         );
     }
 }

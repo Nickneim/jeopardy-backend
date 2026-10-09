@@ -10,7 +10,6 @@ import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
-import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import jakarta.validation.Valid;
@@ -55,10 +54,7 @@ public class GameSessionController {
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
         GameBoard board = gameBoardService.loadBoard(request.gameId());
-        GameSessionTimeouts timeouts = request.timers() == null
-                ? GameSessionTimeouts.defaults()
-                : request.timers().applyTo(GameSessionTimeouts.defaults());
-        GameSession session = gameSessionService.createSession(board, timeouts);
+        GameSession session = gameSessionService.createSession(board);
 
         return new CreateGameSessionResponse(session.getId());
     }

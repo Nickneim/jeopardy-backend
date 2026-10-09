@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
+import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +26,8 @@ public class GameSession {
     // someone else's.
     private long nextPlayerId = 1;
     private Long hostPlayerId;
+    private boolean allowLateJoin = true;
+    private int joinScore = 0;
 
     private GameRound round;
     private GameSessionState state;
@@ -196,10 +199,41 @@ public class GameSession {
      * and token, never their id alone.
      */
     public GameSessionPlayer addPlayer(String name) {
-        GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name);
+        if (!isJoinable()) {
+            throw new LateJoinNotAllowedException();
+        }
+
+        GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore);
         addPlayer(player);
 
         return player;
+    }
+
+    /**
+     * Whether someone can join right now: always in the lobby, and after the
+     * start (finished games included) unless the host blocked it.
+     */
+    public boolean isJoinable() {
+        return switch (state) {
+            case WAITING_FOR_START -> true;
+            case CLOSED -> false;
+            default -> allowLateJoin;
+        };
+    }
+
+    /** Whether players can join after the game has started. */
+    public boolean isLateJoinAllowed() {
+        return allowLateJoin;
+    }
+
+    /**
+     * The score a player starts with when they join. It never goes above 0,
+     * and only rises when the lowest scorers are pushed up, so leaving and
+     * joining again never gives anyone a better score than staying.
+     * See {@link #changeScores}.
+     */
+    public int getJoinScore() {
+        return joinScore;
     }
 
     /**
@@ -256,6 +290,21 @@ public class GameSession {
         }
 
         timeouts = newTimeouts;
+    }
+
+    /**
+     * Only the host can block or allow joining after the start, and only
+     * before the game starts. Joining the lobby is always allowed.
+     */
+    public void updateLateJoin(Long playerId, boolean allowed) {
+        requireActivePlayer(playerId);
+        requireHost(playerId, "Only the host can change the settings!");
+
+        if (state != GameSessionState.WAITING_FOR_START) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Settings can only be changed before the game starts!");
+        }
+
+        allowLateJoin = allowed;
     }
 
     /**
@@ -586,13 +635,58 @@ public class GameSession {
 
     /** Applies every wager (no answer counts as wrong) and ends the game. */
     public void finishFinalJeopardyReveal() {
+        // Applied together, so the join score sees the final scores at once.
+        Map<GameSessionPlayer, Integer> changes = new LinkedHashMap<>();
+
         for (GameSessionPlayer player : players) {
             int wager = getFinalJeopardyWager(player.getId());
 
-            player.addScore(isFinalJeopardyAnswerCorrect(player.getId()) ? wager : -wager);
+            changes.put(player, isFinalJeopardyAnswerCorrect(player.getId()) ? wager : -wager);
         }
 
+        changeScores(changes);
         state = GameSessionState.FINISHED_GAME;
+    }
+
+    private void changeScore(GameSessionPlayer player, int amount) {
+        changeScores(Map.of(player, amount));
+    }
+
+    /**
+     * Applies score changes and keeps the join score up to date. Every score
+     * change goes through here.
+     * <ul>
+     *     <li>A score below the join score lowers it to that score.</li>
+     *     <li>When a player at or below the join score scores and nobody is
+     *     at or below it afterwards, it rises to the lowest score, but never
+     *     above 0.</li>
+     * </ul>
+     * Nothing else changes it: a low scorer leaving keeps it where it is, so
+     * they can't rejoin with a better score.
+     */
+    private void changeScores(Map<GameSessionPlayer, Integer> changes) {
+        boolean bottomScored = false;
+
+        for (Map.Entry<GameSessionPlayer, Integer> change : changes.entrySet()) {
+            GameSessionPlayer player = change.getKey();
+
+            if (change.getValue() != 0 && player.getScore() <= joinScore) {
+                bottomScored = true;
+            }
+
+            player.addScore(change.getValue());
+        }
+
+        int lowest = players.stream()
+                .mapToInt(GameSessionPlayer::getScore)
+                .min()
+                .orElse(joinScore);
+
+        if (lowest < joinScore) {
+            joinScore = lowest;
+        } else if (bottomScored && lowest > joinScore) {
+            joinScore = Math.min(lowest, 0);
+        }
     }
 
     /** The Final Jeopardy category, or null if the board has none. */
@@ -645,11 +739,11 @@ public class GameSession {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
         clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false));
         if (board.isDailyDouble(chosenClueId)) {
-            player.addScore(-player.getWager());
+            changeScore(player, -player.getWager());
             startRevealingAnswer();
         } else {
             BoardClue clue = board.getClue(chosenClueId);
-            player.addScore(-clue.value());
+            changeScore(player, -clue.value());
             if (haveAllActivePlayersBuzzed()) {
                 startRevealingAnswer();
             } else {
@@ -730,11 +824,11 @@ public class GameSession {
         boolean correct = isCorrectAnswer(clue, answer);
         clueAnswers.add(new ClueAnswer(playerId, answer, correct));
         if (correct) {
-            player.addScore(clueValue);
+            changeScore(player, clueValue);
             playerChoosingClue = playerId;
             startRevealingAnswer();
         } else {
-            player.addScore(-clueValue);
+            changeScore(player, -clueValue);
             if (board.isDailyDouble(chosenClueId)) {
                 startRevealingAnswer();
             } else if (haveAllActivePlayersBuzzed()) {

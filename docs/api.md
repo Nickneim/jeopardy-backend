@@ -19,7 +19,7 @@ The contract between this backend and the React frontend. It covers the REST API
 
 ```
 0. GET  /api/game-sessions                                     → open sessions      (lobby list)
-1. POST /api/game-sessions                    { gameId, timers? } → { id }            (create)
+1. POST /api/game-sessions                    { gameId }       → { id }               (create)
 2. POST /api/game-sessions/{id}/players       { playerName }   → { playerId, token }  (join; the first player is the host)
 3. STOMP CONNECT ws://localhost:8080/ws       header  player-token: <token>
 4. SUBSCRIBE /topic/sessions/{id}             ← full game state after every change
@@ -34,8 +34,9 @@ Key ideas:
 - **Catching up after connecting.** Subscribe first, then fetch `GET /api/game-sessions/{id}`. Every response carries a `version` that goes up with each change, so whether the fetch result or a broadcast arrives first, **keep whichever has the higher `version`** and ignore the other. Use the same approach after a refresh or reconnect.
 - **Who you are comes from your connection, not your messages.** You prove your identity once, with your token, when you connect. Action payloads never contain a player id, so a player can't act as someone else.
 - **Anyone can watch.** A connection without a token can subscribe to a session's topic but can't act.
-- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set before the start (`timers`, §6.3).
+- **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set in the lobby (`timers`, §6.3).
 - **The host runs the lobby.** The first player to join is the host (`hostPlayerId`). Only the host can start the game, change the timers and kick players. If the host leaves, the next player takes over (§6.4).
+- **Anyone can join at any time**, unless the host blocked joining after the start (`allowLateJoin`). Everyone who joins, including someone who left and comes back, starts with the session's `joinScore`, which is never better than the lowest score of anyone who stayed (§6.6).
 - **Leaving is explicit.** Closing the tab or losing the connection is *not* leaving: the player stays in the game and can reconnect with their token. Only the `leave` action (or being kicked) removes a player, and it makes their token stop working (§6.4).
 - **Sessions don't live forever.** Idle lobbies, finished games and sessions everyone has left are removed from memory (§6.5).
 
@@ -121,8 +122,11 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
 | `hostName` | The host's name, or `null` before anyone has joined |
 | `createdAt` | When the session was created, an ISO-8601 UTC timestamp such as `"2026-10-09T12:30:00Z"` |
+| `joinable` | Whether a join would be accepted right now: always `true` in the lobby, and after the start only if `allowLateJoin` |
+| `allowLateJoin` | Whether the host allows joining after the start (§6.6) |
+| `joinScore` | The score a player who joins now starts with (§6.6) |
 
-The list is a snapshot: a session can start, fill up or close right after. Anyone can join any listed session (§3.2, join), including one in progress.
+The list is a snapshot: a session can start, fill up or close right after. Use `joinable` to decide whether to offer "Join" or only "Watch"; anyone can watch any listed session.
 
 Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
 
@@ -130,12 +134,11 @@ Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"In
 
 Creates a live session from a stored game. Nobody is in it yet: the creator should join next, which makes them the host.
 
-- Request: `{ "gameId": 123, "timers": { "buzzerMs": 8000 } }`. `timers` is optional, and so is every field in it: any duration left out keeps its default (§6.3).
+- Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
 - `201 { "id": "8f6c…-uuid" }`
 - Unknown game: 404.
 - Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
-- A duration outside 1000–300000 ms: `400` naming each one, for example `{ "status": 400, "message": "timers.buzzerMs must be between 1000 and 300000" }`.
 - A session nobody joins is removed after 30 minutes (§6.5).
 
 #### `GET /api/game-sessions/{sessionId}`
@@ -154,7 +157,9 @@ Joins a session.
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 
-Players can join at any time, including mid-game (with a score of 0). Someone who left can join again the same way, under any name (even the same one): they become a new player with a new id, token and a score of 0, and nothing from their old self carries over.
+Players can join at any time, including mid-game and after the game has finished, unless the host has blocked joining after the start (`allowLateJoin: false`, §6.6). Then a join after `WAITING_FOR_START` returns `409 { "status": 409, "message": "This game has already started and doesn't accept new players" }`. Joining the lobby is always allowed.
+
+Every new player starts with the session's current `joinScore` (0 until someone's score drops below 0, §6.6), shown in their `PlayerResponse.score`. Someone who left can join again the same way, under any name (even the same one): they become a new player with a new id and token and the current `joinScore`, and nothing else from their old self carries over.
 
 ---
 
@@ -217,6 +222,7 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 |---|---|---|
 | `start` | none (an empty body or `{}` is fine) | `WAITING_FOR_START`; **host only** |
 | `update-timers` | `Partial<SessionTimers>`, for example `{ "buzzerMs": 8000 }` (send `{}` at least) | `WAITING_FOR_START`; **host only**. Durations left out keep their current value. Each must be 1000–300000 ms (§6.3). |
+| `update-settings` | `{ "allowLateJoin": boolean }` (required) | `WAITING_FOR_START`; **host only**. Blocks or allows joining after the start (§6.6). |
 | `kick` | `{ "playerId": number }` | Any state except `CLOSED`; **host only**; not yourself (use `leave`). The kicked player is treated exactly like a player who leaves. |
 | `leave` | none | Any state except `CLOSED` (§6.4) |
 | `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue` |
@@ -248,6 +254,8 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `timers` | The session's configured phase durations in milliseconds (`SessionTimers`, §6.3). Always present, so the lobby can show them. |
 | `players` | `{ id, name, score, leaving }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed (§6.4); show them as leaving. Removed players aren't listed at all. |
 | `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`. |
+| `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
+| `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
 | `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board. Can be `null` in Final Jeopardy and `FINISHED_GAME` if the last chooser left (§6.4). |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
@@ -382,10 +390,9 @@ Each session has its own phase durations, sent in every response as `timers`. Th
 
 **Changing them:**
 
-- When creating the session: the optional `timers` object on `POST /api/game-sessions` (§3.2).
-- In the lobby: the host's `update-timers` action (§4.3), only in `WAITING_FOR_START`. It broadcasts the new `timers`. Once the game has started they're fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`.
-- In both, every field is optional and a field left out keeps its current value.
-- **Bounds:** every duration is a whole number of milliseconds from **1000 (1 s) to 300000 (5 min)**, inclusive. Out of range: `400` with `"timers.<field> must be between 1000 and 300000"` on create, or `INVALID_REQUEST` with `"<field> must be between 1000 and 300000"` on `update-timers` (several invalid fields are joined with `", "`). Nothing changes when any field is invalid.
+- Only in the lobby, with the host's `update-timers` action (§4.3), in `WAITING_FOR_START`. It broadcasts the new `timers`. Once the game has started they're fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`. Every session starts with the defaults.
+- Every field is optional, and a field left out keeps its current value.
+- **Bounds:** every duration is a whole number of milliseconds from **1000 (1 s) to 300000 (5 min)**, inclusive. Out of range: `INVALID_REQUEST` with `"<field> must be between 1000 and 300000"` (several invalid fields are joined with `", "`). Nothing changes when any field is invalid.
 
 Every response (broadcast and `GET /api/game-sessions/{id}`) carries the current phase's timing:
 
@@ -428,7 +435,7 @@ A chooser marked `leaving` when the clue rounds end (Final Jeopardy starts, or t
 
 **Buzzing.** `playersLockedOut` only lists players who are still in `players`. A player marked `leaving` can't buzz, and "everyone has buzzed" (§6.2) only counts players who haven't left.
 
-**Rejoining.** Someone who left can join again with `POST /api/game-sessions/{id}/players`, under any name, as a new player (new id, new token, score 0, §3.2).
+**Rejoining.** Someone who left can join again with `POST /api/game-sessions/{id}/players`, under any name, as a new player (new id, new token, starting at the current `joinScore`, §3.2 and §6.6), unless the host blocked joining after the start.
 
 **The last player.** When the last player who hasn't left leaves (or every remaining player is marked `leaving`), the session is closed at once, even in the lobby (§6.5).
 
@@ -449,6 +456,28 @@ A game in progress is never removed by a timer: every phase is timed, so even a 
 1. One last broadcast on `/topic/sessions/{id}`: a normal `GameSessionResponse` with the next `version`, `state: "CLOSED"`, `closeReason` set, `phaseDurationMs`/`phaseRemainingMs` `null`, and `currentClue`/`finalJeopardy` `null`. `players`, their scores and `board` are as they were, so a final scoreboard can still be shown. Show something like "This game has ended" (or "Everyone left").
 2. The session is gone: `GET /api/game-sessions/{id}` returns 404, it disappears from `GET /api/game-sessions`, joining returns 404, and any action gets `SESSION_NOT_FOUND`.
 3. Every token in it stops working. Open connections stay open (they just receive nothing more), but a reconnect is rejected on CONNECT exactly as after a backend restart.
+
+### 6.6 Joining after the start and the join score
+
+**Late joining.** By default anyone can join at any time: in the lobby, during the game and after it has finished. Before the start, the host can block joining after the start with `update-settings` `{ "allowLateJoin": false }` (and allow it again with `true`). Once the game starts the setting is fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`. With late joining blocked, every join after `WAITING_FOR_START` returns `409`, including from someone who left and wants to come back. A player who joined mid-game plays like anyone else, starting with the next clue they can buzz on; in Final Jeopardy they can wager (0 up to their score) and answer if the phase hasn't ended.
+
+**Join score.** Every player who joins starts with `joinScore`, not with 0. It's there so that leaving and joining again never gives anyone a better score than staying would have. It starts at 0 and follows these rules after every score change:
+
+1. **It goes down with the lowest score.** If any player's score drops below `joinScore`, `joinScore` becomes that score.
+2. **It only goes up when the bottom is pushed up.** If a player whose score was at or below `joinScore` scores, and afterwards nobody's score is at or below `joinScore`, it becomes the lowest current score or 0, whichever is lower.
+3. **Nothing else changes it.** In particular, when the lowest-scoring player leaves, `joinScore` stays where it was, so they rejoin with the same score. Players marked `leaving` still count until they're removed.
+
+So `joinScore` is never above 0, and never above the lowest score of the players who were there when it last moved. Examples, starting at 0:
+
+| What happens | Scores after | `joinScore` |
+|---|---|---|
+| Ben answers a $400 clue wrong | Ana 0, Ben −400 | −400 |
+| Ben leaves and joins again as "Ben" | Ana 0, Ben −400 | −400 |
+| Ben answers a $200 clue right | Ana 0, Ben −200 | −200 (Ben was at the bottom and nobody is at −400 any more) |
+| Ana answers a $600 clue right | Ana 600, Ben −200 | −200 (Ana wasn't at the bottom) |
+| Ben answers a $1000 clue right | Ana 600, Ben 800 | 0 (lowest is 600, but never above 0) |
+
+With two players tied at the bottom, `joinScore` only rises once both have moved up. Final Jeopardy can't change it: a player at or below `joinScore` (never above 0) can only wager 0.
 
 ---
 
@@ -604,10 +633,7 @@ interface SessionTimers {
   finalJeopardyRevealMs: number;
 }
 
-interface CreateGameSessionRequest {
-  gameId: number;
-  timers?: Partial<SessionTimers>;  // omitted fields keep their defaults
-}
+interface CreateGameSessionRequest { gameId: number; }  // timers and settings are set in the lobby
 interface CreateGameSessionResponse { id: string; }
 
 // Query params of GET /api/game-sessions (all optional)
@@ -627,6 +653,9 @@ interface GameSessionSummaryResponse {
   playerCount: number;        // players who haven't left
   hostName: string | null;    // null before anyone joins
   createdAt: string;          // ISO-8601 UTC, e.g. "2026-10-09T12:30:00Z"
+  joinable: boolean;          // a join would be accepted right now
+  allowLateJoin: boolean;
+  joinScore: number;          // a new player's starting score, never above 0
 }
 
 interface JoinSessionRequest { playerName: string; }
@@ -643,6 +672,7 @@ interface PlaceFinalJeopardyWagerRequest { wager: number; }
 interface AnswerFinalJeopardyRequest { answer: string; }
 type UpdateTimersRequest = Partial<SessionTimers>;  // host only, WAITING_FOR_START
 interface KickPlayerRequest { playerId: number; }  // host only
+interface UpdateSettingsRequest { allowLateJoin: boolean; }  // host only, WAITING_FOR_START
 // start, buzz and leave have no body
 
 // ---------- WebSocket: state ----------
@@ -713,6 +743,8 @@ interface GameSessionResponse {
   timers: SessionTimers;            // this session's configured durations
   players: PlayerResponse[];
   hostPlayerId: number | null;      // null only before anyone joins
+  allowLateJoin: boolean;           // joining after the start is allowed
+  joinScore: number;                // a new player's starting score, never above 0
   playerChoosingClue: number | null;
   playerAnswering: number | null;
   playersLockedOut: number[];
