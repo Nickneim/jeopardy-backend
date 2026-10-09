@@ -57,16 +57,20 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 | `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Empty or blank means no filter. |
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
+| `playable` | (none) | Optional. `true`: only games with at least one clue (the only ones a session can be created from, §3.2). `false`: only games without clues. Omit it to list both. |
 
 All filters are optional and combine with AND. Ordering and paging stay the same when filtering, and `totalElements` / `totalPages` count only the matching games.
 
-Response: `PageResponse<GameSummaryResponse>`. Errors (all `400` with an `ApiErrorResponse`):
+Response: `PageResponse<GameSummaryResponse>`. Each game's `clueCount` is how many clues it has. Some imported games, such as the newest ones, have none: they can be browsed but not played, so show them differently or hide them with `playable=true`.
+
+Errors (all `400` with an `ApiErrorResponse`):
 
 | Cause | `message` |
 |---|---|
 | Invalid `page` or `size` | `"Invalid request parameters"` |
 | `from` or `to` isn't a valid `YYYY-MM-DD` date (for example `2025-02-30` or `02/01/2025`) | `"Invalid date for 'from': expected YYYY-MM-DD"` (or `'to'`) |
 | `from` is after `to` | `"'from' must not be after 'to'"` |
+| `playable` isn't a boolean | `"Invalid value for 'playable': expected true or false"` |
 
 #### `GET /api/games/seasons`
 
@@ -393,6 +397,7 @@ interface GameListParams {
   title?: string;        // case-insensitive substring
   from?: string;         // "YYYY-MM-DD", inclusive
   to?: string;           // "YYYY-MM-DD", inclusive
+  playable?: boolean;    // true: only games with clues; false: only games without
 }
 
 interface PageResponse<T> {
@@ -408,6 +413,7 @@ interface GameSummaryResponse {
   title: string;
   gameDate: string;      // "YYYY-MM-DD"
   season: string;
+  clueCount: number;     // 0: no clues, can't be played
 }
 
 interface SeasonResponse {

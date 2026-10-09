@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
+import com.nickneim.jeopardy.game.repository.GameClueCount;
 import com.nickneim.jeopardy.game.repository.GameRepository;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import org.junit.jupiter.api.Test;
@@ -17,14 +18,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -259,12 +264,35 @@ class GameServiceTest {
         Page<Game> returnedPage = gameService.getGames(
                 0,
                 20,
-                new GameFilter("39", "show", LocalDate.of(2025, 1, 1), null)
+                new GameFilter("39", "show", LocalDate.of(2025, 1, 1), null, null)
         );
 
         assertEquals(1, returnedPage.getContent().size());
         assertEquals(game, returnedPage.getContent().getFirst());
         assertEquals(1, returnedPage.getTotalElements());
+    }
+
+    @Test
+    void countClues_mapsEveryGameAndDefaultsToZero() {
+        Game withClues = new Game("Show #1", LocalDate.of(2025, 1, 1), "40");
+        Game withoutClues = new Game("Show #2", LocalDate.of(2025, 1, 2), "40");
+        ReflectionTestUtils.setField(withClues, "id", 1L);
+        ReflectionTestUtils.setField(withoutClues, "id", 2L);
+
+        when(gameRepository.countCluesByGameIds(Set.of(1L, 2L)))
+                .thenReturn(List.of(new GameClueCount(1L, 61L)));
+
+        assertEquals(
+                Map.of(1L, 61L, 2L, 0L),
+                gameService.countClues(List.of(withClues, withoutClues))
+        );
+    }
+
+    @Test
+    void countClues_skipsTheQueryForAnEmptyPage() {
+        assertEquals(Map.of(), gameService.countClues(List.of()));
+
+        verifyNoInteractions(gameRepository);
     }
 
     @Test

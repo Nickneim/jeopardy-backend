@@ -11,20 +11,20 @@ class GameFilterTest {
 
     @Test
     void blankTitleMeansNoTitleFilter() {
-        assertNull(new GameFilter(null, "", null, null).title());
-        assertNull(new GameFilter(null, "   ", null, null).title());
+        assertNull(new GameFilter(null, "", null, null, null).title());
+        assertNull(new GameFilter(null, "   ", null, null, null).title());
     }
 
     @Test
     void keepsTitleAsGiven() {
-        assertEquals(" Show ", new GameFilter(null, " Show ", null, null).title());
+        assertEquals(" Show ", new GameFilter(null, " Show ", null, null, null).title());
     }
 
     @Test
     void allowsFromEqualToTo() {
         LocalDate date = LocalDate.of(2025, 2, 1);
 
-        GameFilter filter = new GameFilter(null, null, date, date);
+        GameFilter filter = new GameFilter(null, null, date, date, null);
 
         assertEquals(date, filter.from());
         assertEquals(date, filter.to());
@@ -32,8 +32,8 @@ class GameFilterTest {
 
     @Test
     void allowsOnlyOneDateBound() {
-        assertDoesNotThrow(() -> new GameFilter(null, null, LocalDate.of(2025, 2, 1), null));
-        assertDoesNotThrow(() -> new GameFilter(null, null, null, LocalDate.of(2025, 2, 1)));
+        assertDoesNotThrow(() -> new GameFilter(null, null, LocalDate.of(2025, 2, 1), null, null));
+        assertDoesNotThrow(() -> new GameFilter(null, null, null, LocalDate.of(2025, 2, 1), null));
     }
 
     @Test
@@ -44,7 +44,8 @@ class GameFilterTest {
                         null,
                         null,
                         LocalDate.of(2025, 2, 2),
-                        LocalDate.of(2025, 2, 1)
+                        LocalDate.of(2025, 2, 1),
+                        null
                 )
         );
 

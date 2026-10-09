@@ -1,6 +1,10 @@
 package com.nickneim.jeopardy.game.service;
 
+import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.Game;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -33,7 +37,29 @@ final class GameSpecifications {
             specifications.add(playedOnOrBefore(filter.to()));
         }
 
+        if (filter.playable() != null) {
+            specifications.add(hasClues(filter.playable()));
+        }
+
         return Specification.allOf(specifications);
+    }
+
+    // An EXISTS subquery, so no clue is loaded or counted. It also applies to
+    // the page's count query, so totals only count matching games.
+    private static Specification<Game> hasClues(boolean hasClues) {
+        return (game, query, builder) -> {
+            Subquery<Long> clues = query.subquery(Long.class);
+            Root<Clue> clue = clues.from(Clue.class);
+
+            clues.select(builder.literal(1L))
+                    .where(builder.equal(
+                            clue.get("category").get("game").get("id"),
+                            game.get("id")
+                    ));
+
+            Predicate exists = builder.exists(clues);
+            return hasClues ? exists : builder.not(exists);
+        };
     }
 
     private static Specification<Game> hasSeason(String season) {

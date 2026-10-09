@@ -274,6 +274,75 @@ class GameIntegrationTest {
     }
 
     @Test
+    void getGames_includesEachGamesClueCount() {
+        PageResponse<GameSummaryResponse> body = pageOf("/api/games?size=100");
+
+        assertThat(body.content())
+                .filteredOn(game -> game.title().equals("Game Integration Test Game"))
+                .extracting(GameSummaryResponse::clueCount)
+                .containsExactly(4L);
+        assertThat(body.content())
+                .filteredOn(game -> !game.title().equals("Game Integration Test Game"))
+                .extracting(GameSummaryResponse::clueCount)
+                .hasSize(24)
+                .containsOnly(0L);
+    }
+
+    @Test
+    void getGames_playableTrue_onlyReturnsGamesWithClues() {
+        PageResponse<GameSummaryResponse> body = pageOf("/api/games?playable=true");
+
+        assertThat(body.totalElements()).isEqualTo(1);
+        assertThat(body.totalPages()).isEqualTo(1);
+        assertThat(body.content())
+                .extracting(GameSummaryResponse::title)
+                .containsExactly("Game Integration Test Game");
+    }
+
+    @Test
+    void getGames_playableFalse_onlyReturnsGamesWithoutClues() {
+        PageResponse<GameSummaryResponse> body = pageOf("/api/games?playable=false&size=5");
+
+        // Paging counts only the matching games.
+        assertThat(body.totalElements()).isEqualTo(24);
+        assertThat(body.totalPages()).isEqualTo(5);
+        assertThat(body.content())
+                .extracting(GameSummaryResponse::title)
+                .containsExactly(
+                        "Game Integration Test Game 25",
+                        "Game Integration Test Game 24",
+                        "Game Integration Test Game 23",
+                        "Game Integration Test Game 22",
+                        "Game Integration Test Game 21"
+                );
+    }
+
+    @Test
+    void getGames_combinesPlayableWithOtherFilters() {
+        assertThat(pageOf("/api/games?playable=true&season=40&to=2025-02-01").totalElements())
+                .isEqualTo(1);
+        assertThat(pageOf("/api/games?playable=true&season=39").totalElements())
+                .isZero();
+        assertThat(pageOf("/api/games?playable=false&season=39").totalElements())
+                .isEqualTo(3);
+    }
+
+    @Test
+    void getGames_returnsBadRequestForInvalidPlayable() {
+        restTestClient.get()
+                .uri("/api/games?playable=maybe")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .json("""
+                    {
+                        "status": 400,
+                        "message": "Invalid value for 'playable': expected true or false"
+                    }
+                    """);
+    }
+
+    @Test
     void getGames_returnsBadRequestForInvalidDate() {
         restTestClient.get()
                 .uri("/api/games?from=2025-02-30")
@@ -301,6 +370,21 @@ class GameIntegrationTest {
                         "message": "'from' must not be after 'to'"
                     }
                     """);
+    }
+
+    private PageResponse<GameSummaryResponse> pageOf(String uri) {
+        PageResponse<GameSummaryResponse> body = restTestClient.get()
+                .uri(uri)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(body).isNotNull();
+
+        return body;
     }
 
     private List<String> titlesOf(String uri, Object... uriVariables) {

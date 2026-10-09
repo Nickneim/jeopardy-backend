@@ -104,23 +104,27 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Only date parameters get an ApiErrorResponse. Rethrowing any other
-     * mismatch (such as a non-numeric page or id) leaves it to Spring's default
-     * 400 handling, as before date parameters existed.
+     * Only date and boolean filter parameters get an ApiErrorResponse.
+     * Rethrowing any other mismatch (such as a non-numeric page or id) leaves
+     * it to Spring's default 400 handling, as before these filters existed.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleInvalidDate(
+    public ApiErrorResponse handleInvalidFilterValue(
             MethodArgumentTypeMismatchException exception
     ) throws MethodArgumentTypeMismatchException {
-        if (exception.getRequiredType() != LocalDate.class) {
+        String parameter = "'" + exception.getName() + "'";
+        String message;
+
+        if (exception.getRequiredType() == LocalDate.class) {
+            message = "Invalid date for " + parameter + ": expected YYYY-MM-DD";
+        } else if (exception.getRequiredType() == Boolean.class) {
+            message = "Invalid value for " + parameter + ": expected true or false";
+        } else {
             throw exception;
         }
 
-        return new ApiErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                "Invalid date for '" + exception.getName() + "': expected YYYY-MM-DD"
-        );
+        return new ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
     }
 
 

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/games")
@@ -48,17 +49,23 @@ public class GameController {
             @RequestParam(required = false) String season,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Boolean playable
     ) {
         Page<Game> games = gameService.getGames(
                 page,
                 size,
-                new GameFilter(season, title, from, to)
+                new GameFilter(season, title, from, to, playable)
         );
+
+        Map<Long, Long> clueCounts = gameService.countClues(games.getContent());
 
         List<GameSummaryResponse> content = games.getContent()
                 .stream()
-                .map(GameSummaryResponse::from)
+                .map(game -> GameSummaryResponse.from(
+                        game,
+                        clueCounts.getOrDefault(game.getId(), 0L)
+                ))
                 .toList();
 
         return new PageResponse<>(

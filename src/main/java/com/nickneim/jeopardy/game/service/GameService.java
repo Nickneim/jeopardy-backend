@@ -13,8 +13,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Service
@@ -53,6 +56,24 @@ public class GameService {
         );
 
         return gameRepository.findAll(GameSpecifications.matching(filter), pageable);
+    }
+
+    /**
+     * How many clues each game has, by game id, with one grouped query.
+     * Games without clues map to 0.
+     */
+    public Map<Long, Long> countClues(Collection<Game> games) {
+        if (games.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Long> counts = new HashMap<>();
+        games.forEach(game -> counts.put(game.getId(), 0L));
+
+        gameRepository.countCluesByGameIds(counts.keySet())
+                .forEach(count -> counts.put(count.gameId(), count.clueCount()));
+
+        return counts;
     }
 
     public List<SeasonGameCount> getSeasons() {

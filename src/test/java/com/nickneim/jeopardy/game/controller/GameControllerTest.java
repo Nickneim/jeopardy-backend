@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -357,7 +358,7 @@ class GameControllerTest {
                 42
         );
 
-        when(gameService.getGames(1, 20, new GameFilter("39", null, null, null)))
+        when(gameService.getGames(1, 20, new GameFilter("39", null, null, null, null)))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -388,16 +389,17 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(1, 20, new GameFilter("39", null, null, null));
+        verify(gameService).getGames(1, 20, new GameFilter("39", null, null, null, null));
     }
 
     @Test
-    void getGames_passesTitleAndDateFiltersCombinedWithSeason() throws Exception {
+    void getGames_passesAllFiltersCombined() throws Exception {
         GameFilter filter = new GameFilter(
                 "40",
                 "show",
                 LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 1, 31)
+                LocalDate.of(2025, 1, 31),
+                true
         );
 
         when(gameService.getGames(0, 20, filter))
@@ -407,10 +409,68 @@ class GameControllerTest {
                         .param("season", "40")
                         .param("title", "show")
                         .param("from", "2025-01-01")
-                        .param("to", "2025-01-31"))
+                        .param("to", "2025-01-31")
+                        .param("playable", "true"))
                 .andExpect(status().isOk());
 
         verify(gameService).getGames(0, 20, filter);
+    }
+
+    @Test
+    void getGames_passesPlayableFalse() throws Exception {
+        GameFilter filter = new GameFilter(null, null, null, null, false);
+
+        when(gameService.getGames(0, 20, filter))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/games").param("playable", "false"))
+                .andExpect(status().isOk());
+
+        verify(gameService).getGames(0, 20, filter);
+    }
+
+    @Test
+    void getGames_returnsBadRequestForInvalidPlayable() throws Exception {
+        mockMvc.perform(get("/api/games").param("playable", "maybe"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "Invalid value for 'playable': expected true or false"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_includesEachGamesClueCount() throws Exception {
+        Game withClues = new Game("Show #123", LocalDate.of(2025, 1, 2), "40");
+        Game withoutClues = new Game("Masters #71", LocalDate.of(2025, 1, 1), "jm");
+        ReflectionTestUtils.setField(withClues, "id", 123L);
+        ReflectionTestUtils.setField(withoutClues, "id", 725L);
+
+        List<Game> games = List.of(withClues, withoutClues);
+
+        when(gameService.getGames(0, 20, GameFilter.NONE))
+                .thenReturn(new PageImpl<>(games, PageRequest.of(0, 20), 2));
+        when(gameService.countClues(games))
+                .thenReturn(Map.of(123L, 61L, 725L, 0L));
+
+        mockMvc.perform(get("/api/games"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                {
+                    "content": [
+                        { "id": 123, "title": "Show #123", "gameDate": "2025-01-02", "season": "40", "clueCount": 61 },
+                        { "id": 725, "title": "Masters #71", "gameDate": "2025-01-01", "season": "jm", "clueCount": 0 }
+                    ],
+                    "page": 0,
+                    "size": 20,
+                    "totalElements": 2,
+                    "totalPages": 1
+                }
+                """, JsonCompareMode.STRICT));
     }
 
     @Test
