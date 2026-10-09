@@ -26,6 +26,7 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -88,6 +89,40 @@ class GameSessionEndToEndIntegrationTest {
     @AfterEach
     void tearDown() {
         stompClient.stop();
+    }
+
+    @Test
+    void joiningWithBlankName_returnsApiErrorNamingTheField() {
+        Long gameId = jdbcTemplate.queryForObject(
+                "SELECT id FROM game WHERE title = ?",
+                Long.class,
+                GAME_TITLE
+        );
+
+        UUID sessionId = restTestClient.post()
+                .uri("/api/game-sessions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new CreateGameSessionRequest(gameId))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(CreateGameSessionResponse.class)
+                .returnResult()
+                .getResponseBody()
+                .id();
+
+        restTestClient.post()
+                .uri("/api/game-sessions/" + sessionId + "/players")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new JoinSessionRequest(" "))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .json("""
+                    {
+                        "status": 400,
+                        "message": "playerName must not be blank"
+                    }
+                    """, JsonCompareMode.STRICT);
     }
 
     @Test

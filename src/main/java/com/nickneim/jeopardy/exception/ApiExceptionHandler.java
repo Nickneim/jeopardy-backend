@@ -7,12 +7,14 @@ import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDate;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -54,6 +56,28 @@ public class ApiExceptionHandler {
         return new ApiErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "Invalid request parameters"
+        );
+    }
+
+    /**
+     * A request body that fails bean validation, such as a blank playerName.
+     * The message names every invalid field, e.g. "playerName must not be blank".
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiErrorResponse handleInvalidRequestBody(
+            MethodArgumentNotValidException exception
+    ) {
+        String message = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + " " + error.getDefaultMessage())
+                .sorted()
+                .collect(Collectors.joining(", "));
+
+        return new ApiErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message.isEmpty() ? "Invalid request body" : message
         );
     }
 

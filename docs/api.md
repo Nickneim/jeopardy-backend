@@ -38,7 +38,7 @@ Key ideas:
 
 ## 3. REST API
 
-All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). The exception is request validation errors (such as a missing or blank field), which currently return Spring's default 400 error body.
+All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language`.
 
 ### 3.1 Browsing games
 
@@ -93,6 +93,7 @@ Creates a live session from a stored game.
 - Request: `{ "gameId": 123 }`
 - `201 { "id": "8f6c…-uuid" }`
 - Unknown game: 404.
+- Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
 
 #### `GET /api/game-sessions/{sessionId}`
 
@@ -105,7 +106,7 @@ Joins a session.
 - Request: `{ "playerName": "Nico" }` (must not be blank)
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session.
 - Unknown session: `404 { "status": 404, "message": "Game session not found: <id>" }`
-- Blank name: 400.
+- Missing or blank name: `400 { "status": 400, "message": "playerName must not be blank" }`
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 

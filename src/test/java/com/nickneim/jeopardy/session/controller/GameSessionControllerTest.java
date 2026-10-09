@@ -15,8 +15,10 @@ import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -132,9 +135,63 @@ class GameSessionControllerTest {
                             "playerName": "   "
                         }
                         """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "playerName must not be blank"
+                        }
+                        """, JsonCompareMode.STRICT));
 
         verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void joinSession_rejectsMissingName() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "playerName must not be blank"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void joinSession_validationMessageIsNotLocalized() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.ACCEPT_LANGUAGE, "es-AR")
+                        .content("""
+                        { "playerName": "" }
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("playerName must not be blank"));
+    }
+
+    @Test
+    void createSession_rejectsMissingGameId() throws Exception {
+        mockMvc.perform(post("/api/game-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "gameId must not be null"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameBoardService, gameSessionService);
     }
 
     @Test
