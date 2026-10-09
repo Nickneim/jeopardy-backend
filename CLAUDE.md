@@ -6,11 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Spring Boot 4 / Java 21 backend for a multiplayer Jeopardy game. Game content (games, categories, clues, daily doubles) lives in PostgreSQL. Live game sessions are held in memory and played over STOMP WebSockets.
 
-The React frontend lives in a separate repository. **`docs/api.md` is the contract between them** (REST and STOMP endpoints, payloads, `GameSessionResponse` fields by state, rules, timings, error codes, TypeScript types, known limitations). Any change to an endpoint, payload, field, state, timing or error code must update it in the same commit.
+The React frontend lives in a separate repository. **`docs/api.md` is the contract between them** (REST and STOMP endpoints, payloads, `GameSessionResponse` fields by state, rules, timings, error codes, TypeScript types, known limitations). Any change to an endpoint, payload, field, state, timing or error code must update it in the same commit. The pre-commit hook in `.githooks/` enforces this: it rejects a commit that stages DTOs, controllers, `ApiExceptionHandler`, `GameErrorCode`, `GameSessionState` or `GameSessionTimeouts` without `docs/api.md`. Enable it once per clone with `git config core.hooksPath .githooks`; for a change that really doesn't touch the contract, commit with `SKIP_API_DOCS_CHECK=1`.
 
 ## Commands
 
-Use the Gradle wrapper (`./gradlew` in bash, `.\gradlew.bat` in PowerShell).
+**To run tests, use `scripts/test.sh`** (bash). It loads `.env`, runs Gradle quietly and prints only the totals, each failing test with its message and location, or the compiler errors; the full output goes to `build/test-output.log`. Extra arguments go to Gradle, and `TASK=build` runs the build instead of `test`:
+
+```bash
+scripts/test.sh                                    # all tests
+scripts/test.sh --tests "*GameSessionTest*"        # a class or pattern
+TASK=build scripts/test.sh                         # compile + all tests
+```
+
+Otherwise use the Gradle wrapper (`./gradlew` in bash, `.\gradlew.bat` in PowerShell). It doesn't load `.env`, so most tests fail to connect without the variables exported.
 
 ```bash
 ./gradlew build                     # compile + run all tests

@@ -1,0 +1,39 @@
+#!/bin/sh
+# docs/api.md is the contract with the frontend, and CLAUDE.md requires every
+# change to an endpoint, payload, field, state, timing or error code to update
+# it in the same commit. This stops a commit that stages files which usually
+# define that contract without also staging docs/api.md.
+#
+# If the change really doesn't touch the contract (an internal refactor of a
+# controller, say), commit with:  SKIP_API_DOCS_CHECK=1 git commit ...
+#
+# Enabled per clone with:  git config core.hooksPath .githooks
+
+if [ "${SKIP_API_DOCS_CHECK:-}" = "1" ]; then
+    exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACMDR)
+
+contract_files=$(printf '%s\n' "$staged" | grep -E \
+    -e '^src/main/java/com/nickneim/jeopardy/[^/]+/(dto|controller)/' \
+    -e '^src/main/java/com/nickneim/jeopardy/exception/ApiExceptionHandler\.java$' \
+    -e '^src/main/java/com/nickneim/jeopardy/session/exception/GameErrorCode\.java$' \
+    -e '^src/main/java/com/nickneim/jeopardy/session/model/(GameSessionState|GameSessionTimeouts)\.java$')
+
+if [ -z "$contract_files" ]; then
+    exit 0
+fi
+
+if printf '%s\n' "$staged" | grep -qx 'docs/api.md'; then
+    exit 0
+fi
+
+echo "pre-commit: these staged files can change the frontend API contract," >&2
+echo "but docs/api.md isn't staged:" >&2
+printf '%s\n' "$contract_files" | sed 's/^/  /' >&2
+echo "" >&2
+echo "Update docs/api.md (endpoint section, §8 types, §9 limitations) in the" >&2
+echo "same commit, or, if the contract doesn't change, commit with" >&2
+echo "SKIP_API_DOCS_CHECK=1." >&2
+exit 1
