@@ -1,18 +1,20 @@
 package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.model.GameSession;
 
 import java.util.List;
 
 /**
- * Final Jeopardy as every player sees it. The category is shown while
- * wagering, the clue once answering starts, and the correct response plus
+ * Final Jeopardy as every player sees it. The category and its comments are
+ * shown while wagering, the clue once answering starts, and the correct response plus
  * everyone's wagers and answers only from the reveal on.
  */
 public record FinalJeopardyResponse(
         String category,
+        String categoryComments,
         String question,
         String answer,
         List<FinalJeopardyPlayerResponse> players
@@ -63,8 +65,11 @@ public record FinalJeopardyResponse(
                 ))
                 .toList();
 
+        BoardCategory category = session.getFinalJeopardyCategory();
+
         return new FinalJeopardyResponse(
-                session.getFinalJeopardyCategory().name(),
+                category.name(),
+                category.comments(),
                 showQuestion ? clue.question() : null,
                 showResults ? clue.answer() : null,
                 players

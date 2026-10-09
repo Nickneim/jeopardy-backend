@@ -86,7 +86,7 @@ public final class GameBoard {
                             GameRound.fromColumn(category.getColumnNumber()),
                             round -> new ArrayList<>()
                     )
-                    .add(new BoardCategory(category.getName(), clues));
+                    .add(new BoardCategory(category.getName(), category.getComments(), clues));
         }
 
         return new GameBoard(

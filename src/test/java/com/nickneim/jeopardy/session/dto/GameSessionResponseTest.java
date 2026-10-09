@@ -40,7 +40,7 @@ class GameSessionResponseTest {
     void setUp() {
         GameBoard board = new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
-                        new BoardCategory("HISTORY", List.of(historyRow1, historyRow3)),
+                        new BoardCategory("HISTORY", "(Alex: U.S. presidents.)", List.of(historyRow1, historyRow3)),
                         new BoardCategory("SCIENCE", List.of(scienceRow1, scienceRow2))
                 )),
                 new BoardRound(GameRound.DOUBLE_JEOPARDY, List.of(
@@ -84,6 +84,21 @@ class GameSessionResponseTest {
     }
 
     @Test
+    void board_includesCategoryComments() {
+        session.startGame(player.getId());
+
+        List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
+
+        assertEquals("(Alex: U.S. presidents.)", board.get(0).comments());
+        assertNull(board.get(1).comments());
+        assertTrue(
+                toJson(GameSessionResponse.from(session))
+                        .contains("\"comments\":\"(Alex: U.S. presidents.)\""),
+                "comments missing from the JSON"
+        );
+    }
+
+    @Test
     void board_marksChosenCluesAsPlayed() {
         session.startGame(player.getId());
         session.chooseClue(player.getId(), scienceRow2.id());
@@ -123,6 +138,7 @@ class GameSessionResponseTest {
         assertEquals(
                 List.of(new BoardCategoryResponse(
                         "LITERATURE",
+                        null,
                         List.of(new ClueSlotResponse(1, 301L, 400, ClueSlotStatus.AVAILABLE))
                 )),
                 response.board()

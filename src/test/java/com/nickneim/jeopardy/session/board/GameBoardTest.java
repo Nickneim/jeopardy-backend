@@ -267,6 +267,16 @@ class GameBoardTest {
     }
 
     @Test
+    void from_copiesCategoryComments() {
+        GameBoard board = GameBoard.from(createGame());
+
+        List<BoardCategory> jeopardy = board.getRounds().getFirst().categories();
+
+        assertEquals("(Alex: Presidents only.)", jeopardy.get(0).comments());
+        assertNull(jeopardy.get(1).comments());
+    }
+
+    @Test
     void from_marksDailyDoubles() {
         GameBoard board = GameBoard.from(createGame());
 
@@ -288,7 +298,7 @@ class GameBoardTest {
                 "40"
         );
 
-        Category history = addCategory(game, "HISTORY", 1);
+        Category history = addCategory(game, "HISTORY", 1, "(Alex: Presidents only.)");
         Category science = addCategory(game, "SCIENCE", 2);
         Category literature = addCategory(game, "LITERATURE", 7);
         Category finalCategory = addCategory(game, "FINAL HISTORY", 13);
@@ -310,7 +320,11 @@ class GameBoardTest {
     }
 
     private Category addCategory(Game game, String name, int column) {
-        Category category = new Category(name, (short) column, null, game);
+        return addCategory(game, name, column, null);
+    }
+
+    private Category addCategory(Game game, String name, int column, String comments) {
+        Category category = new Category(name, (short) column, comments, game);
         game.getCategories().add(category);
         return category;
     }

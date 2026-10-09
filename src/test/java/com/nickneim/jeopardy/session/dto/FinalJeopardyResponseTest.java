@@ -22,6 +22,7 @@ class FinalJeopardyResponseTest {
     private static final String FINAL_QUESTION = "This war began in 1775.";
     private static final String FINAL_ANSWER = "The American Revolution";
     private static final String WRONG_ANSWER = "The War of 1812";
+    private static final String FINAL_COMMENTS = "(Alex: Wars the U.S. fought in.)";
 
     // The JSON checks look for "wager":777 rather than the bare number, which
     // could also appear inside the random session id.
@@ -43,7 +44,7 @@ class FinalJeopardyResponseTest {
                         new BoardCategory("HISTORY", List.of(jeopardyClue))
                 )),
                 new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
-                        new BoardCategory("AMERICAN WARS", List.of(finalClue))
+                        new BoardCategory("AMERICAN WARS", FINAL_COMMENTS, List.of(finalClue))
                 ))
         )));
 
@@ -89,6 +90,7 @@ class FinalJeopardyResponseTest {
         assertEquals(
                 new FinalJeopardyResponse(
                         "AMERICAN WARS",
+                        FINAL_COMMENTS,
                         null,
                         null,
                         List.of(
@@ -101,6 +103,7 @@ class FinalJeopardyResponseTest {
 
         String json = toJson(response);
         assertTrue(json.contains("AMERICAN WARS"), json);
+        assertTrue(json.contains("\"categoryComments\":\"" + FINAL_COMMENTS + "\""), json);
         assertFalse(json.contains("\"wager\":" + SECRET_WAGER), "leaked a wager: " + json);
         assertFalse(json.contains(FINAL_QUESTION), "leaked the question: " + json);
         assertFalse(json.contains(FINAL_ANSWER), "leaked the answer: " + json);
@@ -118,6 +121,7 @@ class FinalJeopardyResponseTest {
         assertEquals(
                 new FinalJeopardyResponse(
                         "AMERICAN WARS",
+                        FINAL_COMMENTS,
                         FINAL_QUESTION,
                         null,
                         List.of(
@@ -147,6 +151,7 @@ class FinalJeopardyResponseTest {
         assertEquals(
                 new FinalJeopardyResponse(
                         "AMERICAN WARS",
+                        FINAL_COMMENTS,
                         FINAL_QUESTION,
                         FINAL_ANSWER,
                         List.of(

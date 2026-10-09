@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 public record BoardCategoryResponse(
         String name,
+        String comments,
         List<ClueSlotResponse> slots
 ) {
 
@@ -65,6 +66,6 @@ public record BoardCategoryResponse(
             ));
         }
 
-        return new BoardCategoryResponse(category.name(), List.copyOf(slots));
+        return new BoardCategoryResponse(category.name(), category.comments(), List.copyOf(slots));
     }
 }

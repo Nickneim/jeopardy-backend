@@ -201,7 +201,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 
 ### 5.1 `board`
 
-A list of categories in column order. Each category has one slot per row, from 1 up to the highest row used anywhere in the round, so the grid is always rectangular.
+A list of categories in column order. Each category has a `name`, its `comments` (the host's note about the category, such as `"(Alex: Each answer is a palindrome.)"`, or `null`), and one slot per row, from 1 up to the highest row used anywhere in the round, so the grid is always rectangular.
 
 | Slot field | Meaning |
 |---|---|
@@ -233,6 +233,7 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | Field | Shown from |
 |---|---|
 | `category` | `FINAL_JEOPARDY_WAGERING` |
+| `categoryComments` (the category's comments, or `null` if it has none) | `FINAL_JEOPARDY_WAGERING` |
 | `question` | `FINAL_JEOPARDY_ANSWERING` |
 | `answer` (the correct response) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
@@ -487,6 +488,7 @@ interface ClueSlotResponse {
 
 interface BoardCategoryResponse {
   name: string;
+  comments: string | null;
   slots: ClueSlotResponse[];
 }
 
@@ -518,6 +520,7 @@ interface FinalJeopardyPlayerResponse {
 
 interface FinalJeopardyResponse {
   category: string;
+  categoryComments: string | null;
   question: string | null;
   answer: string | null;
   players: FinalJeopardyPlayerResponse[];
