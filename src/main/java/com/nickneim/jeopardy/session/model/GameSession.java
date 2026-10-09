@@ -217,6 +217,27 @@ public class GameSession {
         }
     }
 
+    /**
+     * The chooser ran out of time, so the clue is chosen for them: the
+     * top-most available clue, leftmost category first. It's played exactly
+     * as if they had chosen it, Daily Doubles included, and they keep control.
+     * This keeps a game moving even if the chooser has left.
+     */
+    public void timeoutChoosingClue() {
+        Set<Long> available = getAvailableClues();
+
+        BoardClue clue = board.getRound(round)
+                .orElseThrow()
+                .clues()
+                .filter(candidate -> available.contains(candidate.id()))
+                // A stable sort, so on the same row the leftmost category wins.
+                .sorted(Comparator.comparingInt(BoardClue::row))
+                .findFirst()
+                .orElseThrow();
+
+        chooseClue(playerChoosingClue, clue.id());
+    }
+
     private void startWaitingForDailyDoubleWager() {
         state = GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER;
     }

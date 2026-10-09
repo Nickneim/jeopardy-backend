@@ -1376,6 +1376,89 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Clue choice timeout
+    // -------------------------------------------------------------------------
+
+    @Test
+    void timeoutChoosingClue_choosesTheTopClueForTheChooser() {
+        session.startGame(player1.getId());
+
+        session.timeoutChoosingClue();
+
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+        assertEquals(jeopardyClue1.id(), session.getChosenClueId());
+        assertTrue(session.getPlayedClues().contains(jeopardyClue1.id()));
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void timeoutChoosingClue_skipsPlayedClues() {
+        session.startGame(player1.getId());
+        playClueWithoutBuzz(jeopardyClue1.id());
+
+        session.timeoutChoosingClue();
+
+        assertEquals(jeopardyClue2.id(), session.getChosenClueId());
+    }
+
+    @Test
+    void timeoutChoosingClue_choosesForWhoeverHasControl() {
+        session.startGame(player1.getId());
+        givePlayer2Control();
+
+        session.timeoutChoosingClue();
+
+        assertEquals(jeopardyClue2.id(), session.getChosenClueId());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void timeoutChoosingClue_prefersTheLeftmostCategoryOnTheSameRow() {
+        BoardClue left = new BoardClue(1L, 2, "Left?", "Left", 400, false);
+        BoardClue right = new BoardClue(2L, 2, "Right?", "Right", 400, false);
+        BoardClue lower = new BoardClue(3L, 3, "Lower?", "Lower", 600, false);
+
+        GameSession session = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(
+                        new BoardCategory("LEFT", List.of(lower, left)),
+                        new BoardCategory("RIGHT", List.of(right))
+                ))
+        )));
+        session.addPlayer(player1);
+        session.startGame(player1.getId());
+
+        session.timeoutChoosingClue();
+
+        assertEquals(left.id(), session.getChosenClueId());
+    }
+
+    @Test
+    void timeoutChoosingClue_canLandOnADailyDouble() {
+        addDailyDoubleClue();
+        session.startGame(player1.getId());
+        playClueWithoutBuzz(jeopardyClue1.id());
+        playClueWithoutBuzz(jeopardyClue2.id());
+
+        session.timeoutChoosingClue();
+
+        assertEquals(dailyDoubleClue1.id(), session.getChosenClueId());
+        assertEquals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, session.getState());
+    }
+
+    @Test
+    void timeoutChoosingClue_isRejectedOutsideChoosingClue() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.timeoutChoosingClue()
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    // -------------------------------------------------------------------------
     // Answer results
     // -------------------------------------------------------------------------
 

@@ -236,6 +236,21 @@ public class GameSessionService {
         }
     }
 
+    private void timeoutChoosingClue(UUID sessionId) {
+        GameSession session = getSession(sessionId);
+
+        synchronized (session) {
+            if (session.getState() != GameSessionState.CHOOSING_CLUE) {
+                return;
+            }
+
+            session.timeoutChoosingClue();
+
+            scheduleTimeout(session);
+            broadcast(session);
+        }
+    }
+
     private void timeoutBuzzer(UUID sessionId) {
         GameSession session = getSession(sessionId);
 
@@ -339,6 +354,13 @@ public class GameSessionService {
         timer.cancel(sessionId);
 
         switch (session.getState()) {
+            case CHOOSING_CLUE ->
+                    timer.schedule(
+                            sessionId,
+                            session.getTimeouts().clueChoice(),
+                            () -> timeoutChoosingClue(sessionId)
+                    );
+
             case REVEALING_CLUE ->
                     timer.schedule(
                             sessionId,

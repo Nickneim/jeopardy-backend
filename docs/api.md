@@ -257,8 +257,8 @@ It never contains the stored correct response, which is only sent as `currentClu
 WAITING_FOR_START
    │ start
    ▼
-CHOOSING_CLUE ◄──────────────────────────────────────────────┐
-   │ choose-clue                                             │
+CHOOSING_CLUE (30s) ◄────────────────────────────────────────┐
+   │ choose-clue (or 30s: a clue is chosen for the chooser)  │
    ├── Daily Double ─► WAITING_FOR_DAILY_DOUBLE_WAGER        │
    │                     │ place-daily-double-wager (or 30s) │
    ▼                     ▼                                   │
@@ -280,6 +280,7 @@ FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
 ### 6.2 Rules
 
 - **Start:** the first player to join picks the first clue.
+- **Choosing a clue:** the player in control has 30 s to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser has left.
 - **Scoring:** a correct answer adds the clue's value and gives that player control of the board. A wrong answer, or running out of time to answer, subtracts it. Not buzzing costs nothing.
 - **Wrong answers:** the other players who haven't buzzed yet can buzz. When everyone has buzzed, the answer is revealed.
 - **Rounds:** when every clue in a round has been played, the next round starts. Rounds with no clues are skipped. After Double Jeopardy comes Final Jeopardy if the game has one; otherwise the game finishes.
@@ -295,6 +296,7 @@ FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
 
 | Phase | Duration |
 |---|---|
+| Choosing a clue (`CHOOSING_CLUE`) | 30 s |
 | Clue reveal (`REVEALING_CLUE`) | 3 s |
 | Daily Double wager | 30 s |
 | Buzzer (`WAITING_FOR_BUZZER`) | 10 s |

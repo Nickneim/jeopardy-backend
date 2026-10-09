@@ -314,7 +314,7 @@ class GameSessionServiceTest {
     }
 
     @Test
-    void finishRevealingAnswer_cancelsExistingTimeoutAndDoesNotScheduleAnother() {
+    void finishRevealingAnswer_schedulesClueChoiceTimeout() {
         GameSession session = createSessionWithAnswerBeingRevealed();
 
         clearInvocations(timer, broadcaster);
@@ -327,7 +327,69 @@ class GameSessionServiceTest {
         );
 
         verify(timer).cancel(session.getId());
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(30)),
+                any(Runnable.class)
+        );
         verifyNoMoreInteractions(timer);
+    }
+
+    @Test
+    void startGame_schedulesClueChoiceTimeout() {
+        GameSession session = createSessionWithPlayers(1);
+
+        gameSessionService.startGame(session.getId(), getFirstPlayerId(session));
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(30)),
+                any(Runnable.class)
+        );
+    }
+
+    @Test
+    void clueChoiceTimeout_choosesTheTopClueForTheChooserAndBroadcasts() {
+        GameSession session = createSessionWithPlayers(1);
+        gameSessionService.startGame(session.getId(), getFirstPlayerId(session));
+
+        Runnable clueChoiceTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        clearInvocations(timer, broadcaster);
+
+        clueChoiceTimeout.run();
+
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+        assertEquals(CLUE_ID, session.getChosenClueId());
+        assertEquals(getFirstPlayerId(session), session.getPlayerChoosingClue());
+
+        verify(timer).schedule(
+                eq(session.getId()),
+                eq(Duration.ofSeconds(3)),
+                any(Runnable.class)
+        );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void staleClueChoiceTimeout_afterClueChosen_doesNothing() {
+        GameSession session = createSessionWithPlayers(1);
+        gameSessionService.startGame(session.getId(), getFirstPlayerId(session));
+
+        Runnable clueChoiceTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(30));
+
+        gameSessionService.chooseClue(session.getId(), getFirstPlayerId(session), OTHER_CLUE_ID);
+
+        clearInvocations(timer, broadcaster);
+
+        clueChoiceTimeout.run();
+
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+        assertEquals(OTHER_CLUE_ID, session.getChosenClueId());
+        verifyNoInteractions(timer, broadcaster);
     }
 
     // -------------------------------------------------------------------------

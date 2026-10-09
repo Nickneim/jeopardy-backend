@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.model;
 import java.time.Duration;
 
 public record GameSessionTimeouts(
+        Duration clueChoice,
         Duration clueReveal,
         Duration dailyDoubleWager,
         Duration buzzer,
@@ -14,6 +15,7 @@ public record GameSessionTimeouts(
 ) {
     public static GameSessionTimeouts defaults() {
         return new GameSessionTimeouts(
+                Duration.ofSeconds(30),
                 Duration.ofSeconds(3),
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(10),
