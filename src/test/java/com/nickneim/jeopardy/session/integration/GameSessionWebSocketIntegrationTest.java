@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.AnswerClueRequest;
 import com.nickneim.jeopardy.session.dto.AnswerFinalJeopardyRequest;
 import com.nickneim.jeopardy.session.dto.ChooseClueRequest;
+import com.nickneim.jeopardy.session.dto.ClueAnswerResponse;
 import com.nickneim.jeopardy.session.dto.ClueSlotResponse;
 import com.nickneim.jeopardy.session.dto.ClueSlotStatus;
 import com.nickneim.jeopardy.session.dto.GameSessionErrorResponse;
@@ -847,6 +848,11 @@ class GameSessionWebSocketIntegrationTest {
                 response.players()
                         .getFirst()
                         .score()
+        );
+
+        assertEquals(
+                List.of(new ClueAnswerResponse(playerId, "Wrong answer", false)),
+                response.clueAnswers()
         );
     }
 

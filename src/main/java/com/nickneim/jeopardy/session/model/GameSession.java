@@ -28,6 +28,9 @@ public class GameSession {
     // available is derived from this and the board, never stored.
     private final Set<Long> playedClues = new HashSet<>();
     private Long playerWhoBuzzed;
+    // Answers to the clue in play, in order. Cleared when the next clue is
+    // chosen and when Final Jeopardy starts, so it never holds stale entries.
+    private final List<ClueAnswer> clueAnswers = new ArrayList<>();
 
     // Final Jeopardy submissions, keyed by player id. They stay secret until
     // FINAL_JEOPARDY_REVEALING; see GameSessionResponse.
@@ -108,6 +111,15 @@ public class GameSession {
         }
 
         return Set.of();
+    }
+
+    /**
+     * Every answer given to the current clue (or, until the next clue is
+     * chosen, the last one played), oldest first. Empty during Final
+     * Jeopardy, which has its own reveal.
+     */
+    public List<ClueAnswer> getClueAnswers() {
+        return List.copyOf(clueAnswers);
     }
 
     /** The wager on the Daily Double in play once it is placed, otherwise null. */
@@ -195,6 +207,7 @@ public class GameSession {
 
         chosenClueId = clueId;
         playedClues.add(clueId);
+        clueAnswers.clear();
         if (board.isDailyDouble(clueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerId;
@@ -289,6 +302,7 @@ public class GameSession {
 
         chosenClueId = clue.id();
         playedClues.add(clue.id());
+        clueAnswers.clear();
         finalJeopardyWagers.clear();
         finalJeopardyAnswers.clear();
         state = GameSessionState.FINAL_JEOPARDY_WAGERING;
@@ -401,6 +415,7 @@ public class GameSession {
 
     public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
+        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false));
         if (board.isDailyDouble(chosenClueId)) {
             player.addScore(-player.getWager());
             startRevealingAnswer();
@@ -445,7 +460,9 @@ public class GameSession {
             clueValue = clue.value();
         }
         GameSessionPlayer player = getPlayer(playerId);
-        if (isCorrectAnswer(clue, answer)) {
+        boolean correct = isCorrectAnswer(clue, answer);
+        clueAnswers.add(new ClueAnswer(playerId, answer, correct));
+        if (correct) {
             player.addScore(clueValue);
             playerChoosingClue = playerId;
             startRevealingAnswer();

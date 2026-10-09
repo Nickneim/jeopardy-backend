@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
+import com.nickneim.jeopardy.session.model.GameSessionState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -253,6 +254,64 @@ class GameSessionResponseTest {
     }
 
     // -------------------------------------------------------------------------
+    // Answer results
+    // -------------------------------------------------------------------------
+
+    @Test
+    void clueAnswers_isAnEmptyListBeforeAnyAnswer() {
+        session.startGame(player.getId());
+
+        assertEquals(List.of(), GameSessionResponse.from(session).clueAnswers());
+        assertTrue(toJson(GameSessionResponse.from(session)).contains("\"clueAnswers\":[]"));
+    }
+
+    @Test
+    void serializedResponse_afterWrongAnswer_showsWhatWasAnsweredButNotTheCorrectResponse() {
+        GameSessionPlayer secondPlayer = new GameSessionPlayer(2L, "John");
+        session.addPlayer(secondPlayer);
+
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.buzz(player.getId());
+        session.answerClue(player.getId(), "Silver");
+
+        GameSessionResponse response = GameSessionResponse.from(session);
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, response.state());
+        assertEquals(
+                List.of(new ClueAnswerResponse(player.getId(), "Silver", false)),
+                response.clueAnswers()
+        );
+
+        String json = toJson(response);
+        assertTrue(
+                json.contains("{\"playerId\":1,\"answer\":\"Silver\",\"correct\":false}"),
+                json
+        );
+        assertFalse(json.contains("\"" + scienceRow1.answer() + "\""), "leaked the correct response: " + json);
+    }
+
+    @Test
+    void serializedResponse_afterCorrectAnswer_onlyShowsItDuringTheReveal() {
+        session.startGame(player.getId());
+        session.chooseClue(player.getId(), scienceRow1.id());
+        session.finishRevealingClue();
+        session.buzz(player.getId());
+        session.answerClue(player.getId(), "Au");
+
+        GameSessionResponse response = GameSessionResponse.from(session);
+
+        // A correct answer always ends the clue, so the correct response it
+        // contains is public by now anyway.
+        assertEquals(GameSessionState.REVEALING_ANSWER, response.state());
+        assertEquals(
+                List.of(new ClueAnswerResponse(player.getId(), "Au", true)),
+                response.clueAnswers()
+        );
+        assertEquals("Au", response.currentClue().answer());
+    }
+
+    // -------------------------------------------------------------------------
     // Turn and buzzer
     // -------------------------------------------------------------------------
 
@@ -284,5 +343,9 @@ class GameSessionResponseTest {
         // Guard against a vacuous pass: the player is in the JSON.
         assertTrue(json.contains("\"Nico\""), json);
         assertFalse(json.contains(player.getToken()), "leaked a player token: " + json);
+    }
+
+    private String toJson(GameSessionResponse response) {
+        return JsonMapper.builder().build().writeValueAsString(response);
     }
 }

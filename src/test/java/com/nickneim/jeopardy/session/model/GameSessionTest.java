@@ -1376,6 +1376,113 @@ class GameSessionTest {
     }
 
     // -------------------------------------------------------------------------
+    // Answer results
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getClueAnswers_isEmptyUntilSomeoneAnswers() {
+        assertEquals(List.of(), session.getClueAnswers());
+
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        assertEquals(List.of(), session.getClueAnswers());
+    }
+
+    @Test
+    void getClueAnswers_keepsEveryAnswerToTheClueInOrder() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Abraham Lincoln");
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        assertEquals(
+                List.of(new ClueAnswer(player1.getId(), "Abraham Lincoln", false)),
+                session.getClueAnswers()
+        );
+
+        session.buzz(player2.getId());
+        assertEquals(1, session.getClueAnswers().size());
+
+        session.answerClue(player2.getId(), "George Washington");
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+        assertEquals(
+                List.of(
+                        new ClueAnswer(player1.getId(), "Abraham Lincoln", false),
+                        new ClueAnswer(player2.getId(), "George Washington", true)
+                ),
+                session.getClueAnswers()
+        );
+    }
+
+    @Test
+    void getClueAnswers_recordsARunOutClockAsANullAnswer() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.timeoutAnswer();
+
+        assertEquals(
+                List.of(new ClueAnswer(player2.getId(), null, false)),
+                session.getClueAnswers()
+        );
+    }
+
+    @Test
+    void getClueAnswers_includesDailyDoubleAnswers() {
+        startDailyDouble();
+        session.placeDailyDoubleWager(player1.getId(), 500);
+        session.finishRevealingClue();
+        session.answerClue(player1.getId(), "Thomas Jefferson");
+
+        assertEquals(
+                List.of(new ClueAnswer(player1.getId(), "Thomas Jefferson", false)),
+                session.getClueAnswers()
+        );
+    }
+
+    @Test
+    void getClueAnswers_lastsUntilTheNextClueIsChosen() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "George Washington");
+        session.finishRevealingAnswer();
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        assertEquals(
+                List.of(new ClueAnswer(player1.getId(), "George Washington", true)),
+                session.getClueAnswers()
+        );
+
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
+
+        assertEquals(List.of(), session.getClueAnswers());
+    }
+
+    @Test
+    void getClueAnswers_isClearedWhenFinalJeopardyStarts() {
+        session.startGame(player1.getId());
+        finishJeopardyRound();
+        session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Venus");
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+        assertEquals(List.of(), session.getClueAnswers());
+    }
+
+    // -------------------------------------------------------------------------
     // Final Jeopardy
     // -------------------------------------------------------------------------
 

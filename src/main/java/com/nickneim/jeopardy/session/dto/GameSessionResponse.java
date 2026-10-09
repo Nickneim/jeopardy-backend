@@ -19,6 +19,7 @@ public record GameSessionResponse(
         Set<Long> playersLockedOut,
         List<BoardCategoryResponse> board,
         CurrentClueResponse currentClue,
+        List<ClueAnswerResponse> clueAnswers,
         FinalJeopardyResponse finalJeopardy
 ) {
     static public GameSessionResponse from(GameSession session) {
@@ -38,6 +39,9 @@ public record GameSessionResponse(
                         .map(round -> BoardCategoryResponse.fromRound(round, session.getPlayedClues()))
                         .orElse(List.of()),
                 CurrentClueResponse.from(session),
+                session.getClueAnswers().stream()
+                        .map(ClueAnswerResponse::from)
+                        .toList(),
                 FinalJeopardyResponse.from(session)
         );
     }

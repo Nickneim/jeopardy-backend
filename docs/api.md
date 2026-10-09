@@ -194,6 +194,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
 | `currentClue` | The clue in play (§5.2), or `null` |
+| `clueAnswers` | Every answer given to the clue in play, or to the last clue played (§5.4). Never `null`; `[]` when there are none. |
 | `finalJeopardy` | Final Jeopardy status (§5.3), or `null` |
 
 ### 5.1 `board`
@@ -232,6 +233,19 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `answer` (the correct response) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
 | `players[]` → `wager`, `answer`, `correct` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's) |
+
+### 5.4 `clueAnswers`
+
+What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct }`:
+
+- `answer` is the text the player submitted, or `null` if they ran out of time (which counts as wrong).
+- `correct` is the result of the answer check (§6.2).
+
+An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
+
+**Every answer to the clue is kept, not just the latest one.** Clients render from the latest snapshot (§2), so one that missed a broadcast or joined mid-clue still sees that, for example, player 1 answered wrong before player 2 answered right. For "the latest answer", use the last element.
+
+It never contains the stored correct response, which is only sent as `currentClue.answer` in `REVEALING_ANSWER`. A correct answer matches that response exactly (§6.2), so its text is public at the same moment. A wrong answer, however, is shown to everyone while other players can still buzz, as on the TV show.
 
 ---
 
@@ -471,6 +485,12 @@ interface CurrentClueResponse {
   answer: string | null;
 }
 
+interface ClueAnswerResponse {
+  playerId: number;
+  answer: string | null;    // null: ran out of time
+  correct: boolean;
+}
+
 interface FinalJeopardyPlayerResponse {
   playerId: number;
   hasWagered: boolean;
@@ -498,6 +518,7 @@ interface GameSessionResponse {
   playersLockedOut: number[];
   board: BoardCategoryResponse[];
   currentClue: CurrentClueResponse | null;
+  clueAnswers: ClueAnswerResponse[];  // [] when nobody has answered (§5.4)
   finalJeopardy: FinalJeopardyResponse | null;
 }
 
