@@ -204,6 +204,7 @@ class GameSessionResponseTest {
                 "Symbol for gold?",
                 ClueType.TEXT,
                 null,
+                false,
                 null
         );
 
@@ -225,7 +226,7 @@ class GameSessionResponseTest {
         session.timeoutBuzzer();
 
         assertEquals(
-                new CurrentClueResponse(scienceRow1.id(), 200, false, null, "Symbol for gold?", ClueType.TEXT, null, "Au"),
+                new CurrentClueResponse(scienceRow1.id(), 200, false, null, "Symbol for gold?", ClueType.TEXT, null, false, "Au"),
                 GameSessionResponse.from(session).currentClue()
         );
     }
@@ -236,7 +237,7 @@ class GameSessionResponseTest {
         session.chooseClue(player.getId(), historyRow3.id());
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null, null, null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null, null, null, null),
                 GameSessionResponse.from(session).currentClue()
         );
 
@@ -250,9 +251,22 @@ class GameSessionResponseTest {
         session.placeDailyDoubleWager(player.getId(), 500);
 
         assertEquals(
-                new CurrentClueResponse(historyRow3.id(), 600, true, 500, "Second president?", ClueType.TEXT, null, null),
+                new CurrentClueResponse(historyRow3.id(), 600, true, 500, "Second president?", ClueType.TEXT, null, false, null),
                 GameSessionResponse.from(session).currentClue()
         );
+    }
+
+    @Test
+    void currentClue_saysWhenOnlyAnExactNumberIsAccepted() {
+        BoardClue numberClue = new BoardClue(401L, 1, "Feet in a mile", "5,280", 200, false);
+        GameSession numberSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory("NUMBERS", List.of(numberClue))))
+        )));
+        numberSession.addPlayer(player);
+        numberSession.startGame(player.getId());
+        numberSession.chooseClue(player.getId(), numberClue.id());
+
+        assertEquals(true, GameSessionResponse.from(numberSession).currentClue().numberExpected());
     }
 
     @Test

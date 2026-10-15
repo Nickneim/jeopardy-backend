@@ -95,6 +95,7 @@ class FinalJeopardyResponseTest {
                         FINAL_COMMENTS,
                         null,
                         null,
+                        null,
                         List.of(
                                 new FinalJeopardyPlayerResponse(1L, true, false, null, null, null),
                                 new FinalJeopardyPlayerResponse(2L, false, false, null, null, null)
@@ -125,6 +126,7 @@ class FinalJeopardyResponseTest {
                         "AMERICAN WARS",
                         FINAL_COMMENTS,
                         FINAL_QUESTION,
+                        false,
                         null,
                         List.of(
                                 new FinalJeopardyPlayerResponse(1L, true, false, null, null, null),
@@ -155,6 +157,7 @@ class FinalJeopardyResponseTest {
                         "AMERICAN WARS",
                         FINAL_COMMENTS,
                         FINAL_QUESTION,
+                        false,
                         FINAL_ANSWER,
                         List.of(
                                 new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_RESPONSE, true),

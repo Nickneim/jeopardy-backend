@@ -292,7 +292,8 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | `question` | Hidden (`null`) while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on |
 | `clueType` | `TEXT` \| `IMAGE` \| `SOUND` \| `VIDEO`. Hidden exactly like `question`. |
 | `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
-| `answer` | Only in `REVEALING_ANSWER` |
+| `numberExpected` | `true` when only an exact number is accepted (§6.7), so you can warn the player that typos won't be forgiven. Hidden exactly like `question`, since it says something about the answer. |
+| `answer` | Only in `REVEALING_ANSWER`. Alternatives and lists are written `(N of) A \| B` (§6.7). |
 
 ### 5.3 `finalJeopardy`
 
@@ -303,7 +304,8 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `category` | `FINAL_JEOPARDY_WAGERING` |
 | `categoryComments` (the category's comments, or `null` if it has none) | `FINAL_JEOPARDY_WAGERING` |
 | `question` | `FINAL_JEOPARDY_ANSWERING` |
-| `answer` (the correct response) | `FINAL_JEOPARDY_REVEALING` |
+| `numberExpected` (only an exact number is accepted, §6.7) | `FINAL_JEOPARDY_ANSWERING` |
+| `answer` (the correct response, written as in §6.7) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
 | `players[]` → `wager`, `answer`, `correct` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's) |
 
@@ -495,7 +497,7 @@ To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` 
 **What counts as correct:**
 
 - **Spelling and wording:** case, accents, punctuation, the articles a/an/the and word order don't matter. A few typos are allowed per word, by the length of the word in the answer: none up to 3 letters, 1 up to 6, then 2 (swapping two letters counts as 1).
-- **Numbers must be exact.** `1,001` and `1001` are the same, and `$` and `%` are optional, but number words aren't numbers (`nine` isn't `9`). Decades accept the short form: `the 1980s` accepts `1980s`, `80s` and `'80s`.
+- **Numbers must be exact.** `1,001` and `1001` are the same, and `$` and `%` are optional, but number words aren't numbers (`nine` isn't `9`). Decades accept the short form: `the 1980s` accepts `1980s`, `80s` and `'80s`. When the response is just a number (`1970`, `$25,000`, `2/3`, `50th`), `numberExpected` is `true` on `currentClue` and `finalJeopardy`, so the player can be told it must be exact. Decades don't set it.
 - **Optional parts** can be said or left out, word by word. Everything outside them is needed, so the optional part alone isn't enough: `(Abraham) Lincoln` accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
 - **Nothing extra:** words that aren't in the answer make a response wrong, even true ones ("the Wright brothers" for `(Orville) Wright`).
 - **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
@@ -728,7 +730,8 @@ interface CurrentClueResponse {
   question: string | null;
   clueType: ClueType | null;   // null while the question is hidden
   mediaUrl: string | null;     // null while hidden, and always for TEXT
-  answer: string | null;
+  numberExpected: boolean | null;  // only an exact number is accepted; null while hidden
+  answer: string | null;       // "(N of) A | B" for alternatives (§6.7)
 }
 
 interface ClueAnswerResponse {
@@ -750,7 +753,8 @@ interface FinalJeopardyResponse {
   category: string;
   categoryComments: string | null;
   question: string | null;
-  answer: string | null;
+  numberExpected: boolean | null;  // only an exact number is accepted; null while wagering
+  answer: string | null;           // "(N of) A | B" for alternatives (§6.7)
   players: FinalJeopardyPlayerResponse[];
 }
 

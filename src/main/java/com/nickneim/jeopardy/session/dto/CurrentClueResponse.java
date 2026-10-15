@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.ClueType;
+import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.model.GameSession;
 
@@ -10,6 +11,8 @@ import com.nickneim.jeopardy.session.model.GameSession;
  * hidden until the wager is placed, and the answer stays hidden until the
  * answer is revealed.
  * {@code wager} is only set for a Daily Double once the wager is placed.
+ * {@code numberExpected} (only an exact number is accepted) is shown with the
+ * question, since it says something about the answer.
  */
 public record CurrentClueResponse(
         Long clueId,
@@ -19,6 +22,7 @@ public record CurrentClueResponse(
         String question,
         ClueType clueType,
         String mediaUrl,
+        Boolean numberExpected,
         String answer
 ) {
 
@@ -55,6 +59,7 @@ public record CurrentClueResponse(
                 showQuestion ? clue.question() : null,
                 showQuestion ? clue.clueType() : null,
                 showQuestion ? clue.mediaUrl() : null,
+                showQuestion ? AnswerMatcher.expectsNumber(clue.answer()) : null,
                 showAnswer ? clue.answer() : null
         );
     }
