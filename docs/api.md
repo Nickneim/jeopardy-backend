@@ -37,6 +37,7 @@ Key ideas:
 - **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set in the lobby (`timers`, §6.3).
 - **The host runs the lobby.** The first player to join is the host (`hostPlayerId`). Only the host can start the game, change the timers and kick players. If the host leaves, the next player takes over (§6.4).
 - **Anyone can join at any time**, unless the host blocked joining after the start (`allowLateJoin`). Everyone who joins, including someone who left and comes back, starts with the session's `joinScore`, which is never better than the lowest score of anyone who stayed (§6.6).
+- **Answers are checked leniently.** Spelling mistakes, word order and punctuation are forgiven, numbers aren't, and Double and Final Jeopardy answers must be phrased as a question ("What is ...?"). Correct responses use `(N of) A | B` for alternatives and lists (§6.7).
 - **Leaving is explicit.** Closing the tab or losing the connection is *not* leaving: the player stays in the game and can reconnect with their token. Only the `leave` action (or being kicked) removes a player, and it makes their token stop working (§6.4).
 - **Sessions don't live forever.** Idle lobbies, finished games and sessions everyone has left are removed from memory (§6.5).
 
@@ -291,7 +292,8 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | `question` | Hidden (`null`) while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on |
 | `clueType` | `TEXT` \| `IMAGE` \| `SOUND` \| `VIDEO`. Hidden exactly like `question`. |
 | `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
-| `answer` | Only in `REVEALING_ANSWER` |
+| `numberExpected` | `true` when only an exact number is accepted (§6.7), so you can warn the player that typos won't be forgiven. Hidden exactly like `question`, since it says something about the answer. |
+| `answer` | Only in `REVEALING_ANSWER`. Alternatives and lists are written `(N of) A \| B` (§6.7). |
 
 ### 5.3 `finalJeopardy`
 
@@ -302,7 +304,8 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `category` | `FINAL_JEOPARDY_WAGERING` |
 | `categoryComments` (the category's comments, or `null` if it has none) | `FINAL_JEOPARDY_WAGERING` |
 | `question` | `FINAL_JEOPARDY_ANSWERING` |
-| `answer` (the correct response) | `FINAL_JEOPARDY_REVEALING` |
+| `numberExpected` (only an exact number is accepted, §6.7) | `FINAL_JEOPARDY_ANSWERING` |
+| `answer` (the correct response, written as in §6.7) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
 | `players[]` → `wager`, `answer`, `correct` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's) |
 
@@ -319,7 +322,7 @@ The one exception: when a player is removed after leaving (§6.4), their entries
 
 **Every answer to the clue is kept, not just the latest one.** Clients render from the latest snapshot (§2), so one that missed a broadcast or joined mid-clue still sees that, for example, player 1 answered wrong before player 2 answered right. For "the latest answer", use the last element.
 
-It never contains the stored correct response, which is only sent as `currentClue.answer` in `REVEALING_ANSWER`. A correct answer matches that response exactly (§6.2), so its text is public at the same moment. A wrong answer, however, is shown to everyone while other players can still buzz, as on the TV show.
+It never contains the stored correct response, which is only sent as `currentClue.answer` in `REVEALING_ANSWER`. A correct answer ends the clue, so it's shown as the response is revealed. A wrong answer, however, is shown to everyone while other players can still buzz, as on the TV show.
 
 ---
 
@@ -368,7 +371,7 @@ The durations shown are the defaults; each session can change them (§6.3).
   - Wagers and answers can be changed until their phase ends. Phases always run their full time.
   - A missing wager counts as 0, and a missing answer counts as wrong.
   - Scores change only after the reveal.
-- **Answer checking is currently an exact, case-sensitive string match** against the stored answer. Lenient matching is planned (§9).
+- **Answer checking** is lenient about spelling, wording and order but strict about numbers, and Double and Final Jeopardy need the question form ("What is ...?"). See §6.7.
 
 ### 6.3 Timings
 
@@ -478,6 +481,27 @@ So `joinScore` is never above 0, and never above the lowest score of the players
 | Ben answers a $1000 clue right | Ana 600, Ben 800 | 0 (lowest is 600, but never above 0) |
 
 With two players tied at the bottom, `joinScore` only rises once both have moved up. Final Jeopardy can't change it: a player at or below `joinScore` (never above 0) can only wager 0.
+
+### 6.7 Answers: format and checking
+
+**The correct response's format** (`currentClue.answer`, `finalJeopardy.answer`). Answers come from J-Archive, cleaned up so that alternatives have a single form:
+
+| Form | Meaning | Example |
+|---|---|---|
+| `(N of) A \| B \| C` | A correct response names at least N of the options. `(1 of)` means any one; N equal to the number of options means all of them. `\|` appears nowhere else. | `(1 of) Myanmar \| Burma`, `(2 of) gold \| frankincense \| myrrh` |
+| `(...)` | An optional part. Parentheses can nest. | `(Abraham) Lincoln`, `(duck-bill(ed)) platypus` |
+| `A/B` | Either side, except in a fraction like `2/3` | `bear/bare` |
+
+To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` as something like "Any 2 of: A, B, C".
+
+**What counts as correct:**
+
+- **Spelling and wording:** case, accents, punctuation, the articles a/an/the and word order don't matter. A few typos are allowed per word, by the length of the word in the answer: none up to 3 letters, 1 up to 6, then 2 (swapping two letters counts as 1).
+- **Numbers must be exact.** `1,001` and `1001` are the same, and `$` and `%` are optional, but number words aren't numbers (`nine` isn't `9`). Decades accept the short form: `the 1980s` accepts `1980s`, `80s` and `'80s`. When the response is just a number (`1970`, `$25,000`, `2/3`, `50th`), `numberExpected` is `true` on `currentClue` and `finalJeopardy`, so the player can be told it must be exact. Decades don't set it.
+- **Optional parts** can be said or left out, word by word. Everything outside them is needed, so the optional part alone isn't enough: `(Abraham) Lincoln` accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
+- **Nothing extra:** words that aren't in the answer make a response wrong, even true ones ("the Wright brothers" for `(Orville) Wright`).
+- **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
+- **The question form** is optional in the Jeopardy round and required in Double Jeopardy and Final Jeopardy. It's any of what, who, where, when, which, why or how, followed by is, are, was, were, 's or 're ("What is", "Who's", "whats", "Where were"), whatever kind of answer it is. A few typos of the question word count too ("waht is", "hwo is"). A response without it is wrong there, unless the correct response is itself a question ("Who's the Boss?"), which can then be said as it is.
 
 ---
 
@@ -706,7 +730,8 @@ interface CurrentClueResponse {
   question: string | null;
   clueType: ClueType | null;   // null while the question is hidden
   mediaUrl: string | null;     // null while hidden, and always for TEXT
-  answer: string | null;
+  numberExpected: boolean | null;  // only an exact number is accepted; null while hidden
+  answer: string | null;       // "(N of) A | B" for alternatives (§6.7)
 }
 
 interface ClueAnswerResponse {
@@ -728,7 +753,8 @@ interface FinalJeopardyResponse {
   category: string;
   categoryComments: string | null;
   question: string | null;
-  answer: string | null;
+  numberExpected: boolean | null;  // only an exact number is accepted; null while wagering
+  answer: string | null;           // "(N of) A | B" for alternatives (§6.7)
   players: FinalJeopardyPlayerResponse[];
 }
 
@@ -767,7 +793,7 @@ interface GameSessionErrorResponse {
 These are tracked on the backend roadmap. Work around them in the UI only where noted.
 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
-- **Exact answer matching** (§6.2). Answers must match the stored text exactly, including capitalisation.
+- **Answer checking doesn't know synonyms** (§6.7): abbreviations aren't expanded ("Avenue" isn't `Ave.`), and number words aren't numbers.
 - **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast.
 - **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4); the timers keep the game moving around an absent player.
 - **No limits** on the number of players, duplicate names or name length.

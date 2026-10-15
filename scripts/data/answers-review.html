@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Answer Review</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --panel: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6a66;
+    --line: #e2e0da;
+    --accent: #2f5bd3;
+    --accent-text: #ffffff;
+    --keep: #5b6b3a;
+    --warn-bg: #fff4d6;
+    --warn-text: #7a5300;
+    --done: #2e8b57;
+    --chip: #efede8;
+    --danger: #b3261e;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615;
+      --panel: #1f1f1d;
+      --text: #ecebe7;
+      --muted: #a09e98;
+      --line: #34332f;
+      --accent: #7c9cff;
+      --accent-text: #0e0e0d;
+      --keep: #b5c98a;
+      --warn-bg: #3a2f12;
+      --warn-text: #f3cf73;
+      --done: #6fcf97;
+      --chip: #2a2927;
+      --danger: #f2b8b5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  .progress { flex: 1; min-width: 160px; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .bar { flex: 1; height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--done); width: 0; transition: width .2s; }
+  main { display: grid; grid-template-columns: 340px 1fr; min-height: 0; }
+  aside { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+  .filters { padding: 10px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+  .filters select, .filters input { width: 100%; }
+  .seg { display: flex; gap: 4px; }
+  .seg button { flex: 1; }
+  .seg button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  #list { overflow-y: auto; flex: 1; }
+  #list button {
+    display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left;
+    padding: 7px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: transparent; font-size: 13px;
+  }
+  #list button[aria-current="true"] { background: var(--chip); }
+  #list .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); transform: translateY(1px); }
+  #list .dot.rewrite { background: var(--done); border-color: var(--done); }
+  #list .dot.keep { background: var(--keep); border-color: var(--keep); }
+  #list .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .count { padding: 6px 12px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); }
+  section#card { overflow-y: auto; padding: 20px 28px 40px; }
+  .wrap { max-width: 900px; margin: 0 auto; display: grid; gap: 18px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 1px 9px; }
+  .clue { font-size: 19px; line-height: 1.4; margin: 0; }
+  .other-clues { font-size: 13px; color: var(--muted); }
+  .other-clues summary { cursor: pointer; }
+  .other-clues p { margin: 6px 0 0; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px; }
+  .original { font-family: var(--mono); font-size: 15px; padding: 10px 12px; background: var(--chip); border-radius: 8px; white-space: pre-wrap; word-break: break-word; }
+  .hint { padding: 8px 12px; border-radius: 8px; background: var(--chip); font-size: 14px; }
+  .hint.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .status { font-size: 14px; }
+  .status.rewrite { color: var(--done); }
+  .status.keep { color: var(--keep); }
+  .editor { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--panel); display: grid; gap: 10px; }
+  .n-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .n-row input { width: 64px; }
+  .opt { display: flex; gap: 6px; align-items: center; }
+  .opt .idx { width: 22px; text-align: right; color: var(--muted); font-size: 13px; flex: none; }
+  .opt input { flex: 1; font-family: var(--mono); }
+  .opt button { padding: 4px 8px; flex: none; }
+  .result input { width: 100%; font-family: var(--mono); font-size: 15px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .actions .spacer { flex: 1; }
+  button, input, select {
+    font: inherit; color: var(--text); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: .45; cursor: default; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); }
+  .keys { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  #toast.error { background: var(--danger); color: var(--bg); }
+  .empty { color: var(--muted); padding: 40px; text-align: center; }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 220px 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    section#card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Answer review</h1>
+  <div class="progress"><div class="bar"><div id="bar"></div></div><span id="progressText"></span></div>
+</header>
+<main>
+  <aside>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Show">
+        <button data-show="todo" aria-pressed="true">To do</button>
+        <button data-show="done" aria-pressed="false">Decided</button>
+        <button data-show="all" aria-pressed="false">All</button>
+      </div>
+      <select id="group" aria-label="Group"></select>
+      <input id="search" type="search" placeholder="Search answers and clues" aria-label="Search">
+    </div>
+    <div class="count" id="count"></div>
+    <div id="list"></div>
+  </aside>
+  <section id="card"><div class="empty">Loading…</div></section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+const state = { items: [], groups: {}, decisions: {}, show: "todo", group: "", search: "", view: [], current: null, editor: null };
+const $ = (sel, root = document) => root.querySelector(sel);
+const el = (tag, props = {}, ...children) => {
+  const node = Object.assign(document.createElement(tag), props);
+  for (const child of children.flat()) if (child != null) node.append(child);
+  return node;
+};
+
+// "(2 of) A | B | C" <-> { n, options }
+function parse(text) {
+  const match = /^\((\d+) of\) ([\s\S]*)$/.exec(text.trim());
+  if (match) return { n: Number(match[1]), options: match[2].split("|").map(s => s.trim()) };
+  return { n: 1, options: [text.trim()] };
+}
+function compose({ n, options }) {
+  const kept = options.map(o => o.trim()).filter(Boolean);
+  if (kept.length === 0) return "";
+  if (kept.length === 1) return kept[0];
+  return `(${n} of) ` + kept.join(" | ");
+}
+
+function toast(message, error = false) {
+  const t = $("#toast");
+  t.textContent = message;
+  t.className = "show" + (error ? " error" : "");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.className = "", error ? 4000 : 1400);
+}
+
+function remember() {
+  try { localStorage.setItem("answers-review:last", state.current ?? ""); } catch {}
+}
+function remembered() {
+  try { return localStorage.getItem("answers-review:last"); } catch { return null; }
+}
+
+async function load() {
+  const [items, decisions] = await Promise.all([
+    fetch("/api/items").then(r => r.json()),
+    fetch("/api/decisions").then(r => r.json()),
+  ]);
+  state.items = items.items;
+  state.groups = items.groups;
+  state.decisions = decisions;
+  const select = $("#group");
+  select.append(el("option", { value: "", textContent: "All groups" }));
+  for (const [key, name] of Object.entries(state.groups)) {
+    const n = state.items.filter(i => String(i.group) === key).length;
+    if (n) select.append(el("option", { value: key, textContent: `${name} (${n})` }));
+  }
+  const last = remembered();
+  refresh(state.items.some(i => i.answer === last) ? last : null);
+}
+
+function decided(item) { return Boolean(state.decisions[item.answer]); }
+
+function refresh(select) {
+  const q = state.search.toLowerCase();
+  state.view = state.items.filter(item =>
+    (state.show === "all" || (state.show === "done") === decided(item)) &&
+    (state.group === "" || String(item.group) === state.group) &&
+    (!q || item.answer.toLowerCase().includes(q) || item.clues.some(c => c.question.toLowerCase().includes(q)))
+  );
+  const done = state.items.filter(decided).length;
+  $("#bar").style.width = `${(100 * done / state.items.length).toFixed(1)}%`;
+  $("#progressText").textContent = `${done} of ${state.items.length} decided`;
+  $("#count").textContent = `${state.view.length} shown`;
+
+  if (select !== undefined) state.current = select;
+  if (!state.view.some(i => i.answer === state.current)) state.current = state.view[0]?.answer ?? null;
+  renderList();
+  renderCard();
+}
+
+function renderList() {
+  const list = $("#list");
+  list.replaceChildren(...state.view.map(item => {
+    const d = state.decisions[item.answer];
+    const button = el("button", { type: "button", title: item.answer },
+      el("span", { className: "dot" + (d ? " " + d.decision : "") }),
+      el("span", { className: "text", textContent: item.answer }));
+    button.setAttribute("aria-current", item.answer === state.current);
+    button.addEventListener("click", () => { state.current = item.answer; renderList(); renderCard(); });
+    return button;
+  }));
+  list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+}
+
+function currentItem() { return state.items.find(i => i.answer === state.current); }
+
+function startEditor(item) {
+  const d = state.decisions[item.answer];
+  const text = d?.decision === "rewrite" ? d.new_answer : item.suggestion ?? item.answer;
+  state.editor = parse(text);
+  if (state.editor.options.length > 1 && item.clueN && !d && !/^\(\d+ of\)/.test(item.suggestion ?? "")) state.editor.n = item.clueN;
+}
+
+function renderCard() {
+  const card = $("#card");
+  const item = currentItem();
+  remember();
+  if (!item) {
+    card.replaceChildren(el("div", { className: "empty", textContent: state.show === "todo" ? "Nothing left to do here." : "Nothing matches." }));
+    return;
+  }
+  startEditor(item);
+  const clue = item.clues[0];
+  const d = state.decisions[item.answer];
+  const warn = /check/i.test(item.label);
+
+  const status = d
+    ? el("div", { className: "status " + d.decision, textContent: d.decision === "keep" ? "Decided: keep as it is" : `Decided: ${d.new_answer}` })
+    : null;
+
+  const others = item.clues.length > 1 || item.count > 1
+    ? el("details", { className: "other-clues" },
+        el("summary", { textContent: `Used by ${item.count} clues` }),
+        item.clues.slice(1).map(c => el("p", { textContent: `${c.category} · ${c.round}: ${c.question}` })))
+    : null;
+
+  card.replaceChildren(el("div", { className: "wrap" },
+    el("div", { className: "meta" },
+      el("span", { className: "chip", textContent: state.groups[item.group] }),
+      el("span", { textContent: `${clue.category} · ${clue.round} · ${clue.game}` })),
+    el("p", { className: "clue", textContent: clue.question }),
+    others,
+    el("div", {}, el("div", { className: "label", textContent: "Answer in the database" }),
+      el("div", { className: "original", textContent: item.answer })),
+    el("div", { className: "hint" + (warn ? " warn" : ""), textContent: item.label }),
+    status,
+    editorPanel(item),
+    el("div", { className: "keys" },
+      el("span", {}, el("kbd", { textContent: "Enter" }), " save"),
+      el("span", {}, el("kbd", { textContent: "Ctrl+Enter" }), " save while typing"),
+      el("span", {}, el("kbd", { textContent: "K" }), " keep as it is"),
+      el("span", {}, el("kbd", { textContent: "→" }), " / ", el("kbd", { textContent: "←" }), " next / previous"),
+      el("span", {}, el("kbd", { textContent: "U" }), " undo decision"),
+      el("span", {}, el("kbd", { textContent: "Esc" }), " leave a field")),
+  ));
+}
+
+function editorPanel(item) {
+  const panel = el("div", { className: "editor" });
+  const result = el("input", { type: "text", spellcheck: false, "aria-label": "New answer" });
+  const rows = el("div", { style: "display:grid;gap:6px" });
+  const nInput = el("input", { type: "number", min: 1, value: state.editor.n, "aria-label": "How many options a correct response names" });
+
+  const sync = () => { result.value = compose(state.editor); };
+  nInput.addEventListener("input", () => { state.editor.n = Math.max(1, Number(nInput.value) || 1); sync(); });
+
+  function drawRows(focusIndex) {
+    const options = state.editor.options;
+    rows.replaceChildren(...options.map((option, i) => {
+      const input = el("input", { type: "text", value: option, spellcheck: false, "aria-label": `Option ${i + 1}` });
+      input.addEventListener("input", () => { options[i] = input.value; sync(); });
+      const move = (to) => () => { [options[i], options[to]] = [options[to], options[i]]; drawRows(to); sync(); };
+      return el("div", { className: "opt" },
+        el("span", { className: "idx", textContent: i + 1 }),
+        input,
+        el("button", { type: "button", title: "Move up", textContent: "↑", disabled: i === 0, onclick: move(i - 1) }),
+        el("button", { type: "button", title: "Move down", textContent: "↓", disabled: i === options.length - 1, onclick: move(i + 1) }),
+        el("button", { type: "button", title: "Join with the next option (with a comma)", textContent: "⤓", disabled: i === options.length - 1,
+          onclick: () => { options.splice(i, 2, `${options[i]}, ${options[i + 1]}`); drawRows(i); sync(); } }),
+        el("button", { type: "button", title: "Split at commas", textContent: "✂", disabled: !option.includes(","),
+          onclick: () => { options.splice(i, 1, ...option.split(",").map(s => s.trim()).filter(Boolean)); drawRows(i); sync(); } }),
+        el("button", { type: "button", title: "Remove", textContent: "✕", disabled: options.length === 1,
+          onclick: () => { options.splice(i, 1); drawRows(Math.min(i, options.length - 1)); sync(); } }));
+    }));
+    if (focusIndex != null) rows.querySelectorAll("input")[focusIndex]?.focus();
+  }
+
+  result.addEventListener("input", () => {
+    state.editor = parse(result.value);
+    nInput.value = state.editor.n;
+    drawRows();
+  });
+
+  const reset = (text) => () => {
+    state.editor = parse(text);
+    nInput.value = state.editor.n;
+    drawRows();
+    sync();
+  };
+
+  drawRows();
+  sync();
+
+  panel.append(
+    el("div", { className: "n-row" },
+      el("span", { textContent: "A correct response names" }), nInput,
+      el("span", { textContent: "of these options" + (item.clueN ? ` (the clue says ${item.clueN})` : "") + ":" })),
+    rows,
+    el("div", { className: "actions" },
+      el("button", { type: "button", className: "ghost", textContent: "+ Add option",
+        onclick: () => { state.editor.options.push(""); drawRows(state.editor.options.length - 1); sync(); } }),
+      el("span", { className: "spacer" }),
+      item.suggestion ? el("button", { type: "button", className: "ghost", textContent: "Use suggestion", onclick: reset(item.suggestion) }) : null,
+      el("button", { type: "button", className: "ghost", textContent: "Use the original", onclick: reset(item.answer) })),
+    el("div", { className: "result" }, el("div", { className: "label", textContent: "New answer" }), result),
+    el("div", { className: "actions" },
+      el("button", { type: "button", className: "primary", textContent: "Save", onclick: () => save(result.value) }),
+      el("button", { type: "button", textContent: "Keep as it is", onclick: () => decide("keep") }),
+      el("span", { className: "spacer" }),
+      el("button", { type: "button", className: "ghost", textContent: "Undo decision", disabled: !state.decisions[item.answer], onclick: () => decide("clear") }),
+      el("button", { type: "button", className: "ghost", textContent: "Skip →", onclick: () => step(1) })),
+  );
+  panel.resultInput = result;
+  return panel;
+}
+
+function save(text) {
+  const item = currentItem();
+  const value = text.trim();
+  if (!value) { toast("The new answer is empty.", true); return; }
+  if (value === item.answer) decide("keep");
+  else decide("rewrite", value);
+}
+
+async function decide(decision, newAnswer = "") {
+  const item = currentItem();
+  if (!item) return;
+  const response = await fetch("/api/decision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answer: item.answer, decision, new_answer: newAnswer }),
+  }).catch(() => null);
+  if (!response?.ok) {
+    toast("Couldn't save. Is the review server still running?", true);
+    return;
+  }
+  const saved = await response.json();
+  if (decision === "clear") delete state.decisions[item.answer];
+  else state.decisions[item.answer] = saved;
+  toast(decision === "clear" ? "Decision removed" : decision === "keep" ? "Kept as it is" : "Saved");
+
+  if (decision === "clear") { refresh(item.answer); return; }
+  // Go on to the next item that still needs a decision.
+  const index = state.view.findIndex(i => i.answer === item.answer);
+  const next = state.view.slice(index + 1).find(i => !decided(i)) ?? state.view.find(i => !decided(i));
+  refresh(next?.answer ?? item.answer);
+}
+
+function step(delta) {
+  const index = state.view.findIndex(i => i.answer === state.current);
+  const next = state.view[index + delta];
+  if (next) { state.current = next.answer; renderList(); renderCard(); }
+}
+
+document.addEventListener("keydown", (event) => {
+  const typing = event.target.matches("input, select, textarea");
+  if (event.key === "Escape" && typing) { event.target.blur(); return; }
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey || !typing)) {
+    // Enter on a button presses it, except in the list, where it saves.
+    if (event.target.matches("button") && !event.target.closest("#list") && !event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    const result = $(".result input");
+    if (result) save(result.value);
+    return;
+  }
+  if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.key === "k" || event.key === "K") { event.preventDefault(); decide("keep"); }
+  else if (event.key === "u" || event.key === "U") { event.preventDefault(); if (state.decisions[state.current]) decide("clear"); }
+  else if (event.key === "ArrowRight" || event.key === "ArrowDown") { event.preventDefault(); step(1); }
+  else if (event.key === "ArrowLeft" || event.key === "ArrowUp") { event.preventDefault(); step(-1); }
+});
+
+for (const button of document.querySelectorAll("[data-show]")) {
+  button.addEventListener("click", () => {
+    state.show = button.dataset.show;
+    for (const b of document.querySelectorAll("[data-show]")) b.setAttribute("aria-pressed", b === button);
+    refresh();
+  });
+}
+$("#group").addEventListener("change", (e) => { state.group = e.target.value; refresh(); });
+$("#search").addEventListener("input", (e) => { state.search = e.target.value; refresh(); });
+
+load().catch(() => {
+  $("#card").replaceChildren(el("div", { className: "empty", textContent: "Couldn't load the answers. Is the review server running?" }));
+});
+</script>
+</body>
+</html>

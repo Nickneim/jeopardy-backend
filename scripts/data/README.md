@@ -1,0 +1,37 @@
+# Game data scripts
+
+Scripts that check and fix the J-Archive data in the database. Each one matches clues by their content, never by id, so they work again after a re-import and do nothing on a second run.
+
+`psql.sh` connects with the `DATABASE_*` values from `.env` (or `ENV_FILE`). Its sessions are read-only unless `WRITE=1` is set, and every script is a dry run unless you also pass `-v commit=1` (or `--commit`). Back up first:
+
+```bash
+pg_dump -h localhost -U postgres -d jeopardy -Fc -f jeopardy-YYYY-MM-DD.dump
+```
+
+## After an import
+
+Run these in order. The answer rewrites are keyed by the answer text as the earlier steps leave it.
+
+1. **Broken clues.** The importer skips them (`is_broken_clue` in `jarchive-scrapper.py`). For data imported before that, `clean-clues.sql` lists them and can delete them:
+   ```bash
+   scripts/data/psql.sh -f scripts/data/clean-clues.sql
+   ```
+2. **Square brackets to parentheses.** J-Archive uses both for the same things, and the answer matcher reads only parentheses:
+   ```bash
+   scripts/data/psql.sh -f scripts/data/brackets-to-parentheses.sql
+   WRITE=1 scripts/data/psql.sh -v commit=1 -f scripts/data/brackets-to-parentheses.sql
+   ```
+3. **Alternatives and lists.** `answers.py apply` rewrites simple alternatives by a rule (`Myanmar (or Burma)` → `(1 of) Myanmar | Burma`), then applies the reviewed rewrites in `answer-rewrites.csv` (`Santa Claus or Father Christmas` → `(1 of) Santa Claus | Father Christmas`):
+   ```bash
+   python scripts/data/answers.py apply
+   python scripts/data/answers.py apply --commit
+   ```
+   Answers that still need a decision, such as new ones from an import, show up in the review page, which opens in the browser and saves each decision to `answer-rewrites.csv` right away:
+   ```bash
+   python scripts/data/answers.py review
+   ```
+
+## Answer format
+
+- `(N of) A | B | C`: a correct response names N of the options; `(1 of)` means any one. No answer contains `|`.
+- `(X)`: an optional part, e.g. `(Abraham) Lincoln`.

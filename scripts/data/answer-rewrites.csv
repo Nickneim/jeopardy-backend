@@ -1,0 +1,1743 @@
+answer,decision,new_answer
+" Life With Father, Life With Buster Keaton, Life With Elizabeth, Life With Linkletter, Life With Luigi, Life With the Irwins, or Life With Snarky Parker",rewrite,(1 of) Life With Father | Life With Buster Keaton | Life With Elizabeth | Life With Linkletter | Life With Luigi | Life With the Irwins | Life With Snarky Parker
+"""25 or 6 to 4""",keep,
+"""54-40 or fight!""",keep,
+"""Ain't No Mountain High Enough"" or ""Ain't Nothing Like The Real Thing""",rewrite,"(1 of) ""Ain't No Mountain High Enough"" | ""Ain't Nothing Like The Real Thing"""
+"""Alfie"" (""What's It All About, Alfie?"" accepted)",rewrite,"(1 of) ""Alfie"" | ""What's It All About, Alfie?"""
+"""America"" (""My Country, 'Tis Of Thee"" accepted)",rewrite,"(1 of) ""America"" | ""My Country, 'Tis Of Thee"""
+"""America"" (or ""My Country, 'Tis Of Thee"")",rewrite,"(1 of) ""America"" | ""My Country, 'Tis Of Thee"""
+"""Annie's Song"" (or ""Sunshine On My Shoulders"", ""Thank God I'm A Country Boy"" or ""I'm Sorry"")",rewrite,"(1 of) ""Annie's Song"" | ""Sunshine On My Shoulders"" | ""Thank God I'm A Country Boy"" | ""I'm Sorry"""
+"""Believe It Or Not""",keep,
+"""Bewitched, Bothered, and Bewildered"" or ""Bewitched""",rewrite,"(1 of) ""Bewitched, Bothered, and Bewildered"" | ""Bewitched"""
+"""Black Or White Men Can't Jump""",keep,
+"""Black Or White""",keep,
+"""Blue Velvet"" (or ""Roses Are Red"", ""There! I've Said It Again"" or ""Mr. Lonely"")",rewrite,"(1 of) ""Blue Velvet"" | ""Roses Are Red"" | ""There! I've Said It Again"" | ""Mr. Lonely"""
+"""Come Rain Or Come Shine""",keep,
+"""Devil Or Angel""",keep,
+"""Did you catch any?"" (or ""Are they biting?"")",rewrite,"(1 of) ""Did you catch any?"" | ""Are they biting?"""
+"""do not fold, spindle, or mutilate""",keep,
+"""Do you feel lucky?"" (or ""Do I feel lucky?"")",rewrite,"(1 of) ""Do you feel lucky?"" | ""Do I feel lucky?"""
+"""Don't Be Cruel"", ""Don't Cry, Daddy"", or ""Don't""",rewrite,"(1 of) ""Don't Be Cruel"" | ""Don't Cry, Daddy"" | ""Don't"""
+"""Elvira"" or ""Bobbie Sue""",rewrite,"(1 of) ""Elvira"" | ""Bobbie Sue"""
+"""Fifty-four forty or fight!""",keep,
+"""fifty-four forty or fight""",keep,
+"""Give me liberty or give me Death of a Salesman""",keep,
+"""Give me liberty or give me death""",keep,
+"""give me liberty or give me death""",keep,
+"""Gypsys, Tramps & Thieves"" (or ""Half-Breed"" or ""Dark Lady"")",rewrite,"(1 of) ""Gypsys, Tramps & Thieves"" | ""Half-Breed"" | ""Dark Lady"""
+"""Hans Brinker"" or ""The Silver Skates""",rewrite,"(1 of) ""Hans Brinker"" | ""The Silver Skates"""
+"""here"" means ""men""; going in or elsewhere would be dependent on one's gender",rewrite,"(1 of) ""here"" means ""men"" (going in or elsewhere would be dependent on one's gender) | go in if you are a man | go elsewhere if you are a woman"
+"""Hi-Ho"" or ""Hi-Yah!""",rewrite,"(1 of) ""Hi-Ho"" | ""Hi-Yah!"""
+"""How Can You Mend A Broken Heart?"" or ""How Deep Is Your Love?""",rewrite,"(1 of) ""How Can You Mend A Broken Heart?"" | ""How Deep Is Your Love?"""
+"""I'm Walkin'"", ""I Want to Walk You Home"", and/or ""Walking to New Orleans""",rewrite,"(2 of) ""I'm Walkin'"" | ""I Want to Walk You Home"" | ""Walking to New Orleans"""
+"""It's Now Or Never""",keep,
+"""It's Now or Never""",keep,
+"""It's Now Or Never"" & ""O Sole Mio""",keep,
+"""Keep On Loving You"" or ""Can't Fight This Feeling""",rewrite,"(1 of) ""Keep On Loving You"" | ""Can't Fight This Feeling"""
+"""Killing Me Softly"" (or ""Feel Like Makin' Love"" or ""The First Time Ever I Saw Your Face"")",rewrite,"(1 of) ""Killing Me Softly"" | ""Feel Like Makin' Love"" | ""The First Time Ever I Saw Your Face"""
+"""let him speak now or forever hold his peace""",keep,
+"""Light My Fire"" (or ""Hello, I Love You"")",rewrite,"(1 of) ""Light My Fire"" | ""Hello, I Love You"""
+"""Little Sister"", ""Don't Cry Daddy"", ""My Boy"", or ""Kissin' Cousins""",rewrite,"(1 of) ""Little Sister"" | ""Don't Cry Daddy"" | ""My Boy"" | ""Kissin' Cousins"""
+"""Live free or die""",keep,
+"""Live Free or Die""",keep,
+"""Love Me Or Leave Me""",keep,
+"""Material Girl"" (or ""Angel"" or ""Dress You Up"")",rewrite,"(1 of) ""Material Girl"" | ""Angel"" | ""Dress You Up"""
+"""My Country, Right or Wrong""",keep,
+"""My Old Kentucky Home"" or ""Old Folks At Home""",rewrite,"(1 of) ""My Old Kentucky Home"" | ""Old Folks At Home"""
+"""One Less Bell to Answer"" or ""Wedding Bell Blues""",rewrite,"(1 of) ""One Less Bell to Answer"" | ""Wedding Bell Blues"""
+"""Prime Time"" or ""Neon Deion""",rewrite,"(1 of) ""Prime Time"" | ""Neon Deion"""
+"""Promises, Promises"" or ""I'll Never Fall In Love Again""",rewrite,"(1 of) ""Promises, Promises"" | ""I'll Never Fall In Love Again"""
+"""Que Sera, Sera"" or (""Secret Love"")",rewrite,"(1 of) ""Que Sera, Sera"" | ""Secret Love"""
+"""Rag Doll"" (or ""Sherry"", ""Big Girls Don't Cry"", ""Walk Like A Man"", or ""December, 1963 (Oh, What a Night)""",rewrite,"(1 of) ""Rag Doll"" | ""Sherry"" | ""Big Girls Don't Cry"" | ""Walk Like A Man"" | ""December, 1963 (Oh, What a Night)"""
+"""Rhinestone Cowboy"" or ""Southern Nights""",rewrite,"(1 of) ""Rhinestone Cowboy"" | ""Southern Nights"""
+"""Ripley's Believe It or Not!""",keep,
+"""Should I Stay Or Should I Go""",keep,
+"""Something Old, Something New"" (""Something Borrowed, Something Blue"" accepted)",rewrite,"(1 of) ""Something Old, Something New"" | ""Something Borrowed, Something Blue"""
+"""The Lady, or the Tiger?""",keep,
+"""The Lady, or the tiger?""",keep,
+"""The Last Frontier"", ""The Great Land"", or ""North to the Future""",rewrite,"(1 of) ""The Last Frontier"" | ""The Great Land"" | ""North to the Future"""
+"""To be or not to be""",keep,
+"""to be or not to be""",keep,
+"""To be or not to be, that is the question""",keep,
+"""To be or not to be; that is the question""",keep,
+"""To bee or not to bee?""",keep,
+"""trick or treat""",keep,
+"""Walden; or, Life in the Woods""",keep,
+"""Wanted Dead Or Alive""",keep,
+"""We Three Kings (Of Orient Are)"" or ""We Three Kings From Orient Are""",rewrite,"(1 of) ""We Three Kings (Of Orient Are)"" | ""We Three Kings From Orient Are"""
+"""Where In The World (or Time) is Carmen Sandiego?""",rewrite,"(1 of) ""Where In The World is Carmen Sandiego?"" | ""Where In The Time is Carmen Sandiego?"""
+"""Who Am"" or ""I am that I am...""",rewrite,"(1 of) ""Who Am"" | ""That I am"""
+"""With A Little Help From My Friends"" (or I get by ""With A Little Help From My Friends""",rewrite,"(1 of) ""With A Little Help From My Friends"" | I get by ""With A Little Help From My Friends"""
+"""With Or Without You""",keep,
+"""With Or Without You"" (or ""I Still Haven't Found What I'm Looking For"")",rewrite,"(1 of) ""With Or Without You"" | ""I Still Haven't Found What I'm Looking For"""
+"""You're out of the game!"" or ""You're ejected!""",rewrite,"(1 of) ""You're out of the game!"" | ""You're ejected!"""
+"""You've Got To Pick A Pocket Or Two""",keep,
+(1 of ) Jimmy Carter (Truman or Harding),rewrite,(1 of) Jimmy Carter | Truman | Harding
+"(1 of 2) Juneau, Alaska or Augusta, Maine",rewrite,"(1 of) Juneau, Alaska | Augusta, Maine"
+(1 of 2) Venezuela (or Colombia),rewrite,(1 of) Venezuela | Colombia
+"(1 of 3)  Andrew Jackson, William Henry Harrison or Grover Cleveland",rewrite,(1 of) Andrew Jackson | William Henry Harrison | Grover Cleveland
+"(1 of 3)  Guatemala City, Mexico City or Panama City",rewrite,(1 of) Guatemala City | Mexico City | Panama City
+"(1 of 3)  Massachusetts, North Carolina or South Carolina",rewrite,(1 of) Massachusetts | North Carolina | South Carolina
+"(1 of 3) aged red peppers, Avery Island salt or vinegar",rewrite,(1 of) aged red peppers | Avery Island salt | vinegar
+"(1 of 3) Bombay, Calcutta or Madras",rewrite,(1 of) Bombay | Calcutta | Madras
+"(1 of 3) Czech Republic, Hungary, or Poland",rewrite,(1 of) Czech Republic | Hungary | Poland
+"(1 of 3) Dr. No, Goldfinger or Octopussy",rewrite,(1 of) Dr. No | Goldfinger | Octopussy
+"(1 of 3) John Adams, Ronald Reagan or Herbert Hoover",rewrite,(1 of) John Adams | Ronald Reagan | Herbert Hoover
+"(1 of)  red (blue, yellow & black)",rewrite,(1 of) red | blue | yellow | black
+"(1 of) ""Hello"", ""All Night Long"", ""Truly"" or ""Say You, Say Me""",rewrite,"(1 of) ""Hello"" | ""All Night Long"" | ""Truly"" | ""Say You, Say Me"""
+"(1 of) ""I'm A Believer"" (""Daydream Believer"" or ""Last Train To Clarksville"")",rewrite,"(1 of) ""I'm A Believer"" | ""Daydream Believer"" | ""Last Train To Clarksville"""
+"(1 of) ""Joy To The World"", ""Black And White"" or ""Mama Told Me (Not To Come)""",rewrite,"(1 of) ""Joy To The World"" | ""Black And White"" | ""Mama Told Me (Not To Come)"""
+"(1 of) ""Little Darlin’” (or ""Little Bitty Pretty One"")",rewrite,"(1 of) ""Little Darlin'"" | ""Little Bitty Pretty One"""
+"(1 of) ""My Girl"", ""I Can't Get Next To You"", ""Just My Imagination"" or ""Papa Was A Rollin' Stone""",rewrite,"(1 of) ""My Girl"" | ""I Can't Get Next To You"" | ""Just My Imagination"" | ""Papa Was A Rollin' Stone"""
+"(1 of) ""Palisades Park"", ""Way Down Yonder in New Orleans"", & ""Tallahassee Lassie""",rewrite,"(1 of) ""Palisades Park"" | ""Way Down Yonder in New Orleans"" | ""Tallahassee Lassie"""
+"(1 of) ""Please Mr. Postman"", ""Close To You"" or ""Top Of The World""",rewrite,"(1 of) ""Please Mr. Postman"" | ""Close To You"" | ""Top Of The World"""
+"(1 of) ""Poor Little Fool"" or ""Travelin' Man""",rewrite,"(1 of) ""Poor Little Fool"" | ""Travelin' Man"""
+"(1 of) ""Sherry"" (""Big Girls Don't Cry"", ""Walk Like A Man"", ""Rag Doll"" or ""December 1963"")",rewrite,"(1 of) ""Sherry"" | ""Big Girls Don't Cry"" | ""Walk Like A Man"" | ""Rag Doll"" | ""December 1963"""
+"(1 of) ""The Purloined Letter""(*), ""The Mystery of Marie Rogêt"" or ""The Murders in the Rue Morgue""",rewrite,"(1 of) ""The Purloined Letter"" | ""The Mystery of Marie Rogêt"" | ""The Murders in the Rue Morgue"""
+"(1 of) ""Wake Up Little Susie"", ""All I Have To Do Is Dream"", ""Bird Dog"" or ""Cathy's Clown""",rewrite,"(1 of) ""Wake Up Little Susie"" | ""All I Have To Do Is Dream"" | ""Bird Dog"" | ""Cathy's Clown"""
+"(1 of) ""When You Wish Upon A Star"" or ""Zip-A-Dee-Doo-Dah""",rewrite,"(1 of) ""When You Wish Upon A Star"" | ""Zip-A-Dee-Doo-Dah"""
+"(1 of) ""You Make Me Feel Like Dancing"" (or ""When I Need You"")",rewrite,"(1 of) ""You Make Me Feel Like Dancing"" | ""When I Need You"""
+(1 of) (Alexander) Haig or George Marshall,rewrite,(1 of) (Alexander) Haig | George Marshall
+(1 of) (Alfred) Binet (or Theodore Simon),rewrite,(1 of) (Alfred) Binet | Theodore Simon
+(1 of) (Bob) Packwood (Mark Hatfield),rewrite,(1 of) (Bob) Packwood | Mark Hatfield
+(1 of) (duck-bill(ed)) platypus or an echidna,rewrite,(1 of) (duck-bill(ed)) platypus | an echidna
+"(1 of) (Lou) Gossett, Ed Asner or Olivia Cole",rewrite,(1 of) (Lou) Gossett | Ed Asner | Olivia Cole
+"(1 of) 1936, 1483, or 1066",rewrite,(1 of) 1936 | 1483 | 1066
+(1 of) 7 or 11,rewrite,(1 of) 7 | 11
+(1 of) a hydroplane (hovercraft or helicopter),rewrite,(1 of) a hydroplane | hovercraft | helicopter
+"(1 of) A, D, E, or G",rewrite,(1 of) A | D | E | G
+(1 of) Abigail Adams (or Martha Jefferson),rewrite,(1 of) Abigail Adams | Martha Jefferson
+"(1 of) Addis Ababa (Cape Town, Port Louis, Porto-Novo, & Sao Tomé)",rewrite,(1 of) Addis Ababa | Cape Town | Port Louis | Porto-Novo | Sao Tomé
+"(1 of) Addis Ababa, San Salvador, or Phnom Penh",rewrite,(1 of) Addis Ababa | San Salvador | Phnom Penh
+(1 of) admitting women (accepting students regardless of race and conferring degrees on women),rewrite,(1 of) admitting women | accepting students regardless of race | conferring degrees on women
+(1 of) Air Force One & In the Line of Fire,rewrite,(1 of) Air Force One | In the Line of Fire
+(1 of) Airwolf (or Blue Thunder),rewrite,(1 of) Airwolf | Blue Thunder
+(1 of) Alaska or Oregon,rewrite,(1 of) Alaska | Oregon
+(1 of) Alexis Smith or Mary Pickford,rewrite,(1 of) Alexis Smith | Mary Pickford
+"(1 of) Alfred, Lord Tennyson, Southey, Wordsworth or Alfred Austin",rewrite,"(1 of) Alfred, Lord Tennyson | Southey | Wordsworth | Alfred Austin"
+"(1 of) All Creatures Great And Small, All Things Wise And Wonderful, or All Things Bright And Beautiful",rewrite,(1 of) All Creatures Great And Small | All Things Wise And Wonderful | All Things Bright And Beautiful
+"(1 of) All My Children, One Life to Live, or Loving",rewrite,(1 of) All My Children | One Life to Live | Loving
+(1 of) All Quiet on the Western Front or West Side Story,rewrite,(1 of) All Quiet on the Western Front | West Side Story
+(1 of) All the King's Men or All About Eve,rewrite,(1 of) All the King's Men | All About Eve
+(1 of) Allegheny (or Monongahela),rewrite,(1 of) Allegheny | Monongahela
+"(1 of) Alpha, beta, gamma, delta, epsilon",rewrite,(1 of) Alpha | beta | gamma | delta | epsilon
+(1 of) ambrosia (nectar),rewrite,(1 of) ambrosia | nectar
+"(1 of) Ameritech, Bell Atlantic, BellSouth, NYNEX, Southwestern Bell, Pacific Telesis, or US West",rewrite,(1 of) Ameritech | Bell Atlantic | BellSouth | NYNEX | Southwestern Bell | Pacific Telesis | US West
+"(1 of) Andorra, Montenegro, Monaco, or San Marino",rewrite,(1 of) Andorra | Montenegro | Monaco | San Marino
+(1 of) Andrew Jackson or Zachary Taylor,rewrite,(1 of) Andrew Jackson | Zachary Taylor
+(1 of) Angola (or Ethiopia),rewrite,(1 of) Angola | Ethiopia
+(1 of) Angola (or Mozambique),rewrite,(1 of) Angola | Mozambique
+(1 of) Angola or Mozambique,rewrite,(1 of) Angola | Mozambique
+"(1 of) Ann Richards (of Texas), Barbara Roberts (of Oregon) or Joan Finney (of Kansas)",rewrite,(1 of) Ann Richards (of Texas) | Barbara Roberts (of Oregon) | Joan Finney (of Kansas)
+(1 of) Annapolis or Indianapolis,rewrite,(1 of) Annapolis | Indianapolis
+(1 of) Annapolis or Trenton,rewrite,(1 of) Annapolis | Trenton
+(1 of) apples (hops and rhubarb),rewrite,(1 of) apples | hops | rhubarb
+(1 of) Aries (Taurus & Capricorn),rewrite,(1 of) Aries | Taurus | Capricorn
+(1 of) Arizona & New Mexico,rewrite,(1 of) Arizona | New Mexico
+(1 of) Arizona (or New Mexico),rewrite,(1 of) Arizona | New Mexico
+(1 of) Arkansas or Tennessee,rewrite,(1 of) Arkansas | Tennessee
+(1 of) Art Linkletter (Art Baker),rewrite,(1 of) Art Linkletter | Art Baker
+(1 of) Arthur Miller (Jason Miller),rewrite,(1 of) Arthur Miller | Jason Miller
+"(1 of) Atlanta (Albany, Annapolis, Augusta, Austin)",rewrite,(1 of) Atlanta | Albany | Annapolis | Augusta | Austin
+"(1 of) Atlanta, Indianapolis & Denver",rewrite,(1 of) Atlanta | Indianapolis | Denver
+(1 of) August (or July),rewrite,(1 of) August | July
+"(1 of) August (or June, July & September)",rewrite,(1 of) August | June | July | September
+"(1 of) Augusta, Pierre or Montpelier",rewrite,(1 of) Augusta | Pierre | Montpelier
+(1 of) Australia or Germany,rewrite,(1 of) Australia | Germany
+(1 of) australia or the Soviet Union,rewrite,(1 of) australia | the Soviet Union
+(1 of) Austria (or Slovakia),rewrite,(1 of) Austria | Slovakia
+(1 of) axioms or postulates,rewrite,(1 of) axioms | postulates
+(1 of) Babe Didrikson (or Jim Thorpe),rewrite,(1 of) Babe Didrikson | Jim Thorpe
+(1 of) Babes in Arms or Babes on Broadway,rewrite,(1 of) Babes in Arms | Babes on Broadway
+(1 of) Bach (or Handel),rewrite,(1 of) Bach | Handel
+"(1 of) Balakirev, Borodin, Cui, Mussorgsky, Rimsky-Korsakov",rewrite,(1 of) Balakirev | Borodin | Cui | Mussorgsky | Rimsky-Korsakov
+"(1 of) bananas, sugar cane, coconuts, cocoa & olive",rewrite,(1 of) bananas | sugar cane | coconuts | cocoa | olive
+(1 of) Barbara Boxer & Dianne Feinstein,rewrite,(1 of) Barbara Boxer | Dianne Feinstein
+(1 of) Barbara Walters (or Howard K. Smith),rewrite,(1 of) Barbara Walters | Howard K. Smith
+(1 of) Belize or El Salvador,rewrite,(1 of) Belize | El Salvador
+"(1 of) Beth Henley (for Crimes of the Heart), Marsha Norman (for 'night, Mother) & Wendy Wasserstein (for The Heidi Chronicles)",rewrite,"(1 of) Beth Henley (for Crimes of the Heart) | Marsha Norman (for 'night, Mother) | Wendy Wasserstein (for The Heidi Chronicles)"
+(1 of) Biden (or Thomas Carper),rewrite,(1 of) Biden | Thomas Carper
+(1 of) Big Bird or Woody Woodpecker,rewrite,(1 of) Big Bird | Woody Woodpecker
+"(1 of) Bing Crosby, Paul Newman, Al Pacino & Peter O'Toole",rewrite,(1 of) Bing Crosby | Paul Newman | Al Pacino | Peter O'Toole
+(1 of) Bird or Breezy,rewrite,(1 of) Bird | Breezy
+(1 of) bobbies (or peelers),rewrite,(1 of) bobbies | peelers
+"(1 of) Boise (Bismarck, Boston, Baton Rouge)",rewrite,(1 of) Boise | Bismarck | Boston | Baton Rouge
+(1 of) Brenda Lee or Juice Newton,rewrite,(1 of) Brenda Lee | Juice Newton
+(1 of) bronze (or copper),rewrite,(1 of) bronze | copper
+(1 of) Buenos Aires or Montevideo,rewrite,(1 of) Buenos Aires | Montevideo
+(1 of) Buffalo (Bills) or (Los Angeles Chargers),rewrite,(1 of) Buffalo Bills | Los Angeles Chargers
+(1 of) butterfly (or breaststroke),rewrite,(1 of) butterfly | breaststroke
+"(1 of) California Angels, Texas Rangers, Minnesota Twins",rewrite,(1 of) California Angels | Texas Rangers | Minnesota Twins
+(1 of) Calvin Coolidge (Chester Arthur),rewrite,(1 of) Calvin Coolidge | Chester Arthur
+(1 of) camel (or elephant),rewrite,(1 of) camel | elephant
+(1 of) Camille Saint-Saens & (Nicolai) Rimsky-Korsakov,rewrite,(1 of) Camille Saint-Saens | (Nicolai) Rimsky-Korsakov
+(1 of) Canyonlands (or Bryce Canyon),rewrite,(1 of) Canyonlands | Bryce Canyon
+"(1 of) Chad, Gabon & the Central African Republic",rewrite,(1 of) Chad | Gabon | the Central African Republic
+(1 of) Chamonix or Grenoble,rewrite,(1 of) Chamonix | Grenoble
+(1 of) Champaign or Urbana,rewrite,(1 of) Champaign | Urbana
+(1 of) Charles de Gaulle ( or Orly),rewrite,(1 of) Charles de Gaulle | Orly
+(1 of) Cheops (Khufu) or (Khefren and Mykerinos),rewrite,(1 of) Cheops (Khufu) | Khefren | Mykerinos
+(1 of) Chicago White Sox & Boston Red Sox,rewrite,(1 of) Chicago White Sox | Boston Red Sox
+(1 of) Chile & Ecuador,rewrite,(1 of) Chile | Ecuador
+(1 of) Christopher Hitchens or Richard Dawkins,rewrite,(1 of) Christopher Hitchens | Richard Dawkins
+(1 of) Clint Eastwood & Warren Beatty,rewrite,(1 of) Clint Eastwood | Warren Beatty
+(1 of) Cocker Spaniels or Poodles,rewrite,(1 of) Cocker Spaniels | Poodles
+"(1 of) Colombia, Mexico, Panama, & Venezuela",rewrite,(1 of) Colombia | Mexico | Panama | Venezuela
+(1 of) colorization (or stereo sound),rewrite,(1 of) colorization | stereo sound
+(1 of) Connecticut and Vermont,rewrite,(1 of) Connecticut | Vermont
+(1 of) Connecticut or Massachusetts,rewrite,(1 of) Connecticut | Massachusetts
+(1 of) Constable & Turner,rewrite,(1 of) Constable | Turner
+(1 of) Conway Twitty & Loretta Lynn,rewrite,(1 of) Conway Twitty | Loretta Lynn
+(1 of) Crater Lake (or Lake Clark),rewrite,(1 of) Crater Lake | Lake Clark
+(1 of) crawfish pie (or a filé gumbo),rewrite,(1 of) crawfish pie | a filé gumbo
+(1 of) Cuba (Haiti or the Dominican Republic),rewrite,(1 of) Cuba | Haiti | the Dominican Republic
+"(1 of) cuckoos, deer, wolves or lambs",rewrite,(1 of) cuckoos | deer | wolves | lambs
+(1 of) Cymbeline (or Coriolanus),rewrite,(1 of) Cymbeline | Coriolanus
+"(1 of) David Geffen, Steven Spielberg, or Jeff Katzenberg",rewrite,(1 of) David Geffen | Steven Spielberg | Jeff Katzenberg
+"(1 of) Dennis DeConcini (McCain, Reigle, Alan Cranston or John Glenn)",rewrite,(1 of) Dennis DeConcini | McCain | Reigle | Alan Cranston | John Glenn
+(1 of) Detroit or Philadelphia,rewrite,(1 of) Detroit | Philadelphia
+(1 of) Diana Rigg & Joanna Lumley,rewrite,(1 of) Diana Rigg | Joanna Lumley
+"(1 of) Diane Ladd & Laura Dern, Goldie Hawn & Kate Hudson, or Judy Garland & Liza Minnelli",rewrite,(1 of) Diane Ladd & Laura Dern | Goldie Hawn & Kate Hudson | Judy Garland & Liza Minnelli
+(1 of) distance & accuracy,rewrite,(1 of) distance | accuracy
+(1 of) Dolly Parton (Kim Carnes & Sheena Easton),rewrite,(1 of) Dolly Parton | Kim Carnes | Sheena Easton
+"(1 of) Dover, DE, Boise, ID & Salem, OR",rewrite,(1 of) Dover (DE) | Boise (ID) | Salem (OR)
+(1 of) Elizabeth Dole & Frances Perkins,rewrite,(1 of) Elizabeth Dole | Frances Perkins
+(1 of) Elizabeth Dole (Lynn Martin),rewrite,(1 of) Elizabeth Dole | Lynn Martin
+(1 of) Energy or Education,rewrite,(1 of) Energy | Education
+"(1 of) Ethiopia, Eritrea & Egypt",rewrite,(1 of) Ethiopia | Eritrea | Egypt
+"(1 of) Ethiopia, Somalia, or Djibouti",rewrite,(1 of) Ethiopia | Somalia | Djibouti
+(1 of) European Common Market or NATO,rewrite,(1 of) European Common Market | NATO
+(1 of) evaporation (or condensation),rewrite,(1 of) evaporation | condensation
+(1 of) Exodus or Deuteronomy,rewrite,(1 of) Exodus | Deuteronomy
+"(1 of) Faulkner, Tarkington & John Updike",rewrite,(1 of) Faulkner | Tarkington | John Updike
+"(1 of) ferns (palms, ficus)",rewrite,(1 of) ferns | palms | ficus
+(1 of) Finley & Breese,rewrite,(1 of) Finley | Breese
+(1 of) Folsom or San Quentin,rewrite,(1 of) Folsom | San Quentin
+(1 of) foot or tooth,rewrite,(1 of) foot | tooth
+(1 of) Ford or Carter,rewrite,(1 of) Ford | Carter
+"(1 of) France, Argentina, Australia, Chile, New Zealand, Norway & the UK",rewrite,(1 of) France | Argentina | Australia | Chile | New Zealand | Norway | the UK
+"(1 of) Frank Gifford (Frank Kinard, Frank Gatski)",rewrite,(1 of) Frank Gifford | Frank Kinard | Frank Gatski
+"(1 of) Fred Haise, James Lovell or John Swigart",rewrite,(1 of) Fred Haise | James Lovell | John Swigart
+(1 of) Freedom (Friendship or Faith),rewrite,(1 of) Freedom | Friendship | Faith
+(1 of) French (Malagasy),rewrite,(1 of) French | Malagasy
+"(1 of) Genesis, Exodus, Leviticus, Numbers & Deuteronomy",rewrite,(1 of) Genesis | Exodus | Leviticus | Numbers | Deuteronomy
+(1 of) Georgia or Mississippi,rewrite,(1 of) Georgia | Mississippi
+"(1 of) Georgia, Florida, Tennessee & Mississippi",rewrite,(1 of) Georgia | Florida | Tennessee | Mississippi
+(1 of) Gerald Ford & Herbert Hoover,rewrite,(1 of) Gerald Ford | Herbert Hoover
+(1 of) Gerald Ford or Calvin Coolidge,rewrite,(1 of) Gerald Ford | Calvin Coolidge
+(1 of) Gigi or An American in Paris,rewrite,(1 of) Gigi | An American in Paris
+(1 of) Gigi or Oliver!,rewrite,(1 of) Gigi | Oliver!
+(1 of) glucagon & insulin,rewrite,(1 of) glucagon | insulin
+(1 of) Gone with the Wind or All the King's Men,rewrite,(1 of) Gone with the Wind | All the King's Men
+(1 of) Governor George Wallace & Strom Thurmond,rewrite,(1 of) Governor George Wallace | Strom Thurmond
+(1 of) Grand Bahama Island & New Providence,rewrite,(1 of) Grand Bahama Island | New Providence
+(1 of) Grant (or John Tyler),rewrite,(1 of) Grant | John Tyler
+(1 of) grapes (or apple),rewrite,(1 of) grapes | apple
+(1 of) green onions (chives or parsley),rewrite,(1 of) green onions | chives | parsley
+(1 of) Grover Cleveland & Andrew Jackson,rewrite,(1 of) Grover Cleveland | Andrew Jackson
+"(1 of) hair, nails & skin",rewrite,(1 of) hair | nails | skin
+"(1 of) Hank Williams, Sr., Jimmie Rodgers & Fred Rose",rewrite,"(1 of) Hank Williams, Sr. | Jimmie Rodgers | Fred Rose"
+(1 of) Harold (Canute or Harthacnut),rewrite,(1 of) Harold | Canute | Harthacnut
+(1 of) Henry (or Edward),rewrite,(1 of) Henry | Edward
+(1 of) Henry II & Eleanor of Aquitaine,rewrite,(1 of) Henry II | Eleanor of Aquitaine
+(1 of) Henry VIII (or Mrs. Brown),rewrite,(1 of) Henry VIII | Mrs. Brown
+"(1 of) Herman Brix, Buster Crabbe, Glenn Morris or Johnny Weissmuller",rewrite,(1 of) Herman Brix | Buster Crabbe | Glenn Morris | Johnny Weissmuller
+(1 of) hips (or hand),rewrite,(1 of) hips | hand
+(1 of) his shoes or a new jacket,rewrite,(1 of) his shoes | a new jacket
+(1 of) Honshu or Java,rewrite,(1 of) Honshu | Java
+(1 of) Hume Cronyn & Jessica Tandy (or Paul Newman & Joanne Woodward),rewrite,(1 of) Hume Cronyn & Jessica Tandy | Paul Newman & Joanne Woodward
+"(1 of) hydrogen gas, chlorine gas or sodium hydroxide (lye or caustic soda)",rewrite,(1 of) hydrogen gas | chlorine gas | sodium hydroxide | lye | caustic soda
+"(1 of) ice (rest, compression, elevation)",rewrite,(1 of) ice | rest | compression | elevation
+(1 of) Injun Joe (or Joe Harper),rewrite,(1 of) Injun Joe | Joe Harper
+(1 of) Inquirer (or Daily News),rewrite,(1 of) Inquirer | Daily News
+(1 of) iodine or helium,rewrite,(1 of) iodine | helium
+(1 of) Iran (USSR),rewrite,(1 of) Iran | USSR
+"(1 of) Ireland, (New Zealand or Iceland)",rewrite,(1 of) Ireland | New Zealand | Iceland
+"(1 of) Ireland, Malta & Cyprus",rewrite,(1 of) Ireland | Malta | Cyprus
+(1 of) iron (cobalt & nickel),rewrite,(1 of) iron | cobalt | nickel
+(1 of) Islam (Judaism),rewrite,(1 of) Islam | Judaism
+(1 of) Italy (Austria),rewrite,(1 of) Italy | Austria
+"(1 of) Ivory Coast, Burkina Faso and Togo",rewrite,(1 of) Ivory Coast | Burkina Faso | Togo
+"(1 of) Jack Murphy, L.A. Coliseum, the Rose Bowl & Stanford Stadium",rewrite,(1 of) Jack Murphy | L.A. Coliseum | the Rose Bowl | Stanford Stadium
+(1 of) Jack Nicholson or Michael Caine,rewrite,(1 of) Jack Nicholson | Michael Caine
+(1 of) Jackie Kennedy & Mrs. Taft,rewrite,(1 of) Jackie Kennedy | Mrs. Taft
+(1 of) jai alai or polo,rewrite,(1 of) jai alai | polo
+"(1 of) James Callaghan, Harold Wilson & Alexander Douglas-Home",rewrite,(1 of) James Callaghan | Harold Wilson | Alexander Douglas-Home
+"(1 of) James Chaney, Andrew Goodman & Michael Schwerner",rewrite,(1 of) James Chaney | Andrew Goodman | Michael Schwerner
+"(1 of) James Lovell, Fred Haise, & Jack Swigert",rewrite,(1 of) James Lovell | Fred Haise | Jack Swigert
+"(1 of) Jefferson, Adams or Madison",rewrite,(1 of) Jefferson | Adams | Madison
+"(1 of) Jefferson, Jackson, Van Buren, or Arthur",rewrite,(1 of) Jefferson | Jackson | Van Buren | Arthur
+"(1 of) Jefferson, Lincoln, Andrew Johnson or Rutherford Hayes",rewrite,(1 of) Jefferson | Lincoln | Andrew Johnson | Rutherford Hayes
+"(1 of) Jill Esmond, Vivien Leigh or Joan Plowright",rewrite,(1 of) Jill Esmond | Vivien Leigh | Joan Plowright
+(1 of) Joe Montana (Steve Young & John Brodie),rewrite,(1 of) Joe Montana | Steve Young | John Brodie
+"(1 of) Joe Montana, Terry Bradshaw or Bart Starr",rewrite,(1 of) Joe Montana | Terry Bradshaw | Bart Starr
+"(1 of) John Adams, John Quincy Adams, Theodore Roosevelt, or Franklin Roosevelt",rewrite,(1 of) John Adams | John Quincy Adams | Theodore Roosevelt | Franklin Roosevelt
+"(1 of) John Breckinridge, Douglas or George McClellan",rewrite,(1 of) John Breckinridge | Douglas | George McClellan
+(1 of) John F Kennedy or Warren G. Harding,rewrite,(1 of) John F Kennedy | Warren G. Harding
+(1 of) John Fitzgerald Kennedy & Lyndon Johnson,rewrite,(1 of) John Fitzgerald Kennedy | Lyndon Johnson
+(1 of) John Kennedy (or Eisenhower),rewrite,(1 of) John Kennedy | Eisenhower
+"(1 of) John Mitchell, Haldeman, Ehrlichman, or Robert Mardian",rewrite,(1 of) John Mitchell | Haldeman | Ehrlichman | Robert Mardian
+(1 of) John Quincy Adams & Andrew Jackson,rewrite,(1 of) John Quincy Adams | Andrew Jackson
+(1 of) John Quincy Adams or Andrew Johnson,rewrite,(1 of) John Quincy Adams | Andrew Johnson
+(1 of) Jonathan Swift (or Alexander Pope),rewrite,(1 of) Jonathan Swift | Alexander Pope
+(1 of) Joseph Kennedy and Nick Rahall,rewrite,(1 of) Joseph Kennedy | Nick Rahall
+(1 of) Joseph or Benjamin,rewrite,(1 of) Joseph | Benjamin
+(1 of) Juliette Binoche & Kristin Scott Thomas,rewrite,(1 of) Juliette Binoche | Kristin Scott Thomas
+(1 of) kangaroo and emu,rewrite,(1 of) kangaroo | emu
+(1 of) Kansas & New Mexico,rewrite,(1 of) Kansas | New Mexico
+(1 of) Kareem Abdul-Jabbar & Magic Johnson,rewrite,(1 of) Kareem Abdul-Jabbar | Magic Johnson
+(1 of) Kate Winslet & Gloria Stuart,rewrite,(1 of) Kate Winslet | Gloria Stuart
+(1 of) Kazakhstan & Mongolia,rewrite,(1 of) Kazakhstan | Mongolia
+"(1 of) Kentucky (Missouri, Maryland, Delaware)",rewrite,(1 of) Kentucky | Missouri | Maryland | Delaware
+"(1 of) Kentucky (Missouri, West Virginia, Delaware or Maryland)",rewrite,(1 of) Kentucky | Missouri | West Virginia | Delaware | Maryland
+(1 of) Kentucky or Missouri,rewrite,(1 of) Kentucky | Missouri
+(1 of) Kinshasa (or Brazzaville),rewrite,(1 of) Kinshasa | Brazzaville
+"(1 of) Knoxville, Memphis, Martin, or Chattanooga",rewrite,(1 of) Knoxville | Memphis | Martin | Chattanooga
+(1 of) La Paz & Vaduz,rewrite,(1 of) La Paz | Vaduz
+"(1 of) Lassie or My Friend Flicka, Planet of the Apes",rewrite,(1 of) Lassie | My Friend Flicka | Planet of the Apes
+"(1 of) Latvia, Estonia, Lithuania",rewrite,(1 of) Latvia | Estonia | Lithuania
+(1 of) Leonard Nimoy (Nicholas Meyer),rewrite,(1 of) Leonard Nimoy | Nicholas Meyer
+(1 of) Les Misérables (or Phantom of the Opera),rewrite,(1 of) Les Misérables | Phantom of the Opera
+(1 of) Liechtenstein & Luxembourg,rewrite,(1 of) Liechtenstein | Luxembourg
+"(1 of) Life is Beautiful, Z, or Crouching Tiger, Hidden Dragon",rewrite,"(1 of) Life is Beautiful | Z | Crouching Tiger, Hidden Dragon"
+"(1 of) Lillian Gish, Bette Davis, Elizabeth Taylor, Barbara Stanwyck",rewrite,(1 of) Lillian Gish | Bette Davis | Elizabeth Taylor | Barbara Stanwyck
+(1 of) lime (coconut),rewrite,(1 of) lime | coconut
+"(1 of) Lina Wertmüller, Jane Campion & Sofia Coppola",rewrite,(1 of) Lina Wertmüller | Jane Campion | Sofia Coppola
+"(1 of) Lincoln (Lansing, Little Rock)",rewrite,(1 of) Lincoln | Lansing | Little Rock
+(1 of) Ling-Ling (or Hsing-Hsing),rewrite,(1 of) Ling-Ling | Hsing-Hsing
+(1 of) Lisbon or Reykjavik,rewrite,(1 of) Lisbon | Reykjavik
+(1 of) Little Men (or Jo's Boys),rewrite,(1 of) Little Men | Jo's Boys
+(1 of) Louis Gossett Jr. (Avery Brooks),rewrite,(1 of) Louis Gossett Jr. | Avery Brooks
+"(1 of) Lucille Ball, Ray Charles, Yehudi Menuhin, Hume Cronyn, Jessica Tandy & Antony Tudor",rewrite,(1 of) Lucille Ball | Ray Charles | Yehudi Menuhin | Hume Cronyn | Jessica Tandy | Antony Tudor
+(1 of) Macbeth (or Othello),rewrite,(1 of) Macbeth | Othello
+(1 of) Madonna & Oprah Winfrey,rewrite,(1 of) Madonna | Oprah Winfrey
+"(1 of) Malenkov, Molotov & (head of the KGB) Lavrentiy Beria",rewrite,(1 of) Malenkov | Molotov | (head of the KGB) Lavrentiy Beria
+(1 of) Mallorca (Menorca or Ibiza),rewrite,(1 of) Mallorca | Menorca | Ibiza
+(1 of) Manon of the Spring or Jean de Florette,rewrite,(1 of) Manon of the Spring | Jean de Florette
+(1 of) Margaret Court Smith (or Stan Smith),rewrite,(1 of) Margaret Court Smith | Stan Smith
+(1 of) Mark Hatfield or Senator Dole,rewrite,(1 of) Mark Hatfield | Senator Dole
+(1 of) Martha Graham or Agnes de Mille,rewrite,(1 of) Martha Graham | Agnes de Mille
+(1 of) Martinique & Guadeloupe,rewrite,(1 of) Martinique | Guadeloupe
+(1 of) Mary Pickford or Lucille Ball,rewrite,(1 of) Mary Pickford | Lucille Ball
+"(1 of) Mary Welsh, Hadley Richardson Pauline Pfeifrer & Martha Gellhorn",rewrite,(1 of) Mary Welsh | Hadley Richardson | Pauline Pfeifrer | Martha Gellhorn
+"(1 of) Massachusetts, Kentucky, Pennsylvania, Virginia",rewrite,(1 of) Massachusetts | Kentucky | Pennsylvania | Virginia
+(1 of) Mattel (or Hasbro),rewrite,(1 of) Mattel | Hasbro
+(1 of) Menachem Begin (Peres or Rabin),rewrite,(1 of) Menachem Begin | Peres | Rabin
+(1 of) Minnesota Twins (or Texas Rangers & California Angels),rewrite,(1 of) Minnesota Twins | Texas Rangers | California Angels
+"(1 of) Miriam, Deborah, Huldah, Noadiah & Anna",rewrite,(1 of) Miriam | Deborah | Huldah | Noadiah | Anna
+"(1 of) Miss Dior, Diorissimo, Dioressence or Diorling",rewrite,(1 of) Miss Dior | Diorissimo | Dioressence | Diorling
+(1 of) Missouri & Kentucky,rewrite,(1 of) Missouri | Kentucky
+(1 of) Molly Ringwald (or Anthony Michael Hall),rewrite,(1 of) Molly Ringwald | Anthony Michael Hall
+(1 of) Montevideo or Buenos Aires,rewrite,(1 of) Montevideo | Buenos Aires
+(1 of) Morgan Fairchild (Morgan Brittany),rewrite,(1 of) Morgan Fairchild | Morgan Brittany
+(1 of) nasturtium (narcissus),rewrite,(1 of) nasturtium | narcissus
+(1 of) natural gas or petroleum,rewrite,(1 of) natural gas | petroleum
+(1 of) Navratilova (or Chris Evert),rewrite,(1 of) Navratilova | Chris Evert
+(1 of) New Brunswick or (Quebec),rewrite,(1 of) New Brunswick | Quebec
+(1 of) New York (or New Orleans),rewrite,(1 of) New York | New Orleans
+"(1 of) New Zealand, Uruguay, Lesotho, & Swaziland",rewrite,(1 of) New Zealand | Uruguay | Lesotho | Swaziland
+(1 of) Newbery or Caldecott,rewrite,(1 of) Newbery | Caldecott
+(1 of) Niagara and the River of No Return,rewrite,(1 of) Niagara | the River of No Return
+(1 of) Nicaragua (or Honduras),rewrite,(1 of) Nicaragua | Honduras
+"(1 of) Nigeria, Libya, Algeria, or Gabon",rewrite,(1 of) Nigeria | Libya | Algeria | Gabon
+(1 of) nitrogen (or hydrogen),rewrite,(1 of) nitrogen | hydrogen
+"(1 of) nitrogen, phosphorus, or potassium",rewrite,(1 of) nitrogen | phosphorus | potassium
+"(1 of) North Carolina, Tennessee, Arkansas & Virginia",rewrite,(1 of) North Carolina | Tennessee | Arkansas | Virginia
+(1 of) Northwestern or Purdue,rewrite,(1 of) Northwestern | Purdue
+(1 of) Oceania (Eurasia or Eastasia),rewrite,(1 of) Oceania | Eurasia | Eastasia
+(1 of) October (or January),rewrite,(1 of) October | January
+(1 of) Oklahoma City (Olympia),rewrite,(1 of) Oklahoma City | Olympia
+"(1 of) Old Yeller, the Shaggy Dog or Big Red",rewrite,(1 of) Old Yeller | the Shaggy Dog | Big Red
+(1 of) Oppenheimer (or Bohemian Rhapsody),rewrite,(1 of) Oppenheimer | Bohemian Rhapsody
+(1 of) Otello (Falstaff or Macbeth),rewrite,(1 of) Otello | Falstaff | Macbeth
+"(1 of) our lives, our fortunes, & our sacred honor",rewrite,(1 of) our lives | our fortunes | our sacred honor
+(1 of) Our Town (or The Skin of Our Teeth),rewrite,(1 of) Our Town | The Skin of Our Teeth
+"(1 of) Pakistan (Sri Lanka, Nepal, Mauritius or Seychelles)",rewrite,(1 of) Pakistan | Sri Lanka | Nepal | Mauritius | Seychelles
+"(1 of) Panama (Venezuela, Ecuador)",rewrite,(1 of) Panama | Venezuela | Ecuador
+(1 of) Paraguay (or Bolivia),rewrite,(1 of) Paraguay | Bolivia
+(1 of) Paris or Rome,rewrite,(1 of) Paris | Rome
+(1 of) Parris Island (San Diego),rewrite,(1 of) Parris Island | San Diego
+"(1 of) passenger pigeon, heath hen, great auk, Labrador duck, or Carolina parakeet",rewrite,(1 of) passenger pigeon | heath hen | great auk | Labrador duck | Carolina parakeet
+(1 of) Pearl Buck & Margaret Mitchell,rewrite,(1 of) Pearl Buck | Margaret Mitchell
+"(1 of) Peepeye, Pipeye, Poopeye & Pupeye",rewrite,(1 of) Peepeye | Pipeye | Poopeye | Pupeye
+"(1 of) Pennsylvania, Delaware or Maryland",rewrite,(1 of) Pennsylvania | Delaware | Maryland
+(1 of) perchance (or peradventure),rewrite,(1 of) perchance | peradventure
+(1 of) Peru & Chile,rewrite,(1 of) Peru | Chile
+(1 of) Peru & Paraguay,rewrite,(1 of) Peru | Paraguay
+"(1 of) Pete Rose (Phil Niekro, Tony Perez or Tommy John)",rewrite,(1 of) Pete Rose | Phil Niekro | Tony Perez | Tommy John
+(1 of) Peter Sellers or Lee Marvin,rewrite,(1 of) Peter Sellers | Lee Marvin
+"(1 of) Pluto, Neptune or Uranus",rewrite,(1 of) Pluto | Neptune | Uranus
+"(1 of) Pontifex Maximus (Supreme Pontiff) (or Vicar of Jesus Christ, Bishop of Rome, Supreme Sovereign of Vatican City)",rewrite,(1 of) Pontifex Maximus | Supreme Pontiff | Vicar of Jesus Christ | Bishop of Rome | Supreme Sovereign of Vatican City
+(1 of) Popular Mechanics (or Popular Science),rewrite,(1 of) Popular Mechanics | Popular Science
+(1 of) Portugal or Brazil,rewrite,(1 of) Portugal | Brazil
+(1 of) Proof & Doubt,rewrite,(1 of) Proof | Doubt
+(1 of) put your head down between your legs (lie down),rewrite,(1 of) put your head down between your legs | lie down
+(1 of) Queen Mary (or Queen Elizabeth or QE2),rewrite,(1 of) Queen Mary | Queen Elizabeth | QE2
+"(1 of) Queen's College (in North Carolina or New York City), Quincy University, or Quinnipiac College",rewrite,(1 of) Queen's College (in North Carolina) | Queen's College (in New York City) | Quincy University | Quinnipiac College
+"(1 of) Radio, Keith, or Orpheum",rewrite,(1 of) Radio | Keith | Orpheum
+(1 of) radium (or polonium),rewrite,(1 of) radium | polonium
+(1 of) red (or gray),rewrite,(1 of) red | gray
+"(1 of) red pepper, salt or vinegar",rewrite,(1 of) red pepper | salt | vinegar
+"(1 of) Reggie Bush, Carson Palmer or Matt Leinart",rewrite,(1 of) Reggie Bush | Carson Palmer | Matt Leinart
+(1 of) Richard Nixon & Ulysses S. Grant,rewrite,(1 of) Richard Nixon | Ulysses S. Grant
+"(1 of) Richard Nixon, Gerald Ford & George Bush",rewrite,(1 of) Richard Nixon | Gerald Ford | George Bush
+"(1 of) Richard Nixon, Grover Cleveland, Ulysses Grant & William McKinley",rewrite,(1 of) Richard Nixon | Grover Cleveland | Ulysses Grant | William McKinley
+(1 of) Richard the Lionhearted (Philip Augustus & Frederick Barbarossa),rewrite,(1 of) Richard the Lionhearted | Philip Augustus | Frederick Barbarossa
+(1 of) Robert Bork (or Douglas Ginsburg),rewrite,(1 of) Robert Bork | Douglas Ginsburg
+"(1 of) Romania, Hungary, or East Germany",rewrite,(1 of) Romania | Hungary | East Germany
+(1 of) Ronald Reagan or William Henry Harrison,rewrite,(1 of) Ronald Reagan | William Henry Harrison
+(1 of) Russia & Japan,rewrite,(1 of) Russia | Japan
+"(1 of) Salt Lake City, Oklahoma City, Jefferson City, or Carson City",rewrite,(1 of) Salt Lake City | Oklahoma City | Jefferson City | Carson City
+"(1 of) Sam Rayburn, Jim Wright or John Garner",rewrite,(1 of) Sam Rayburn | Jim Wright | John Garner
+(1 of) Samson (David or Benaiah),rewrite,(1 of) Samson | David | Benaiah
+"(1 of) San Jose, Costa Rica or San Salvador, El Salvador",rewrite,(1 of) San Jose (Costa Rica) | San Salvador (El Salvador)
+(1 of) Sandra Day O'Connor (or Chief Justice Rehnquist),rewrite,(1 of) Sandra Day O'Connor | Chief Justice Rehnquist
+(1 of) sapphire (or opal),rewrite,(1 of) sapphire | opal
+(1 of) Scorpio (or Libra),rewrite,(1 of) Scorpio | Libra
+"(1 of) Seminole, Cherokee, Chickasaw, Choctaw, Creek",rewrite,(1 of) Seminole | Cherokee | Chickasaw | Choctaw | Creek
+(1 of) September or October,rewrite,(1 of) September | October
+"(1 of) Sesame Street Magazine, Kid City & 3-2-1 Contact",rewrite,(1 of) Sesame Street Magazine | Kid City | 3-2-1 Contact
+"(1 of) She Wore a Yellow Ribbon, Fort Apache, or Rio Grande",rewrite,(1 of) She Wore a Yellow Ribbon | Fort Apache | Rio Grande
+(1 of) silicon or oxygen,rewrite,(1 of) silicon | oxygen
+"(1 of) Sleuth or Give 'em Hell, Harry!",rewrite,"(1 of) Sleuth | Give 'em Hell, Harry!"
+"(1 of) soil, men & speech",rewrite,(1 of) soil | men | speech
+(1 of) South Africa or Italy,rewrite,(1 of) South Africa | Italy
+(1 of) South Dakota (Colorado or Wyoming),rewrite,(1 of) South Dakota | Colorado | Wyoming
+(1 of) South Dakota (or North Dakota),rewrite,(1 of) South Dakota | North Dakota
+(1 of) Soviet Union (or Yugoslavia),rewrite,(1 of) Soviet Union | Yugoslavia
+(1 of) Spain (or Portugal),rewrite,(1 of) Spain | Portugal
+(1 of) Speaker of the House or Chief Justice (of the United States),rewrite,(1 of) Speaker of the House | Chief Justice (of the United States)
+(1 of) Spenser: For Hire or Hotel,rewrite,(1 of) Spenser: For Hire | Hotel
+(1 of) sponge cake or shrimp,rewrite,(1 of) sponge cake | shrimp
+"(1 of) State, Treasury, or War",rewrite,(1 of) State | Treasury | War
+(1 of) Stephen King or Tom Clancy,rewrite,(1 of) Stephen King | Tom Clancy
+"(1 of) Sugar Pie, Honey Bunch",rewrite,(1 of) Sugar Pie | Honey Bunch
+(1 of) Suleiman the Magnificent or Lawgiver,rewrite,(1 of) Suleiman the Magnificent | the Lawgiver | the Magnificent
+"(1 of) Susan B. Anthony, Lucretia Mott & Elizabeth Cady Stanton",rewrite,(1 of) Susan B. Anthony | Lucretia Mott | Elizabeth Cady Stanton
+(1 of) Sweet Bird of Youth & Summer and Smoke,rewrite,(1 of) Sweet Bird of Youth & Summer | Smoke
+"(1 of) Swoosie Kurtz (Julianne Phillips, Sela Ward or Patricia Kalember)",rewrite,(1 of) Swoosie Kurtz | Julianne Phillips | Sela Ward | Patricia Kalember
+(1 of) Sydney Pollack (or Woody Allen),rewrite,(1 of) Sydney Pollack | Woody Allen
+(1 of) tango or foxtrot,rewrite,(1 of) tango | foxtrot
+(1 of) Teahouse of the August Moon & Tea and Sympathy,rewrite,(1 of) Teahouse of the August Moon | Tea & Sympathy
+"(1 of) Teddy Roosevelt, Martin Van Buren & Millard Fillmore",rewrite,(1 of) Teddy Roosevelt | Martin Van Buren | Millard Fillmore
+(1 of) Tennessee or Missouri,rewrite,(1 of) Tennessee | Missouri
+"(1 of) That Darn Cat, The Aristocats, The Cat from Outer Space & Jungle Cat",rewrite,(1 of) That Darn Cat | The Aristocats | The Cat from Outer Space | Jungle Cat
+"(1 of) the (St. Louis) Rams, the Oakland Raiders, or the San Diego Chargers",rewrite,(1 of) the (St. Louis) Rams | the Oakland Raiders | the San Diego Chargers
+(1 of) the 75th (or the 60th),rewrite,(1 of) the 75th | the 60th
+(1 of) the Amundsen (or  Bellingshausen),rewrite,(1 of) the Amundsen | Bellingshausen
+(1 of) the Arizona (or the Oklahoma),rewrite,(1 of) the Arizona | the Oklahoma
+(1 of) the Azores & the Madeiras,rewrite,(1 of) the Azores | the Madeiras
+(1 of) the Book of Esther (or Ruth),rewrite,(1 of) the Book of Esther | Ruth
+"(1 of) the Cleveland Indians, Toronto Blue Jays or Baltimore Orioles",rewrite,(1 of) the Cleveland Indians | Toronto Blue Jays | Baltimore Orioles
+(1 of) The Detroit News & The Detroit Free Press,rewrite,(1 of) The Detroit News | The Detroit Free Press
+(1 of) the Florida Marlins (Colorado Rockies),rewrite,(1 of) the Florida Marlins | Colorado Rockies
+(1 of) the Food & Drug Administration (or the FTC),rewrite,(1 of) the FDA | the Food & Drug Administration | the FTC
+(1 of) the Great Salt Lake or Lake Okeechobee & Lake Iliamna in Alaska,rewrite,(1 of) the Great Salt Lake | Lake Okeechobee | Lake Iliamna in Alaska
+(1 of) the Injun Joe (Joe Harper),rewrite,(1 of) the Injun Joe | Joe Harper
+"(1 of) The Insider & Good Night, and Good Luck.",rewrite,"(1 of) The Insider | Good Night, and Good Luck."
+(1 of) the kangaroo (emu),rewrite,(1 of) the kangaroo | emu
+"(1 of) The Lucy Show, Here's Lucy & The Lucy-Desi Comedy Hour",rewrite,(1 of) The Lucy Show | Here's Lucy | The Lucy-Desi Comedy Hour
+(1 of) the Miami Heat (Orlando Magic),rewrite,(1 of) the Miami Heat | Orlando Magic
+"(1 of) The Misanthrope, Tartuffe or Le Bourgeois Gentilhomme",rewrite,(1 of) The Misanthrope | Tartuffe | Le Bourgeois Gentilhomme
+"(1 of) the Mohawk (Oneida, Onondaga, Cayuga, Seneca, Tuscarora)",rewrite,(1 of) the Mohawk | Oneida | Onondaga | Cayuga | Seneca | Tuscarora
+(1 of) The Monkees or the Bee Gees,rewrite,(1 of) The Monkees | the Bee Gees
+(1 of) The Pacific Coast League (the International League or the American Association),rewrite,(1 of) The Pacific Coast League | the International League | the American Association
+(1 of) The Petrified Forest or (Beyond the Forest),rewrite,(1 of) The Petrified Forest | Beyond the Forest
+(1 of) The Seagull (Swansong or The Bear),rewrite,(1 of) The Seagull | Swansong | The Bear
+(1 of) the serial number or the Treasury seal,rewrite,(1 of) the serial number | the Treasury seal
+(1 of) the Straits of Bosphorus (or the Dardanelles),rewrite,(1 of) the Straits of Bosphorus | the Dardanelles
+(1 of) The Tempest & Twelfth Night,rewrite,(1 of) The Tempest | Twelfth Night
+(1 of) the Urals (or Caucasus),rewrite,(1 of) the Urals | Caucasus
+(1 of) Thomas Jefferson (James Madison),rewrite,(1 of) Thomas Jefferson | James Madison
+(1 of) Thomas Jefferson (or John Adams),rewrite,(1 of) Thomas Jefferson | John Adams
+(1 of) timber wolf (or tundra wolf),rewrite,(1 of) timber wolf | tundra wolf
+(1 of) time slows down & mass increases & it gets smaller,rewrite,(1 of) time slows down | mass increases | it gets smaller
+"(1 of) Tip O'Neill, John McCormack & Joe Martin, Jr.",rewrite,"(1 of) Tip O'Neill | John McCormack | Joe Martin, Jr."
+(1 of) to avoid sinking or drowning,rewrite,(1 of) to avoid sinking | to avoid drowning
+(1 of) Togo (or Ghana),rewrite,(1 of) Togo | Ghana
+(1 of) tonic & gin (or beer),rewrite,(1 of) tonic & gin | beer
+(1 of) Tricia Yearwood & LeAnn Rimes,rewrite,(1 of) Tricia Yearwood | LeAnn Rimes
+(1 of) Troilus & Cressida (or Romeo and Juliet),rewrite,(1 of) Troilus & Cressida | Romeo & Juliet
+(1 of) Turkey (or Norway),rewrite,(1 of) Turkey | Norway
+"(1 of) Turkey, Russia or Egypt",rewrite,(1 of) Turkey | Russia | Egypt
+"(1 of) TV Guide (Daily Racing Form, Good Food or Seventeen)",rewrite,(1 of) TV Guide | Daily Racing Form | Good Food | Seventeen
+"(1 of) Tyler, Fillmore, Andrew Johnson & Arthur",rewrite,(1 of) Tyler | Fillmore | Andrew Johnson | Arthur
+(1 of) veal (or ham),rewrite,(1 of) veal | ham
+(1 of) Venezuela (or Colombia),rewrite,(1 of) Venezuela | Colombia
+(1 of) Vermont (or Kentucky),rewrite,(1 of) Vermont | Kentucky
+"(1 of) Vermont, Nebraska, or Arizona",rewrite,(1 of) Vermont | Nebraska | Arizona
+"(1 of) Vermont, New York, Wisconsin & West Virginia",rewrite,(1 of) Vermont | New York | Wisconsin | West Virginia
+"(1 of) Veterans Stadium (Riverfront, Olympic, Busch, Royals, Exhibition or Three Rivers)",rewrite,(1 of) Veterans Stadium | Riverfront | Olympic | Busch | Royals | Exhibition | Three Rivers
+"(1 of) Victoria, British Columbia or St. John's, Newfoundland and Labrador",rewrite,"(1 of) Victoria, British Columbia | St. John's, Newfoundland and Labrador"
+"(1 of) Victoria, Henry III, Edward III, & George III",rewrite,(1 of) Victoria | Henry III | Edward III | George III
+"(1 of) Vienna, Budapest or Bucharest",rewrite,(1 of) Vienna | Budapest | Bucharest
+"(1 of) Vincent Price, Gene Shalit, or Diana Rigg",rewrite,(1 of) Vincent Price | Gene Shalit | Diana Rigg
+(1 of) Vishnu (Brahma or Shiva),rewrite,(1 of) Vishnu | Brahma | Shiva
+(1 of) Warren Harding or Ulysses Grant,rewrite,(1 of) Warren Harding | Ulysses Grant
+(1 of) water or a salt,rewrite,(1 of) water | a salt
+(1 of) West Virginia (or Nevada),rewrite,(1 of) West Virginia | Nevada
+(1 of) West Virginia or Nevada,rewrite,(1 of) West Virginia | Nevada
+(1 of) William Butler Yeats or George Bernard Shaw,rewrite,(1 of) William Butler Yeats | George Bernard Shaw
+(1 of) William Dawes & Samuel Prescott,rewrite,(1 of) William Dawes | Samuel Prescott
+(1 of) William Travis or Jim Bowie,rewrite,(1 of) William Travis | Jim Bowie
+(1 of) Willie Nelson (or Diana Ross),rewrite,(1 of) Willie Nelson | Diana Ross
+"(1 of) Willie Shoemaker, Bill Hartack or Eddie Arcaro",rewrite,(1 of) Willie Shoemaker | Bill Hartack | Eddie Arcaro
+(1 of) World War I (or Vietnam War),rewrite,(1 of) World War I | Vietnam War
+(1 of) Zachary Taylor (Winfield Scott & William Henry Harrison),rewrite,(1 of) Zachary Taylor | Winfield Scott | William Henry Harrison
+"(1 of) Zion, Bryce Canyon, Arches, Canyonlands & Capitol Reef",rewrite,(1 of) Zion | Bryce Canyon | Arches | Canyonlands | Capitol Reef
+(1 of) zirconium (or zinc),rewrite,(1 of) zirconium | zinc
+"(2 of ) Texas, Kansas & Arkansas",rewrite,(2 of) Texas | Kansas | Arkansas
+"(2 of 3) Houston, Memphis & Nashville",rewrite,(2 of) Houston | Memphis | Nashville
+"(2 of 3) Steve Allen, Jack Paar & Johnny Carson",rewrite,(2 of) Steve Allen | Jack Paar | Johnny Carson
+"(2 of 4)  alpacas, guanacos, llamas & vicunas",rewrite,(2 of) alpacas | guanacos | llamas | vicunas
+"(2 of 4) cherry, vanilla, lemon & lime",rewrite,(2 of) cherry | vanilla | lemon | lime
+"(2 of 4) Pakistan, Tajikistan, Turkmenistan & Uzbekistan",rewrite,(2 of) Pakistan | Tajikistan | Turkmenistan | Uzbekistan
+"(2 of 5) Boston, Chicago, New York, Philadelphia, or St. Louis",rewrite,(2 of) Boston | Chicago | New York | Philadelphia | St. Louis
+"(2 of) ""Blowin' In The Wind"" & ""Puff The Magic Dragon"" (or ""Leaving On A Jet Plane"")",rewrite,"(2 of) ""Blowin' In The Wind"" | ""Puff The Magic Dragon"" | ""Leaving On A Jet Plane"""
+"(2 of) ""Falstaff"", ""Othello"" & ""Macbeth""",rewrite,"(2 of) ""Falstaff"" | ""Othello"" | ""Macbeth"""
+"(2 of) ""One More Night"", ""Sussudio"", ""Separate Lives"" & ""Against All Odds""",rewrite,"(2 of) ""One More Night"" | ""Sussudio"" | ""Separate Lives"" | ""Against All Odds"""
+"(2 of) ""Surfin' USA"", ""Surfin' Safari"", or ""Surfer Girl""",rewrite,"(2 of) ""Surfin' USA"" | ""Surfin' Safari"" | ""Surfer Girl"""
+"(2 of) ""The Pines of Rome"", ""The Fountains of Rome"" & ""Roman Festivals""",rewrite,"(2 of) ""The Pines of Rome"" | ""The Fountains of Rome"" | ""Roman Festivals"""
+"(2 of) $500, $1,000, $5,000 or $10,000 bills",rewrite,"(2 of) $500 bills | $1,000 bills | $5,000 bills | $10,000 bills"
+"(2 of) (Neil) Armstrong, (Buzz) Aldrin or (Michael) Collins",rewrite,(2 of) (Neil) Armstrong | (Buzz) Aldrin | (Michael) Collins
+"(2 of) (Richard) Nixon, (John) Kennedy or (Lyndon) Johnson",rewrite,(2 of) (Richard) Nixon | (John) Kennedy | (Lyndon) Johnson
+"(2 of) (Ronald) Reagan (Andrew) Jackson, (Gerald) Ford or (Warren) Harding",rewrite,(2 of) (Ronald) Reagan | (Andrew) Jackson | (Gerald) Ford | (Warren) Harding
+"(2 of) (Sojourner) Truth, (Susan B.) Anthony, or (Elizabeth Cady) Stanton",rewrite,(2 of) (Sojourner) Truth | (Susan B.) Anthony | (Elizabeth Cady) Stanton
+"(2 of) (William Butler) Yeats, (George Bernard) Shaw or (Samuel) Beckett",rewrite,(2 of) (William Butler) Yeats | (George Bernard) Shaw | (Samuel) Beckett
+"(2 of) 2, 3 & 12",rewrite,(2 of) 2 | 3 | 12
+"(2 of) 6, 7 & 9",rewrite,(2 of) 6 | 7 | 9
+"(2 of) a javelin, a discus & a shotput",rewrite,(2 of) a javelin | a discus | a shotput
+"(2 of) Adams, Lee & Morris",rewrite,(2 of) Adams | Lee | Morris
+"(2 of) Adams, Nixon, Bush, Tompkins (Monroe's), Marshall (Wilson's) or Garner (FDR's 1st & 2nd terms)",rewrite,(2 of) Adams | Nixon | Bush | Tompkins (Monroe's) | Marshall (Wilson's) | Garner (FDR's 1st & 2nd terms)
+(2 of) Africa & Australia (or Antarctica),rewrite,(2 of) Africa | Australia | Antarctica
+"(2 of) age, residence & citizenship",rewrite,(2 of) age | residence | citizenship
+(2 of) Alaska & Texas (Hawaii),rewrite,(2 of) Alaska | Texas | Hawaii
+"(2 of) Alaska, Arizona, Alabama & Ohio",rewrite,(2 of) Alaska | Arizona | Alabama | Ohio
+"(2 of) All's Well That Ends Well, As You Like It (or A Midsummer Night's Dream & Antony & Cleopatra)",rewrite,(2 of) All's Well That Ends Well | As You Like It | A Midsummer Night's Dream | Antony & Cleopatra
+"(2 of) an eye, a tooth, a hand & a foot",rewrite,(2 of) an eye | a tooth | a hand | a foot
+(2 of) Anglos & Saxons (or Jutes),rewrite,(2 of) Anglos | Saxons | Jutes
+(2 of) Animal Crackers & Duck Soup (or Coconuts),rewrite,(2 of) Animal Crackers | Duck Soup | Coconuts
+"(2 of) Antony and Cleopatra, Romeo and Juliet & Troilus and Cressida",rewrite,(2 of) Antony and Cleopatra | Romeo & Juliet | Troilus & Cressida
+"(2 of) Aphrodite, Athena or Hera",rewrite,(2 of) Aphrodite | Athena | Hera
+"(2 of) April, May & June",rewrite,(2 of) April | May | June
+"(2 of) Aries, Taurus, & Capricorn",rewrite,(2 of) Aries | Taurus | Capricorn
+"(2 of) Arizona, Oklahoma & New Mexico",rewrite,(2 of) Arizona | Oklahoma | New Mexico
+"(2 of) Athena, Aphrodite & Hera",rewrite,(2 of) Athena | Aphrodite | Hera
+"(2 of) Atlantis, Endeavor, Columbia & Discovery",rewrite,(2 of) Atlantis | Endeavor | Columbia | Discovery
+"(2 of) Augustus or Octavian, Tiberius, Caligula, Claudius & Nero",rewrite,(2 of) Augustus | Octavian | Tiberius | Caligula | Claudius | Nero
+"(2 of) Babe Ruth, Ty Cobb (Honus Wagner, Walter Johnson or Christy Mathewson)",rewrite,(2 of) Babe Ruth | Ty Cobb | Honus Wagner | Walter Johnson | Christy Mathewson
+"(2 of) Bali, Singapore & Hong Kong",rewrite,(2 of) Bali | Singapore | Hong Kong
+"(2 of) Barry Gibb, Neil Diamond, & Donna Summer",rewrite,(2 of) Barry Gibb | Neil Diamond | Donna Summer
+"(2 of) Belgium, The Netherlands, Luxembourg",rewrite,(2 of) Belgium | The Netherlands | Luxembourg
+"(2 of) Belize, Guatemala & United States",rewrite,(2 of) Belize | Guatemala | United States
+"(2 of) Benjamin Franklin, John Adams, John Jay, or Henry Laurens",rewrite,(2 of) Benjamin Franklin | John Adams | John Jay | Henry Laurens
+"(2 of) Bennie, Jeannie, Lucy & Nikita",rewrite,(2 of) Bennie | Jeannie | Lucy | Nikita
+"(2 of) Bing Crosby, Frank Sinatra, Barbra Streisand, & Jamie Foxx",rewrite,(2 of) Bing Crosby | Frank Sinatra | Barbra Streisand | Jamie Foxx
+"(2 of) black, brown & red(-legged)",rewrite,(2 of) black | brown | red (-legged)
+"(2 of) Bo Derek, Ursula Andress or Linda Evans",rewrite,(2 of) Bo Derek | Ursula Andress | Linda Evans
+(2 of) boat & train (or plane),rewrite,(2 of) boat | train | plane
+"(2 of) Boise, Salem & Dover",rewrite,(2 of) Boise | Salem | Dover
+"(2 of) Bolivia, Ecuador, Peru, Colombia & Venezuela",rewrite,(2 of) Bolivia | Ecuador | Peru | Colombia | Venezuela
+"(2 of) Bonanza, Gunsmoke or Wagon Train",rewrite,(2 of) Bonanza | Gunsmoke | Wagon Train
+"(2 of) both legs, a right arm & an ear",rewrite,(2 of) left leg | right leg | a right arm | an ear
+"(2 of) Brahma, Vishnu, or Shiva",rewrite,(2 of) Brahma | Vishnu | Shiva
+"(2 of) Brazil, Argentina, Peru, & Venezuela",rewrite,(2 of) Brazil | Argentina | Peru | Venezuela
+"(2 of) Brazil, Paraguay, Bolivia, Chile & Uruguay",rewrite,(2 of) Brazil | Paraguay | Bolivia | Chile | Uruguay
+"(2 of) Bryn Mawr, Vassar, & Barnard",rewrite,(2 of) Bryn Mawr | Vassar | Barnard
+"(2 of) Bucharest, Budapest & Belgrade",rewrite,(2 of) Bucharest | Budapest | Belgrade
+"(2 of) Buddhism, Confucianism, Taoism",rewrite,(2 of) Buddhism | Confucianism | Taoism
+"(2 of) Buenos Aires, Bogotá, or Lima",rewrite,(2 of) Buenos Aires | Bogotá | Lima
+"(2 of) Bulgaria, Greece & Yugoslavia",rewrite,(2 of) Bulgaria | Greece | Yugoslavia
+"(2 of) Bulgaria, Yugoslavia or Albania",rewrite,(2 of) Bulgaria | Yugoslavia | Albania
+(2 of) by proxy (a representative of Christie's) and by mail (or telephone),rewrite,(2 of) by proxy | a representative of Christie's | mail | telephone
+"(2 of) calories, sugar & carbohydrates",rewrite,(2 of) calories | sugar | carbohydrates
+"(2 of) Canada, England or Scotland",rewrite,(2 of) Canada | England | Scotland
+"(2 of) Canada, the United States, or Japan",rewrite,(2 of) Canada | the United States | Japan
+"(2 of) Cancer, Libra, Scorpio & Pisces",rewrite,(2 of) Cancer | Libra | Scorpio | Pisces
+"(2 of) candlestick, knife, pipe, revolver, rope, & wrench",rewrite,(2 of) candlestick | knife | pipe | revolver | rope | wrench
+"(2 of) Carson City, Jefferson City, Oklahoma City & Salt Lake City",rewrite,(2 of) Carson City | Jefferson City | Oklahoma City | Salt Lake City
+"(2 of) Carson City, Oklahoma City, Jefferson City, or Salt Lake City",rewrite,(2 of) Carson City | Oklahoma City | Jefferson City | Salt Lake City
+(2 of) Carter & Clinton (or Harding & Truman),rewrite,(2 of) Carter | Clinton | Harding | Truman
+"(2 of) Cats, Rent & Nine",rewrite,(2 of) Cats | Rent | Nine
+"(2 of) Chad, Mali, & Togo",rewrite,(2 of) Chad | Mali | Togo
+(2 of) Chernenko & Andropov (or Leonid Brezhnev,rewrite,(2 of) Chernenko | Andropov | Leonid Brezhnev
+"(2 of) Chester Arthur, Theodore Roosevelt & George Washington",rewrite,(2 of) Chester Arthur | Theodore Roosevelt | George Washington
+"(2 of) Chihuahua, Coahuila, Tamaulipas, Baja California Norte, Sonora & Nuevo León",rewrite,(2 of) Chihuahua | Coahuila | Tamaulipas | Baja California Norte | Sonora | Nuevo León
+"(2 of) China, Mongolia & North Korea",rewrite,(2 of) China | Mongolia | North Korea
+"(2 of) Chinese, Vietnamese, Tagalog & Korean",rewrite,(2 of) Chinese | Vietnamese | Tagalog | Korean
+"(2 of) Cimarron, Unforgiven, & Dances with Wolves",rewrite,(2 of) Cimarron | Unforgiven | Dances with Wolves
+"(2 of) Claudia Schiffer, Naomi Campbell, Elle Macpherson, & Christy Turlington",rewrite,(2 of) Claudia Schiffer | Naomi Campbell | Elle Macpherson | Christy Turlington
+(2 of) Colorado & New Mexico (or  Arizona & Utah),rewrite,(2 of) Colorado | New Mexico | Arizona | Utah
+"(2 of) Colorado, Rio Grande, Columbia, or Snake",rewrite,(2 of) Colorado | Rio Grande | Columbia | Snake
+"(2 of) Colorado, Utah, & Wyoming",rewrite,(2 of) Colorado | Utah | Wyoming
+"(2 of) composers, authors & publishers",rewrite,(2 of) composers | authors | publishers
+"(2 of) Connecticut, Massachusetts or Maine",rewrite,(2 of) Connecticut | Massachusetts | Maine
+"(2 of) Connecticut, Massachusetts, New Jersey & Rhode Island",rewrite,(2 of) Connecticut | Massachusetts | New Jersey | Rhode Island
+"(2 of) Connecticut, Pennsylvania, Minnesota or Tennessee",rewrite,(2 of) Connecticut | Pennsylvania | Minnesota | Tennessee
+"(2 of) Connecticut, Pennsylvania, Tennessee, & Minnesota",rewrite,(2 of) Connecticut | Pennsylvania | Tennessee | Minnesota
+"(2 of) Coolidge, Hoover, Wilson & Harding",rewrite,(2 of) Coolidge | Hoover | Wilson | Harding
+"(2 of) Corsica, Elba and St. Helena",rewrite,(2 of) Corsica | Elba | St. Helena
+"(2 of) Curaçao, Aruba, Bonaire, Saba, Sint Maarten & Sint Eustatius",rewrite,(2 of) Curaçao | Aruba | Bonaire | Saba | Sint Maarten | Sint Eustatius
+"(2 of) Danube, Dnieper, Dniester & Don",rewrite,(2 of) Danube | Dnieper | Dniester | Don
+"(2 of) Declaration of Independence, Articles of Confederation, Articles of Association & The Constitution",rewrite,(2 of) Declaration of Independence | Articles of Confederation | Articles of Association | The Constitution
+"(2 of) Denmark, England (or Norway)",rewrite,(2 of) Denmark | England | Norway
+"(2 of) diphtheria, tetanus & pertussis (whooping cough)",rewrite,(2 of) diphtheria | tetanus | pertussis | whooping cough
+"(2 of) Doric, Corinthian & Ionic",rewrite,(2 of) Doric | Corinthian | Ionic
+"(2 of) dragon, rooster or snake",rewrite,(2 of) dragon | rooster | snake
+"(2 of) Duck Soup, Horse Feathers & Monkey Business",rewrite,(2 of) Duck Soup | Horse Feathers | Monkey Business
+"(2 of) Duke, the University of North Carolina & North Carolina State",rewrite,(2 of) Duke | the University of North Carolina | North Carolina State
+"(2 of) Dumb & Dumber,  Me, Myself, & Irene & Fun with Dick & Jane",rewrite,"(2 of) Dumb & Dumber | Me, Myself & Irene | Fun with Dick & Jane"
+"(2 of) duodenum, ileum & jejunum",rewrite,(2 of) duodenum | ileum | jejunum
+"(2 of) East of Eden, Giant & Rebel Without a Cause",rewrite,(2 of) East of Eden | Giant | Rebel Without a Cause
+"(2 of) East River, Hudson River & Harlem River",rewrite,(2 of) East River | Hudson River | Harlem River
+"(2 of) Ecuador, Brazil, & Colombia",rewrite,(2 of) Ecuador | Brazil | Colombia
+"(2 of) Ecuador, Colombia, Brazil, Gabon, Congo, Zaire, Kenya, Somalia & Uganda",rewrite,(2 of) Ecuador | Colombia | Brazil | Gabon | Congo | Zaire | Kenya | Somalia | Uganda
+"(2 of) Egypt, South Africa, Ethiopia & Liberia",rewrite,(2 of) Egypt | South Africa | Ethiopia | Liberia
+"(2 of) Eisenhower, Hoover, Lyndon Johnson, Nixon & Truman",rewrite,(2 of) Eisenhower | Hoover | Lyndon Johnson | Nixon | Truman
+"(2 of) Eisenhower, Kennedy, Franklin Roosevelt & Wilson",rewrite,(2 of) Eisenhower | Kennedy | Franklin Roosevelt | Wilson
+"(2 of) Eisenhower, Kennedy, Nixon, Ford & Reagan",rewrite,(2 of) Eisenhower | Kennedy | Nixon | Ford | Reagan
+"(2 of) Eleanor Roosevelt, Bess Truman & Edith Wilson",rewrite,(2 of) Eleanor Roosevelt | Bess Truman | Edith Wilson
+"(2 of) Elektra(/Asylum), Warner's (or Atlantic)",rewrite,(2 of) Elektra | Elektra/Asylum | Warner's | Atlantic
+"(2 of) Endeavour, Discovery or Atlantis",rewrite,(2 of) Endeavour | Discovery | Atlantis
+"(2 of) England, France, Greece, Switzerland & Australia",rewrite,(2 of) England | France | Greece | Switzerland | Australia
+(2 of) English & Spanish (French),rewrite,(2 of) English | Spanish | French
+"(2 of) epsilon, upsilon & omicron",rewrite,(2 of) epsilon | upsilon | omicron
+"(2 of) Eunice & Rosemary (Kathleen, Patricia & Jean)",rewrite,(2 of) Eunice | Rosemary | Kathleen | Patricia | Jean
+"(2 of) eye, tooth, hand or foot",rewrite,(2 of) eye | tooth | hand | foot
+"(2 of) FDR, Martin Van Buren, Teddy Roosevelt, or Grover Cleveland",rewrite,(2 of) FDR | Martin Van Buren | Teddy Roosevelt | Grover Cleveland
+"(2 of) Florida, California & New Mexico",rewrite,(2 of) Florida | California | New Mexico
+"(2 of) Florida, Delaware, Louisiana, Mississippi & Rhode Island",rewrite,(2 of) Florida | Delaware | Louisiana | Mississippi | Rhode Island
+"(2 of) Florida, Washington, South Carolina & Rhode Island",rewrite,(2 of) Florida | Washington | South Carolina | Rhode Island
+"(2 of) France, Germany, Italy, & the UK",rewrite,(2 of) France | Germany | Italy | the UK
+"(2 of) France, Greece, & Spain",rewrite,(2 of) France | Greece | Spain
+"(2 of) France, Switzerland, Austria, Yugoslavia",rewrite,(2 of) France | Switzerland | Austria | Yugoslavia
+"(2 of) Franklin Roosevelt, Theodore Roosevelt (Martin Van Buren or Grover Cleveland)",rewrite,(2 of) Franklin Roosevelt | Theodore Roosevelt | Martin Van Buren | Grover Cleveland
+"(2 of) frogs, locust (lice & flies)",rewrite,(2 of) frogs | locust | lice | flies
+"(2 of) Gandhi, Amadeus or Platoon",rewrite,(2 of) Gandhi | Amadeus | Platoon
+(2 of) Garfield & Arthur & Rutherford B. Hayes,rewrite,(2 of) Garfield | Arthur | Rutherford B. Hayes
+"(2 of) Garfield, Grant, Harding, Benjamin Harrison, Hayes, Taft or McKinley",rewrite,(2 of) Garfield | Grant | Harding | Benjamin Harrison | Hayes | Taft | McKinley
+"(2 of) Gemini, Virgo & Aquarius",rewrite,(2 of) Gemini | Virgo | Aquarius
+"(2 of) George Foreman, Leon Spinks (Sonny Liston)",rewrite,(2 of) George Foreman | Leon Spinks | Sonny Liston
+"(2 of) George Washington, Benjamin Franklin & Thomas Jefferson",rewrite,(2 of) George Washington | Benjamin Franklin | Thomas Jefferson
+"(2 of) George, Patrick & Andrew",rewrite,(2 of) George | Patrick | Andrew
+"(2 of) Georgia, Louisiana, North & South Carolina",rewrite,(2 of) Georgia | Louisiana | North | South Carolina
+"(2 of) Gerald Ford, Andrew Johnson, (John) Tyler, (Millard) Fillmore or (Chester) Arthur",rewrite,(2 of) Gerald Ford | Andrew Johnson | (John) Tyler | (Millard) Fillmore | (Chester) Arthur
+(2 of) German & French (Italian or Romansh),rewrite,(2 of) German | French | Italian | Romansh
+"(2 of) German shepherds, golden retrievers, or Labrador retrievers",rewrite,(2 of) German shepherds | golden retrievers | Labrador retrievers
+"(2 of) German, Italian, or Latin",rewrite,(2 of) German | Italian | Latin
+"(2 of) Germany, United States or (Switzerland)",rewrite,(2 of) Germany | United States | Switzerland
+"(2 of) getting a ""Go to Jail"" card, landing on the space that says Go to Jail, or roll doubles 3 consecutive times",rewrite,"(2 of) getting a ""Go to Jail"" card | landing on the space that says Go to Jail | roll doubles 3 consecutive times"
+"(2 of) gold, frankincense & myrrh",rewrite,(2 of) gold | frankincense | myrrh
+"(2 of) GoldenEye, Goldfinger & The Man with the Golden Gun",rewrite,(2 of) GoldenEye | Goldfinger | The Man with the Golden Gun
+"(2 of) Great Britain, India, Nepal & the United Nations flag",rewrite,(2 of) Great Britain | India | Nepal | the United Nations flag
+"(2 of) Greece, Turkey, Bulgaria & Romania",rewrite,(2 of) Greece | Turkey | Bulgaria | Romania
+"(2 of) Hamlet, Julius Caesar, Macbeth & Richard III",rewrite,(2 of) Hamlet | Julius Caesar | Macbeth | Richard III
+"(2 of) hands, heart, head, health",rewrite,(2 of) hands | heart | head | health
+"(2 of) Harding, Coolidge (Wilson or Hoover)",rewrite,(2 of) Harding | Coolidge | Wilson | Hoover
+"(2 of) Harry S. Truman, Henry A. Wallace, and John Nance Garner",rewrite,(2 of) Harry S. Truman | Henry A. Wallace | John Nance Garner
+"(2 of) Hawaii, Texas, California, & Vermont",rewrite,(2 of) Hawaii | Texas | California | Vermont
+"(2 of) Hawaii, Washington, Montana, Minnesota, or California",rewrite,(2 of) Hawaii | Washington | Montana | Minnesota | California
+"(2 of) health, head, heart & hand",rewrite,(2 of) health | head | heart | hand
+"(2 of) health, heart, head, hands",rewrite,(2 of) health | heart | head | hands
+"(2 of) Helium, hot air, hydrogen, natural gas",rewrite,(2 of) Helium | hot air | hydrogen | natural gas
+"(2 of) helium, neon, argon, xenon, krypton & radon",rewrite,(2 of) helium | neon | argon | xenon | krypton | radon
+"(2 of) Hippolyta, Hermia & Helena",rewrite,(2 of) Hippolyta | Hermia | Helena
+"(2 of) Hokkaido, Honshu, Kyushu & Shikoku",rewrite,(2 of) Hokkaido | Honshu | Kyushu | Shikoku
+"(2 of) Howard Cosell, Don Meredith (& Keith Jackson)",rewrite,(2 of) Howard Cosell | Don Meredith | Keith Jackson
+"(2 of) India, Pakistan, Bangladesh & Sri Lanka",rewrite,(2 of) India | Pakistan | Bangladesh | Sri Lanka
+"(2 of) Ionian, Doric, and Corinthian",rewrite,(2 of) Ionian | Doric | Corinthian
+"(2 of) Iraq, Iran, & Turkey",rewrite,(2 of) Iraq | Iran | Turkey
+"(2 of) Irish, English, & Gordon",rewrite,(2 of) Irish | English | Gordon
+(2 of) Italy & Iberian (or Balkan),rewrite,(2 of) Italy | Iberian | Balkan
+"(2 of) Jack Nicklaus, Gary Player, and Arnold Palmer",rewrite,(2 of) Jack Nicklaus | Gary Player | Arnold Palmer
+"(2 of) Jane Fonda, Jessica Lange & Sissy Spacek",rewrite,(2 of) Jane Fonda | Jessica Lange | Sissy Spacek
+"(2 of) Jefferson City (MO), Bismarck (ND) & Pierre (SD)",rewrite,(2 of) Jefferson City (MO) | Bismarck (ND) | Pierre (SD)
+"(2 of) Jimmie Foxx & Lou Gehrig (Babe Ruth, Al Simmons or Joe Cronin)",rewrite,(2 of) Jimmie Foxx | Lou Gehrig | Babe Ruth | Al Simmons | Joe Cronin
+"(2 of) Jimmy Carter, Colin Powell, & Senator Sam Nunn",rewrite,(2 of) Jimmy Carter | Colin Powell | Senator Sam Nunn
+(2 of) John & Peter (or James),rewrite,(2 of) John | Peter | James
+"(2 of) John Glenn, Alan Cranston, Dennis DeConcini, Donald Riegle & John McCain",rewrite,(2 of) John Glenn | Alan Cranston | Dennis DeConcini | Donald Riegle | John McCain
+"(2 of) John Nance Garner, Sam Rayburn & James Wright",rewrite,(2 of) John Nance Garner | Sam Rayburn | James Wright
+"(2 of) Johnny Cash, Elvis Presley, Brenda Lee & The Everly Brothers",rewrite,(2 of) Johnny Cash | Elvis Presley | Brenda Lee | The Everly Brothers
+"(2 of) Johnson, Garner & George Bush",rewrite,(2 of) Johnson | Garner | George Bush
+"(2 of) Jordan, Jamaica, & Japan",rewrite,(2 of) Jordan | Jamaica | Japan
+(2 of) June 20th & June 21 (or June 22nd),rewrite,(2 of) June 20th | June 21 | June 22nd
+"(2 of) Karl Malden, Lee J. Cobb or Rod Steiger",rewrite,(2 of) Karl Malden | Lee J. Cobb | Rod Steiger
+"(2 of) Katharine Hepburn, Walter Brennan or Ingrid Bergman",rewrite,(2 of) Katharine Hepburn | Walter Brennan | Ingrid Bergman
+"(2 of) Kazakhstan, Kyrgyzstan, Tajikistan, Pakistan, & Afghanistan",rewrite,(2 of) Kazakhstan | Kyrgyzstan | Tajikistan | Pakistan | Afghanistan
+"(2 of) Kazakhstan, Mongolia, or North Korea",rewrite,(2 of) Kazakhstan | Mongolia | North Korea
+"(2 of) Kennedy, Garfield, and Harding",rewrite,(2 of) Kennedy | Garfield | Harding
+"(2 of) Kentucky, Massachusetts, Pennsylvania, Virginia",rewrite,(2 of) Kentucky | Massachusetts | Pennsylvania | Virginia
+"(2 of) khan, khalif & khedive",rewrite,(2 of) khan | khalif | khedive
+"(2 of) Lafayette, Churchill or Raoul Wallenberg",rewrite,(2 of) Lafayette | Churchill | Raoul Wallenberg
+(2 of) Lassie & Rin Tin Tin (or Strongheart),rewrite,(2 of) Lassie | Rin Tin Tin | Strongheart
+"(2 of) Leonid Brezhnev, Lenny Bruce, Lester Bangs & Leonard Bernstein",rewrite,(2 of) Leonid Brezhnev | Lenny Bruce | Lester Bangs | Leonard Bernstein
+"(2 of) Libya, Algeria (Morocco or Tunisia)",rewrite,(2 of) Libya | Algeria | Morocco | Tunisia
+"(2 of) Lincoln, Jefferson City, & Madison",rewrite,(2 of) Lincoln | Jefferson City | Madison
+"(2 of) Lincoln, Nixon & McKinley",rewrite,(2 of) Lincoln | Nixon | McKinley
+"(2 of) lion, elephant, leopard, rhinoceros & Cape buffalo",rewrite,(2 of) lion | elephant | leopard | rhinoceros | Cape buffalo
+"(2 of) Lola, Rico & Tony",rewrite,(2 of) Lola | Rico | Tony
+(2 of) Luciano Pavarotti & Plácido Domingo (or José Carreras),rewrite,(2 of) Luciano Pavarotti | Plácido Domingo | José Carreras
+"(2 of) Lucille Ball, Carol Burnett & Mary Tyler Moore",rewrite,(2 of) Lucille Ball | Carol Burnett | Mary Tyler Moore
+"(2 of) MacArthur, Eisenhower, Marshall, Hap Arnold",rewrite,(2 of) MacArthur | Eisenhower | Marshall | Hap Arnold
+"(2 of) Macbeth, Duncan & Malcolm",rewrite,(2 of) Macbeth | Duncan | Malcolm
+"(2 of) Maine, Idaho & Texas",rewrite,(2 of) Maine | Idaho | Texas
+(2 of) Mandarin Spanish (English & Hindi-Urdu),rewrite,(2 of) Mandarin | Spanish | English | Hindi-Urdu
+"(2 of) Manhattan, Bananas, Sleeper, Interiors, & Zelig",rewrite,(2 of) Manhattan | Bananas | Sleeper | Interiors | Zelig
+"(2 of) March, April, June & August",rewrite,(2 of) March | April | June | August
+"(2 of) Marlon Brando, Gary Cooper, Dustin Hoffman, Fredric March & Spencer Tracy",rewrite,(2 of) Marlon Brando | Gary Cooper | Dustin Hoffman | Fredric March | Spencer Tracy
+"(2 of) Massachusetts, Pennsylvania, Kentucky or Virginia",rewrite,(2 of) Massachusetts | Pennsylvania | Kentucky | Virginia
+"(2 of) McKinley, Taft & Clinton",rewrite,(2 of) McKinley | Taft | Clinton
+"(2 of) Memorial Day, Washington's Birthday, Columbus Day & Veterans Day",rewrite,(2 of) Memorial Day | Washington's Birthday | Columbus Day | Veterans Day
+"(2 of) Meryl Streep, Ingrid Bergman, Helen Hayes, Jessica Lange, & Maggie Smith",rewrite,(2 of) Meryl Streep | Ingrid Bergman | Helen Hayes | Jessica Lange | Maggie Smith
+"(2 of) Mexico, Alaska, Berlin, Hong Kong, and Waikiki, Hawaii",rewrite,(2 of) Mexico | Alaska | Berlin | Hong Kong | Waikiki
+"(2 of) Mexico, Belize (or Guatemala)",rewrite,(2 of) Mexico | Belize | Guatemala
+"(2 of) Miami Heat, Orlando Magic & Utah Jazz",rewrite,(2 of) Miami Heat | Orlando Magic | Utah Jazz
+(2 of) Mike Tyson & Buster Douglas (or Evander Holyfield),rewrite,(2 of) Mike Tyson | Buster Douglas | Evander Holyfield
+"(2 of) Milan, Turin or Genoa",rewrite,(2 of) Milan | Turin | Genoa
+"(2 of) mink, chinchilla, nutria & silver fox",rewrite,(2 of) mink | chinchilla | nutria | silver fox
+"(2 of) Minnesota, Illinois & Wisconsin",rewrite,(2 of) Minnesota | Illinois | Wisconsin
+"(2 of) Miss Scarlet, Mrs. White (Mrs. Peacock)",rewrite,(2 of) Miss Scarlet | Mrs. White | Mrs. Peacock
+(2 of) Missouri & Arkansas (or Oklahoma),rewrite,(2 of) Missouri | Arkansas | Oklahoma
+"(2 of) Missouri, Colorado & Columbia",rewrite,(2 of) Missouri | Colorado | Columbia
+"(2 of) Mitterrand, Pompidou, de Gaulle & Valéry Giscard d'Estaing",rewrite,(2 of) Mitterrand | Pompidou | de Gaulle | Valéry Giscard d'Estaing
+"(2 of) Monaco, Liechtenstein or Andorra",rewrite,(2 of) Monaco | Liechtenstein | Andorra
+"(2 of) mule, pig, fish, monkey",rewrite,(2 of) mule | pig | fish | monkey
+"(2 of) Myanmar, Cambodia, Laos, & Malaysia",rewrite,(2 of) Myanmar | Cambodia | Laos | Malaysia
+"(2 of) Nancy, Ava, Mia, & Barbara",rewrite,(2 of) Nancy | Ava | Mia | Barbara
+"(2 of) Nepal, Mongolia, Laos,  Afghanistan or Bhutan",rewrite,(2 of) Nepal | Mongolia | Laos | Afghanistan | Bhutan
+"(2 of) New Hampshire, Vermont (New York or Maine)",rewrite,(2 of) New Hampshire | Vermont | New York | Maine
+"(2 of) New York City, Philadelphia & Annapolis",rewrite,(2 of) New York City | Philadelphia | Annapolis
+"(2 of) New York, New Jersey, Pennsylvania",rewrite,(2 of) New York | New Jersey | Pennsylvania
+"(2 of) Nixon, Reagan or Franklin Delano Roosevelt",rewrite,(2 of) Nixon | Reagan | Franklin Delano Roosevelt
+"(2 of) North Carolina, Duke (or N.C. State)",rewrite,(2 of) North Carolina | Duke | N.C. State
+"(2 of) North Carolina, South Carolina (or Georgia)",rewrite,(2 of) North Carolina | South Carolina | Georgia
+(2 of) Notorious & North by Northwest (or Suspicion & To Catch a Thief),rewrite,(2 of) Notorious | North by Northwest | Suspicion | To Catch a Thief
+"(2 of) Nova Scotia, New Brunswick or Prince Edward Island",rewrite,(2 of) Nova Scotia | New Brunswick | Prince Edward Island
+(2 of) Ohio & Utah (Iowa),rewrite,(2 of) Ohio | Utah | Iowa
+"(2 of) Ohio, Utah & Iowa",rewrite,(2 of) Ohio | Utah | Iowa
+"(2 of) Oklahoma City, Carson City, Salt Lake City or Jefferson City",rewrite,(2 of) Oklahoma City | Carson City | Salt Lake City | Jefferson City
+"(2 of) Oklahoma, Kansas, Colorado, Texas or New Mexico",rewrite,(2 of) Oklahoma | Kansas | Colorado | Texas | New Mexico
+"(2 of) Ontario, Quebec, New Brunswick and Nova Scotia",rewrite,(2 of) Ontario | Quebec | New Brunswick | Nova Scotia
+"(2 of) Papua New Guinea, Guinea-Bissau & Equatorial Guinea",rewrite,(2 of) Papua New Guinea | Guinea-Bissau | Equatorial Guinea
+"(2 of) Phoenix, Providence, Rhode Island & Pierre, South Dakota",rewrite,(2 of) Phoenix | Providence (Rhode Island) | Pierre (South Dakota)
+"(2 of) pi, mu, nu & xi",rewrite,(2 of) pi | mu | nu | xi
+"(2 of) Popular Science, Popular Mechanics (Popular Photography)",rewrite,(2 of) Popular Science | Popular Mechanics | Popular Photography
+"(2 of) Portugal, Denmark, San Marino, Vatican City & Monaco",rewrite,(2 of) Portugal | Denmark | San Marino | Vatican City | Monaco
+"(2 of) pulse rate, blood pressure, respiration and temperature",rewrite,(2 of) pulse rate | blood pressure | respiration | temperature
+"(2 of) radius, ulna & humerus",rewrite,(2 of) radius | ulna | humerus
+(2 of) Red Room & Blue Room (or Green Room),rewrite,(2 of) Red Room | Blue Room | Green Room
+"(2 of) resignation, death & removal from office",rewrite,(2 of) resignation | death | removal from office
+"(2 of) Rhode Island, Minnesota, New York, Hawaii, Iowa, Oregon, Washington, West Virginia or Wisconsin",rewrite,(2 of) Rhode Island | Minnesota | New York | Hawaii | Iowa | Oregon | Washington | West Virginia | Wisconsin
+"(2 of) Richard Nixon, Gerald Ford, Ronald Reagan & Jimmy Carter",rewrite,(2 of) Richard Nixon | Gerald Ford | Ronald Reagan | Jimmy Carter
+"(2 of) Richard Nixon, Spiro Agnew & George Bush",rewrite,(2 of) Richard Nixon | Spiro Agnew | George Bush
+"(2 of) Richmond, Dover, Hartford or Boston",rewrite,(2 of) Richmond | Dover | Hartford | Boston
+"(2 of) Richmond, Montgomery, Danville & Washington, Georgia",rewrite,"(2 of) Richmond | Montgomery | Danville | Washington, Georgia"
+"(2 of) Robert De Niro, Al Pacino, Michael V. Gazzo, & Lee Strasberg",rewrite,(2 of) Robert De Niro | Al Pacino | Michael V. Gazzo | Lee Strasberg
+"(2 of) Romeo & Juliet, Troilus & Cressida, & Antony & Cleopatra",rewrite,(2 of) Romeo & Juliet | Troilus & Cressida | Antony & Cleopatra
+"(2 of) Ronald Reagan, Thomas Jefferson, or James Monroe",rewrite,(2 of) Ronald Reagan | Thomas Jefferson | James Monroe
+"(2 of) rook, bishop or queen",rewrite,(2 of) rook | bishop | queen
+"(2 of) Russia, Prussia (or Austria)",rewrite,(2 of) Russia | Prussia | Austria
+"(2 of) Ruth Bader Ginsburg, Antonin Scalia & Clarence Thomas",rewrite,(2 of) Ruth Bader Ginsburg | Antonin Scalia | Clarence Thomas
+"(2 of) Saint Thomas, Saint Croix & Saint John",rewrite,(2 of) Saint Thomas | Saint Croix | Saint John
+"(2 of) salad dressing, spaghetti sauce or popcorn",rewrite,(2 of) salad dressing | spaghetti sauce | popcorn
+"(2 of) salt, sweet, bitter, & sour",rewrite,(2 of) salt | sweet | bitter | sour
+"(2 of) San Marino, Vatican City & Lesotho",rewrite,(2 of) San Marino | Vatican City | Lesotho
+(2 of) Saskatchewan & Alberta (Manitoba),rewrite,(2 of) Saskatchewan | Alberta | Manitoba
+"(2 of) Saskatchewan, Ontario, Quebec & Manitoba",rewrite,(2 of) Saskatchewan | Ontario | Quebec | Manitoba
+"(2 of) Saudi Arabia, Jordan, & Morocco",rewrite,(2 of) Saudi Arabia | Jordan | Morocco
+(2 of) Seattle Slew & Affirmed (or Secretariat),rewrite,(2 of) Seattle Slew | Affirmed | Secretariat
+(2 of) Secretariat & Affirmed (or Seattle Slew),rewrite,(2 of) Secretariat | Affirmed | Seattle Slew
+"(2 of) Secretary of State, Treasury, War and Attorney General",rewrite,(2 of) Secretary of State | Secretary of Treasury | Secretary of War | Attorney General
+"(2 of) Secretary of War, Secretary of the Treasury, Secretary of State, and Attorney General",rewrite,(2 of) Secretary of War | Secretary of the Treasury | Secretary of State | Attorney General
+"(2 of) shoulder pads, thigh pads, hip pads, & knee pads",rewrite,(2 of) shoulder pads | thigh pads | hip pads | knee pads
+(2 of) Sicily & Corsica (or Sardinia),rewrite,(2 of) Sicily | Corsica | Sardinia
+"(2 of) snow, rain, sleet and gloom of night",rewrite,(2 of) snow | rain | sleet | gloom of night
+"(2 of) South Africa, Zambia, Botswana & Mozambique",rewrite,(2 of) South Africa | Zambia | Botswana | Mozambique
+"(2 of) Space Mountain, Big Thunder Mountain Railroad, & Matterhorn Bobsled",rewrite,(2 of) Space Mountain | Big Thunder Mountain Railroad | Matterhorn Bobsled
+"(2 of) St. Moritz, Lake Placid & Innsbruck, Austria",rewrite,(2 of) St. Moritz | Lake Placid | Innsbruck (Austria)
+"(2 of) Strom Thurmond, Ted Kennedy, Daniel Inouye & Robert Byrd",rewrite,(2 of) Strom Thurmond | Ted Kennedy | Daniel Inouye | Robert Byrd
+"(2 of) Switzerland, Liechtenstein, Luxembourg and Austria",rewrite,(2 of) Switzerland | Liechtenstein | Luxembourg | Austria
+(2 of) tarsal & metatarsal (or phalanges),rewrite,(2 of) tarsal | metatarsal | phalanges
+"(2 of) Taurus, Virgo & Capricorn",rewrite,(2 of) Taurus | Virgo | Capricorn
+"(2 of) Texas, Colorado, Kansas, and New Mexico",rewrite,(2 of) Texas | Colorado | Kansas | New Mexico
+"(2 of) Texas, New Mexico, Arizona & California",rewrite,(2 of) Texas | New Mexico | Arizona | California
+"(2 of) Thames, Tiber or Tagus",rewrite,(2 of) Thames | Tiber | Tagus
+"(2 of) the Australians, the New Zealanders, the Philippines, South Korea or Thailand",rewrite,(2 of) Australia | New Zealand | the Philippines | South Korea | Thailand
+"(2 of) The Big Bopper, Buddy Holly or Ritchie Valens",rewrite,(2 of) The Big Bopper | Buddy Holly | Ritchie Valens
+"(2 of) The Big Chill, The Big Sleep & The Big Parade",rewrite,(2 of) The Big Chill | The Big Sleep | The Big Parade
+"(2 of) the Brooklyn Bridge, the Manhattan Bridge or the Williamsburg Bridge",rewrite,(2 of) the Brooklyn Bridge | the Manhattan Bridge | the Williamsburg Bridge
+"(2 of) the Choctaw, the Chickasaw, the Cherokee, the Creek & the Seminole",rewrite,(2 of) the Choctaw | the Chickasaw | the Cherokee | the Creek | the Seminole
+"(2 of) the clavicle, the humerus, & the scapula",rewrite,(2 of) the clavicle | the humerus | the scapula
+"(2 of) the District of Columbia, Puerto Rico, the Virgin Islands & Guam",rewrite,(2 of) the District of Columbia | Puerto Rico | the Virgin Islands | Guam
+"(2 of) the Empire State Building, the Golden Gate Bridge and the Eiffel Tower",rewrite,(2 of) the Empire State Building | the Golden Gate Bridge | the Eiffel Tower
+"(2 of) The English Patient, An American in Paris, The French Connection & American Beauty",rewrite,(2 of) The English Patient | An American in Paris | The French Connection | American Beauty
+"(2 of) The Everly Brothers, Ike & Tina Turner, Sam & Dave, and Simon & Garfunkel",rewrite,(2 of) The Everly Brothers | Ike & Tina Turner | Sam & Dave | Simon & Garfunkel
+(2 of) the Hudson Bay & the Hudson River (or the Hudson Strait),rewrite,(2 of) the Hudson Bay | the Hudson River | the Hudson Strait
+"(2 of) the llama, the guanaco, the alpaca & the vicuña",rewrite,(2 of) the llama | the guanaco | the alpaca | the vicuña
+(2 of) the Mississippi & the Missouri (or the Illinois),rewrite,(2 of) the Mississippi | the Missouri | the Illinois
+"(2 of) the Montreal Expos, the Seattle Mariners, the California Angels, the Texas Rangers, the Toronto Blue Jays, & the Houston Astros",rewrite,(2 of) the Montreal Expos | the Seattle Mariners | the California Angels | the Texas Rangers | the Toronto Blue Jays | the Houston Astros
+"(2 of) the Nile, the Congo, the Niger & the Zambezi",rewrite,(2 of) the Nile | the Congo | the Niger | the Zambezi
+"(2 of) the Seattle Seahawks, the Jacksonville Jaguars, the Buffalo Bills, & the Tennessee Titans",rewrite,(2 of) the Seattle Seahawks | the Jacksonville Jaguars | the Buffalo Bills | the Tennessee Titans
+"(2 of) the Soviet Union, Yugoslavia, Bulgaria & Hungary",rewrite,(2 of) the Soviet Union | Yugoslavia | Bulgaria | Hungary
+"(2 of) the Statue of Liberty, the Liberty Bell, and the Washington Monument",rewrite,(2 of) the Statue of Liberty | the Liberty Bell | the Washington Monument
+"(2 of) the University of Southern California, the University of South Carolina (the University of Santa Clara or the University of South Colorado)",rewrite,(2 of) the University of Southern California | the University of South Carolina | the University of Santa Clara | the University of South Colorado
+"(2 of) The Vatican, Monaco, San Marino & Liechtenstein",rewrite,(2 of) The Vatican | Monaco | San Marino | Liechtenstein
+"(2 of) the épée, sabre & foil",rewrite,(2 of) the épée | sabre | foil
+"(2 of) Theodore Roosevelt, Harry Truman & Gerald Ford",rewrite,(2 of) Theodore Roosevelt | Harry Truman | Gerald Ford
+"(2 of) thrust, drag, lift & weight",rewrite,(2 of) thrust | drag | lift | weight
+"(2 of) thumb, shoe, knee, door, spine, hive, sticks & gate",rewrite,(2 of) thumb | shoe | knee | door | spine | hive | sticks | gate
+"(2 of) tomato, chicken noodle & chicken mushroom",rewrite,(2 of) tomato | chicken noodle | chicken mushroom
+"(2 of) Treasury, Secretary of State, Secretary of War & Attorney General",rewrite,(2 of) Treasury | Secretary of State | Secretary of War | Attorney General
+(2 of) Trenton & Tallahassee (or Topeka),rewrite,(2 of) Trenton | Tallahassee | Topeka
+"(2 of) truth, God, or day",rewrite,(2 of) truth | God | day
+"(2 of) Turkey, Russia, or Egypt",rewrite,(2 of) Turkey | Russia | Egypt
+"(2 of) Turner, Trudeau & Brian Mulroney",rewrite,(2 of) Turner | Trudeau | Brian Mulroney
+"(2 of) U.S. Grant, Eisenhower, and Ronald Reagan",rewrite,(2 of) U.S. Grant | Eisenhower | Ronald Reagan
+"(2 of) Ulysses Grant, Zachary Taylor, Dwight David Eisenhower & Herbert Hoover",rewrite,(2 of) Ulysses Grant | Zachary Taylor | Dwight David Eisenhower | Herbert Hoover
+"(2 of) Ulysses S. Grant, Rutherford B. Hayes & James A. Garfield",rewrite,(2 of) Ulysses S. Grant | Rutherford B. Hayes | James A. Garfield
+"(2 of) United States, Switzerland & Austria",rewrite,(2 of) United States | Switzerland | Austria
+"(2 of) Venezuela, Brazil & Belize",rewrite,(2 of) Venezuela | Brazil | Belize
+"(2 of) Venezuela, Vatican City, Vietnam or Vanuatu",rewrite,(2 of) Venezuela | Vatican City | Vietnam | Vanuatu
+"(2 of) verbs, adjectives & other adverbs",rewrite,(2 of) verbs | adjectives | other adverbs
+"(2 of) Victor Hugo (Les Misérables), Charles Dickens (The Mystery of Edwin Drood), & Mark Twain (Big River)",rewrite,(2 of) Victor Hugo (Les Misérables) | Charles Dickens (The Mystery of Edwin Drood) | Mark Twain (Big River)
+"(2 of) Vienna, Budapest or Belgrade",rewrite,(2 of) Vienna | Budapest | Belgrade
+"(2 of) Vienna, Budapest, and Belgrade",rewrite,(2 of) Vienna | Budapest | Belgrade
+"(2 of) Vietnam, Cambodia, & Laos",rewrite,(2 of) Vietnam | Cambodia | Laos
+"(2 of) W. Harrison, Tyler, Taylor & Fillmore",rewrite,(2 of) W. Harrison | Tyler | Taylor | Fillmore
+(2 of) wages & prices (or rents),rewrite,(2 of) wages | prices | rents
+"(2 of) Wallace Beery, Greta Garbo, John Barrymore, Lionel Barrymore, Joan Crawford, Lewis Stone, Jean Hersholt",rewrite,(2 of) Wallace Beery | Greta Garbo | John Barrymore | Lionel Barrymore | Joan Crawford | Lewis Stone | Jean Hersholt
+"(2 of) Warren Harding, Harry Truman, John Kennedy, Lyndon Johnson & Richard Nixon",rewrite,(2 of) Warren Harding | Harry Truman | John Kennedy | Lyndon Johnson | Richard Nixon
+"(2 of) Washington, Jackson, Van Buren, Taylor, Fillmore, Lincoln, Andrew Johnson, Cleveland & Truman",rewrite,(2 of) Washington | Jackson | Van Buren | Taylor | Fillmore | Lincoln | Andrew Johnson | Cleveland | Truman
+"(2 of) Washington, Jefferson, Madison, Fillmore, B. Harrison & Wilson",rewrite,(2 of) Washington | Jefferson | Madison | Fillmore | B. Harrison | Wilson
+"(2 of) Washington, Oregon, and California",rewrite,(2 of) Washington | Oregon | California
+"(2 of) Wilson, Clemenceau, Orlando or David Lloyd George",rewrite,(2 of) Wilson | Clemenceau | Orlando | David Lloyd George
+"(2 of) Wyoming, Alaska, South Dakota, North Dakota, Vermont, and Delaware",rewrite,(2 of) Wyoming | Alaska | South Dakota | North Dakota | Vermont | Delaware
+"(2 of) Yale, Oxford & Georgetown",rewrite,(2 of) Yale | Oxford | Georgetown
+"(2 of) Yangtze, Yellow & Huai",rewrite,(2 of) Yangtze | Yellow | Huai
+"(2 of) Yugoslavia, Bulgaria, Greece, Albania & Turkey",rewrite,(2 of) Yugoslavia | Bulgaria | Greece | Albania | Turkey
+"(2 of) Yugoslavia, Turkey, Bulgaria, Albania",rewrite,(2 of) Yugoslavia | Turkey | Bulgaria | Albania
+(2 of) Zaire & Zambia (or Zimbabwe),rewrite,(2 of) Zaire | Zambia | Zimbabwe
+"(3 of 7) Belize, Costa Rica, El Salvador, Guatemala, Honduras, Nicaragua & Panama",rewrite,(3 of) Belize | Costa Rica | El Salvador | Guatemala | Honduras | Nicaragua | Panama
+"(3 of) 100 meters, long jump, shot put, high jump, 400 meters, 110 meter hurdles, discus throw, pole vault, javelin throw & 1500 meters",rewrite,(3 of) 100 meters | long jump | shot put | high jump | 400 meters | 110 meter hurdles | discus throw | pole vault | javelin throw | 1500 meters
+"(3 of) a discus, a javelin, a hammer & the shot",rewrite,(3 of) a discus | a javelin | a hammer | the shot
+"(3 of) Alaska, Montana, Nevada, North Dakota, South Dakota & Wyoming",rewrite,(3 of) Alaska | Montana | Nevada | North Dakota | South Dakota | Wyoming
+"(3 of) Alaska, Washington, Idaho (or Montana)",rewrite,(3 of) Alaska | Washington | Idaho | Montana
+"(3 of) Alaska, Wyoming, Delaware, North & South Dakota, and Vermont",rewrite,(3 of) Alaska | Wyoming | Delaware | North Dakota | South Dakota | Vermont
+"(3 of) Arab, Armenian, Christian, Jewish",rewrite,(3 of) Arab | Armenian | Christian | Jewish
+"(3 of) B, E, J & Q",rewrite,(3 of) B | E | J | Q
+"(3 of) Barnard, Bryn Mawr, Mt. Holyoke, Radcliffe, Smith, Vassar & Wellesley",rewrite,(3 of) Barnard | Bryn Mawr | Mt. Holyoke | Radcliffe | Smith | Vassar | Wellesley
+"(3 of) Belgium, the Netherlands, Luxembourg, France, Italy & West Germany",rewrite,(3 of) Belgium | the Netherlands | Luxembourg | France | Italy | West Germany
+"(3 of) California, New York, Illinois & Pennsylvania",rewrite,(3 of) California | New York | Illinois | Pennsylvania
+"(3 of) Chile, Peru, Ecuador (Colombia)",rewrite,(3 of) Chile | Peru | Ecuador | Colombia
+"(3 of) crushed, chunks, whole slices (tidbits)",rewrite,(3 of) crushed | chunks | whole slices | tidbits
+"(3 of) Cuba, Jamaica, Hispaniola, Puerto Rico",rewrite,(3 of) Cuba | Jamaica | Hispaniola | Puerto Rico
+"(3 of) Darth Maul, Darth Vader, Darth Sidious, & Darth Tyranus",rewrite,(3 of) Darth Maul | Darth Vader | Darth Sidious | Darth Tyranus
+"(3 of) Disney, Warner Brothers, MGM (Universal-RKO, Paramount or Columbia)",rewrite,(3 of) Disney | Warner Brothers | MGM | Universal-RKO | Paramount | Columbia
+"(3 of) District of Columbia, Guam, Puerto Rico, American Samoa, and U.S. Virgin Islands",rewrite,(3 of) District of Columbia | Guam | Puerto Rico | American Samoa | U.S. Virgin Islands
+"(3 of) English, French, Spanish or Portuguese",rewrite,(3 of) English | French | Spanish | Portuguese
+"(3 of) Florida, South Carolina, Alabama, Tennessee, and North Carolina",rewrite,(3 of) Florida | South Carolina | Alabama | Tennessee | North Carolina
+"(3 of) Georgia, Louisiana, North Carolina & South Carolina",rewrite,(3 of) Georgia | Louisiana | North Carolina | South Carolina
+"(3 of) glory, fame, passion, success, heartbreak & fortune",rewrite,(3 of) glory | fame | passion | success | heartbreak | fortune
+"(3 of) Guiteau, Booth, Oswald, & Leon Czolgosz",rewrite,(3 of) Guiteau | Booth | Oswald | Leon Czolgosz
+"(3 of) Hamlet, Richard III, Henry V, & Othello",rewrite,(3 of) Hamlet | Richard III | Henry V | Othello
+"(3 of) Hawaii, Alaska, Washington, Oregon & California",rewrite,(3 of) Hawaii | Alaska | Washington | Oregon | California
+"(3 of) Henry IV, Henry V, Henry VI and Henry VIII)",rewrite,(3 of) Henry IV | Henry V | Henry VI | Henry VIII
+"(3 of) Indiana, Illinois, Michigan, Wisconsin, and Ohio",rewrite,(3 of) Indiana | Illinois | Michigan | Wisconsin | Ohio
+"(3 of) Iran, Iraq, Kuwait, Saudi Arabia & Venezuela",rewrite,(3 of) Iran | Iraq | Kuwait | Saudi Arabia | Venezuela
+"(3 of) J. Adams. J.Q. Adams, T. Roosevelt, F. Roosevelt & Kennedy",rewrite,(3 of) J. Adams | J.Q. Adams | T. Roosevelt | F. Roosevelt | Kennedy
+"(3 of) James Buchanan, James Madison, James Monroe, James Polk, and James Garfield",rewrite,(3 of) James Buchanan | James Madison | James Monroe | James Polk | James Garfield
+"(3 of) L.A., Pasadena, San Diego & Palo Alto",rewrite,(3 of) L.A. | Pasadena | San Diego | Palo Alto
+"(3 of) lever, wedge, pulley, wheel & axle, screw & inclined plane",rewrite,(3 of) lever | wedge | pulley | wheel & axle | screw | inclined plane
+"(3 of) Lorenzo Lamas, Ana Alicia, Apollonia Kotero, Cesar Romero & Julie Carmen",rewrite,(3 of) Lorenzo Lamas | Ana Alicia | Apollonia Kotero | Cesar Romero | Julie Carmen
+"(3 of) Mary Pickford, Douglas Fairbanks, Charles Chaplin & D.W. Griffith",rewrite,(3 of) Mary Pickford | Douglas Fairbanks | Charles Chaplin | D.W. Griffith
+"(3 of) Missouri, New York, California, Illinois",rewrite,(3 of) Missouri | New York | California | Illinois
+"(3 of) molars, incisors, cuspids, or bicuspids",rewrite,(3 of) molars | incisors | cuspids | bicuspids
+"(3 of) Mubarak, Abdel Nasser, Sadat & Muhammad Naguib",rewrite,(3 of) Mubarak | Abdel Nasser | Sadat | Muhammad Naguib
+"(3 of) neon, radon, argon, xenon, helium & krypton",rewrite,(3 of) neon | radon | argon | xenon | helium | krypton
+"(3 of) Nova Scotia, Newfoundland & Prince Edward Island (or New Brunswick)",rewrite,(3 of) Nova Scotia | Newfoundland | Prince Edward Island | New Brunswick
+"(3 of) physics, physiology or medicine, chemistry, literature, & peace",rewrite,(3 of) physics | physiology | medicine | chemistry | literature | peace
+"(3 of) pink, blue, lavender, (white)",rewrite,(3 of) pink | blue | lavender | white
+"(3 of) Pittsburgh Steelers, Miami Dolphins, Green Bay Packers, Dallas Cowboys, San Francisco 49ers, Oakland/Los Angeles Raiders",rewrite,(3 of) Pittsburgh Steelers | Miami Dolphins | Green Bay Packers | Dallas Cowboys | San Francisco 49ers | Oakland/Los Angeles Raiders
+"(3 of) Q, X, Z (J or K)",rewrite,(3 of) Q | X | Z | J | K
+"(3 of) Saudi Arabia, North Yemen, South Yemen, Oman, Kuwait, Qatar, and the United Arab Emirates",rewrite,(3 of) Saudi Arabia | North Yemen | South Yemen | Oman | Kuwait | Qatar | the United Arab Emirates
+"(3 of) Secretariat, General Assembly, Security Council, International Court of Justice, Economic & Social Council, & Trusteeship Council",rewrite,(3 of) Secretariat | General Assembly | Security Council | International Court of Justice | Economic & Social Council | Trusteeship Council
+"(3 of) Sweden, Finland, Russia, Poland, East Germany, West Germany, Denmark, Estonia, Latvia, Lithuania",rewrite,(3 of) Sweden | Finland | Russia | Poland | East Germany | West Germany | Denmark | Estonia | Latvia | Lithuania
+"(3 of) Switzerland, Austria, Hungary, Romania & Bulgaria",rewrite,(3 of) Switzerland | Austria | Hungary | Romania | Bulgaria
+"(3 of) Taft, Hoover, Carter, & Ford",rewrite,(3 of) Taft | Hoover | Carter | Ford
+"(3 of) temperature, pulse, blood pressure & respiration",rewrite,(3 of) temperature | pulse | blood pressure | respiration
+"(3 of) Texas, Oklahoma, Florida, West Virginia, Idaho, Alaska & Maryland",rewrite,(3 of) Texas | Oklahoma | Florida | West Virginia | Idaho | Alaska | Maryland
+"(3 of) the Soviet Union, the United States, Canada or Denmark",rewrite,(3 of) the Soviet Union | the United States | Canada | Denmark
+"(3 of) Theo, Denise, Sondra, Vanessa, & Rudy",rewrite,(3 of) Theo | Denise | Sondra | Vanessa | Rudy
+"(3 of) thiamine, niacin, riboflavin, pantothenic acid, biotin, folic acid, pyridoxine & cyanocobalamin",rewrite,(3 of) thiamine | niacin | riboflavin | pantothenic acid | biotin | folic acid | pyridoxine | cyanocobalamin
+"(3 of) United States, Canada, France, Germany, Italy & Japan",rewrite,(3 of) United States | Canada | France | Germany | Italy | Japan
+"(3 of) Wimbledon, U.S. Open, French Open, & Australian Open",rewrite,(3 of) Wimbledon | U.S. Open | French Open | Australian Open
+"(3 of) xi, nu & pi (or mu)",rewrite,(3 of) xi | nu | pi | mu
+"(4 of) Bart, Homer, Lisa, Maggie & Marge Simpson",rewrite,(4 of) Bart | Homer | Lisa | Maggie | Marge
+"(4 of) extinguish all smoking materials, fasten your seatbelts, put your seat back in an upright position, put up the tray in front of you (return carry-on items to beneath the seat or the overhead compartment, return all loose items to the flight attendant or remain seated until the plane has come to a full stop at the gate)",rewrite,(4 of) extinguish all smoking materials | fasten your seatbelts | put your seat back in an upright position | put up the tray in front of you | return carry-on items to beneath the seat or the overhead compartment | return all loose items to the flight attendant | remain seated until the plane has come to a full stop at the gate
+"(4 of) France, West Germany, Italy, Belgium, the Netherlands or Luxembourg",rewrite,(4 of) France | West Germany | Italy | Belgium | the Netherlands | Luxembourg
+"(4 of) Harrison, Harding, Hayes, Harrison, Hoover",rewrite,(4 of) Harrison | Harding | Hayes | Harrison | Hoover
+"(4 of) Hearing, sight, smell, taste, touch",rewrite,(4 of) Hearing | sight | smell | taste | touch
+"(4 of) Peru, Argentina, Bolivia, Chile, Uruguay & Paraguay",rewrite,(4 of) Peru | Argentina | Bolivia | Chile | Uruguay | Paraguay
+"(4 of) Vassar, Wellesley, Radcliffe, Bryn Mawr, Barnard, Holyoke, and Smith",rewrite,(4 of) Vassar | Wellesley | Radcliffe | Bryn Mawr | Barnard | Holyoke | Smith
+"(Any 1 of) 1991, '92, '93, '97, '96, '98",rewrite,(1 of) 1991 | 1992 | 1993 | 1997 | 1996 | 1998
+"(any 2 of) sodium, silicon & sulfur",rewrite,(2 of) sodium | silicon | sulfur
+(either of) ionic or covalent,rewrite,(1 of) ionic | covalent
+(Le) déjeuner sur l'herbe (or Breakfast or Luncheon on the Grass),rewrite,(1 of) (Le) déjeuner sur l'herbe | Breakfast on the Grass | Luncheon on the Grass
+(Neil) Armstrong (or Buzz Aldrin or Michael Collins),rewrite,(1 of) (Neil) Armstrong | Buzz Aldrin | Michael Collins
+"(Omar) Bradley, (George) Marshall or (Henry) Arnold",rewrite,(1 of) (Omar) Bradley | (George) Marshall | (Henry) Arnold
+(One of) Anne Boleyn or Catherine Howard,rewrite,(1 of) Anne Boleyn | Catherine Howard
+(One of) Iowa or Louisiana,rewrite,(1 of) Iowa | Louisiana
+(one of) McCormick or Deering,rewrite,(1 of) McCormick | Deering
+"(One of) Pretoria, Cape Town, or Bloemfontein",rewrite,(1 of) Pretoria | Cape Town | Bloemfontein
+(Ritchie) Valens (or Buddy Holly or the Big Bopper),rewrite,(1 of) (Ritchie) Valens | Buddy Holly | the Big Bopper
+"(two of) Queens, Kings, Bronx, New York, and Richmond",rewrite,(2 of) Queens | Kings | Bronx | New York | Richmond
+0 or 1,rewrite,(1 of) 0 | 1
+1 or 2,rewrite,(1 of) 1 | 2
+1 or 3 meters,rewrite,(1 of) 1 meter | 3 meters
+10 Items or Less,keep,
+"100-year eggs (or 1,000-year eggs)",rewrite,"(1 of) 100-year eggs | 1,000-year eggs"
+12 or 13 (if they included the Christ figure),rewrite,(1 of) 12 | 13 (if they included the Christ figure)
+12-tone or 12-note chromatic scale,rewrite,(1 of) 12-tone | 12-note chromatic scale
+1841 or 1881,rewrite,(1 of) 1841 | 1881
+"2, 3, or 12",rewrite,(1 of) 2 | 3 | 12
+20th or 21st,rewrite,(1 of) 20th | 21st
+25 words or less,keep,
+2b or -2b (2b or nought 2b),rewrite,(1 of) 2b or -2b | 2b or nought 2b
+3rd or 3,rewrite,(1 of) 3rd | 3
+54-40 or fight,keep,
+54-40 or Fight,keep,
+54-40 or fight!,keep,
+7 or 11,rewrite,(1 of) 7 | 11
+"8, 9 or 10",rewrite,(1 of) 8 | 9 | 10
+"a ""Wimba Way"" or ""Wimoweh""",rewrite,"(1 of) a ""Wimba Way"" | ""Wimoweh"""
+a 2 or a 12,rewrite,(2 of) a 2 | a 12
+a bald-faced (or bare-faced) lie,rewrite,(1 of) a bald-faced lie | a bare-faced lie
+"a billboard (three billboards outside Ebbing, Missouri accepted)",rewrite,"(1 of) a billboard | three billboards outside Ebbing, Missouri"
+a blasting (or detonating) cap,rewrite,(1 of) a blasting cap | a detonating cap
+a borrower or a lender be,rewrite,(1 of) a borrower | a lender be
+A Bug's Life or Antz,rewrite,(1 of) A Bug's Life | Antz
+a carrot or a stick,keep,
+a clock or watch,rewrite,(1 of) a clock | watch
+a combine or to combine,rewrite,(1 of) a combine | to combine
+A Comedy of Errors or A Midsummer Night's Dream,rewrite,(1 of) A Comedy of Errors | A Midsummer Night's Dream
+a couplet (rhyme later judged acceptable),rewrite,(1 of) a couplet | rhyme
+a cow (or bull or ox),rewrite,(1 of) a cow | bull | ox
+a czarina or empress,rewrite,(1 of) a czarina | empress
+a dale or a vale,keep,
+a deadlock (also deadbolt or deadlatch),rewrite,(1 of) a deadlock | deadbolt | deadlatch
+a dendrum (dendrite also acceptable),rewrite,(1 of) a dendrum | dendrite
+a double star or a binary star,rewrite,(1 of) a double star | a binary star
+a fawn or deer,rewrite,(1 of) a fawn | deer
+"a gift (or office, title or emolument)",rewrite,(1 of) a gift | office | title | emolument
+a glider or sail plane,rewrite,(1 of) a glider | sail plane
+a gofer (or a runner or a production assistant),rewrite,(1 of) a gofer | a runner | a production assistant
+a guitar (or a fiddle or a trumpet),rewrite,(1 of) a guitar | a fiddle | a trumpet
+a gun or a pistol,rewrite,(1 of) a gun | a pistol
+a hockey arena or ice rink,rewrite,(1 of) a hockey arena | ice rink
+a knight fright fight (or plight or blight),rewrite,(1 of) a knight fright fight | knight fright plight | knight fright blight
+a light (or bright) flight,rewrite,(1 of) a light flight | a bright flight
+a limit (or stop-loss) order,rewrite,(1 of) a limit order | a stop-loss order
+a love note or letter,rewrite,(1 of) a love note | letter
+a manikin (a resuscitation doll or Resuscitation Annie accepted),rewrite,(1 of) a manikin | a resuscitation doll | Resuscitation Annie
+a meteorite (or asteroid; meteor accepted),rewrite,(1 of) a meteorite | asteroid | meteor
+a mist (or a spray; a gas accepted),rewrite,(1 of) a mist | a spray | a gas
+a new moon or a full moon,rewrite,(1 of) a new moon | a full moon
+a paddock (stockyard or stockade also acceptable),rewrite,(1 of) a paddock | stockyard | stockade
+a parent (or holding) company,rewrite,(1 of) a parent company | a holding company
+a physician (or medicine or a doctor),rewrite,(1 of) a physician | medicine | a doctor
+"a Popsicle (or Creamsicle, Fudgesicle)",rewrite,(1 of) a Popsicle | Creamsicle | Fudgesicle
+"a procession, or processional",rewrite,(1 of) a procession | processional
+a proton or a neutron,rewrite,(1 of) a proton | a neutron
+a quill or pen,rewrite,(1 of) a quill | pen
+a quill pig or a hedgehog,rewrite,(1 of) a quill pig | a hedgehog
+a refractor or a reflector (refracting or reflecting),rewrite,(1 of) a refractor (refracting) | a reflector (reflecting)
+a roentgenologist or a radiologist,rewrite,(1 of) a roentgenologist | a radiologist
+"a side view (or shadow, profile, sketch, or silhouette)",rewrite,(1 of) a side view | shadow | profile | sketch | silhouette
+a Ski-Doo (or a snowmobile or skimobile),rewrite,(1 of) a Ski-Doo | a snowmobile | skimobile
+a square chin or jaw,rewrite,(1 of) a square chin | a square jaw
+a stuntman or a stuntwoman,rewrite,(1 of) a stuntman | a stuntwoman
+a suction (or reciprocating) pump,rewrite,(1 of) a suction pump | a reciprocating pump
+a talis (tallit also acceptable),rewrite,(1 of) a talis | tallit
+a tip or bribe (or handout),rewrite,(1 of) a tip | a bribe | a handout
+"a TKO, or technical knockout",rewrite,(1 of) a TKO | technical knockout
+a tortoise or turtle,rewrite,(1 of) a tortoise | turtle
+a water dog (or a mud puppy) salamander,rewrite,(1 of) a water dog salamander | a mud puppy salamander
+a wig or toupée,rewrite,(1 of) a wig | toupée
+A-Rod or Alex Rodriguez,rewrite,(1 of) A-Rod | Alex Rodriguez
+acumen (or acute or acuity),rewrite,(1 of) acumen | acute | acuity
+add or augment,rewrite,(1 of) add | augment
+air currents (or the wind or the weather),rewrite,(1 of) air currents | the wind | the weather
+Air France or British Airways,rewrite,(1 of) Air France | British Airways
+AKA (also known as),rewrite,(1 of) AKA | also known as
+Alberta (or British Columbia or Saskatchewan),rewrite,(1 of) Alberta | British Columbia | Saskatchewan
+Alberta or Saskatchewan,rewrite,(1 of) Alberta | Saskatchewan
+Alexander Haig or George Marshall,rewrite,(1 of) Alexander Haig | George Marshall
+Alexei (or Dmitri or Ivan),rewrite,(1 of) Alexei | Dmitri | Ivan
+Algeria or Tunisia,rewrite,(1 of) Algeria | Tunisia
+Alice Walker or Toni Morrison,rewrite,(1 of) Alice Walker | Toni Morrison
+an accessory dwelling unit (or additional dwelling unit) (alternative dwelling unit accepted),rewrite,(1 of) an accessory dwelling unit | additional dwelling unit | alternative dwelling unit
+an acid or a base,rewrite,(1 of) an acid | a base
+an ass (or a jackass or a male donkey),rewrite,(1 of) an ass | a jackass | a male donkey
+"an end run, or end around",rewrite,(1 of) an end run | end around
+an endless or infinite runner,rewrite,(1 of) an endless runner | infinite runner
+an inclined plane (ramp later ruled acceptable),rewrite,(1 of) an inclined plane | ramp
+Angela Kinsey or Jenna Fischer,rewrite,(1 of) Angela Kinsey | Jenna Fischer
+"animal, vegetable or mineral",keep,
+Ann Landers or Abigail,rewrite,(1 of) Ann Landers | Abigail
+Apia or Oslo,rewrite,(1 of) Apia | Oslo
+Ara or Leo,rewrite,(1 of) Ara | Leo
+archaeology or paleontology,rewrite,(1 of) archaeology | paleontology
+archers or bowmen,rewrite,(1 of) archers | bowmen
+"Arctic Circle (or for people in the Southern Hemisphere, the Antarctic Circle)",rewrite,(1 of) Arctic Circle | the Antarctic Circle (for people in the Southern Hemisphere)
+Are you a man or a mouse?,keep,
+are you male or female,keep,
+Argentina or Brazil,rewrite,(1 of) Argentina | Brazil
+Aristotle or Plato,rewrite,(1 of) Aristotle | Plato
+Arizona (or New Mexico or Nevada),rewrite,(1 of) Arizona | New Mexico | Nevada
+arrows (or darts or spears),rewrite,(1 of) arrows | darts | spears
+"art is long, life is short (or art endures, life is short, or art lasts, life is short) (long art, short life accepted)",rewrite,"(1 of) art is long, life is short | art endures, life is short | art lasts, life is short | long art, short life"
+Arthur (or Alfred) Zimmerman,rewrite,(1 of) Arthur Zimmerman | Alfred Zimmerman
+as or like,rewrite,(1 of) as | like
+Atlanta (Georgia) or Augusta (Maine),rewrite,(1 of) Atlanta (Georgia) | Augusta (Maine)
+"Augustus, Tiberius or Claudius",rewrite,(1 of) Augustus | Tiberius | Claudius
+Australia or New Zealand,rewrite,(1 of) Australia | New Zealand
+Austria-Hungary & Germany (also Italy),rewrite,(2 of) Austria-Hungary | Germany | Italy
+awake (or alert or aware) & asleep (or anesthetized),rewrite,(1 of) awake & asleep | alert & asleep | aware & asleep | awake & anesthetized | alert & anesthetized | aware & anesthetized
+B.J. and the Bear (or My Two Dads or P.S. I Luv U),rewrite,(1 of) B.J. and the Bear | My Two Dads | P.S. I Luv U
+Babalu or Tropicana,rewrite,(1 of) Babalu | Tropicana
+Baby Boom or Three Men and a Baby,rewrite,(1 of) Baby Boom | Three Men and a Baby
+Badlands or Wind Cave,rewrite,(1 of) Badlands | Wind Cave
+"badminton, baseball or women's judo",rewrite,(1 of) badminton | baseball | women's judo
+baker (breadmaker acceptable),rewrite,(1 of) baker | breadmaker
+Ballon d'Or,keep,
+balms or alms,rewrite,(1 of) balms | alms
+"Baltimore Orioles, St. Louis Cardinals &/or Toronto Blue Jays",rewrite,(2 of) Baltimore Orioles | St. Louis Cardinals | Toronto Blue Jays
+Banff or Jasper National Park,rewrite,(1 of) Banff | Jasper National Park
+barometric or atmospheric pressure,rewrite,(1 of) barometric pressure | atmospheric pressure
+Bart Simpson or Rocky The Flying Squirrel,rewrite,(1 of) Bart Simpson | Rocky The Flying Squirrel
+"Baton Rouge (or Boise, Idaho)",rewrite,(1 of) Baton Rouge | Boise (Idaho)
+begging or egging,rewrite,(1 of) begging | egging
+"being bricked into a cell (or cellar, being walled up)",rewrite,(1 of) being bricked into a cell | being bricked into a cellar | being walled up
+believe it or not,keep,
+Belize or Guatemala,rewrite,(1 of) Belize | Guatemala
+bell or dewlap,rewrite,(1 of) bell | dewlap
+Ben Franklin or Alexander Hamilton,rewrite,(1 of) Ben Franklin | Alexander Hamilton
+"Benjamin Franklin (or John Adams, John Jay, or Henry Laurens)",rewrite,(1 of) Benjamin Franklin | John Adams | John Jay | Henry Laurens
+Berkeley or Barkley,rewrite,(1 of) Berkeley | Barkley
+Bicycles or Bicyclettes,rewrite,(1 of) Bicycles | Bicyclettes
+Bill Daniels & Bonnie Bartlett or Steve Allen & Jayne Meadows,rewrite,(1 of) Bill Daniels & Bonnie Bartlett | Steve Allen & Jayne Meadows
+billed or build,keep,
+Billy goat or mockingbird,rewrite,(1 of) Billy goat | mockingbird
+Birdman or (The Unexpected Virtue of Ignorance),rewrite,Birdman (The Unexpected Virtue of Ignorance)
+"Bismarck, Pierre, or Jefferson City",rewrite,(1 of) Bismarck | Pierre | Jefferson City
+biting in the head or neck,rewrite,(1 of) biting in the head | biting in the neck
+black or white,rewrite,(1 of) black | white
+Blackbeard or Edward Teach,rewrite,(1 of) Blackbeard | Edward Teach
+blastoff (or liftoff or takeoff),rewrite,(1 of) blastoff | liftoff | takeoff
+"Bloemfontein, Cape Town &/or Pretoria",rewrite,(2 of) Bloemfontein | Cape Town | Pretoria
+blowfish (or puff fish or fugu),rewrite,(1 of) blowfish | puff fish | fugu
+blue cinemas or XXX houses,rewrite,(1 of) blue cinemas | XXX houses
+Bob Dole or Walter Mondale,rewrite,(1 of) Bob Dole | Walter Mondale
+body conscious or body contour,rewrite,(1 of) body conscious | body contour
+Bolivia or Paraguay,rewrite,(1 of) Bolivia | Paraguay
+bonus or onus,keep,
+booze or ooze,keep,
+Borneo (or Greenland or New Guinea),rewrite,(1 of) Borneo | Greenland | New Guinea
+bow (or sway or rock),rewrite,(1 of) bow | sway | rock
+bow or curtsy,rewrite,(1 of) bow | curtsy
+boxers or briefs,rewrite,(1 of) boxers | briefs
+BP or British Petroleum,rewrite,(1 of) BP | British Petroleum
+Braveheart or Unforgiven,rewrite,(1 of) Braveheart | Unforgiven
+Breckinridge (or Douglas or Bell),rewrite,(1 of) Breckinridge | Douglas | Bell
+brut (dry and sekt acceptable),rewrite,(1 of) brut | dry | sekt
+Bryan Adams (or Rod Stewart or Sting),rewrite,(1 of) Bryan Adams | Rod Stewart | Sting
+bugle or drum,rewrite,(1 of) bugle | drum
+bump or ump,keep,
+Bunker (or Breed's) Hill,rewrite,(1 of) Bunker Hill | Breed's Hill
+business class or middle class (merchant class accepted),rewrite,(1 of) business class | middle class | merchant class
+by hook or by crook,keep,
+C or S,rewrite,(1 of) C | S
+cabinetmaking or furniture making,rewrite,(1 of) cabinetmaking | furniture making
+Caesarion or Ptolemy XV,rewrite,(1 of) Caesarion | Ptolemy XV
+cafe or restaurant,rewrite,(1 of) cafe | restaurant
+Cairo or Khartoum,rewrite,(1 of) Cairo | Khartoum
+"Calcite, gypsum or talc",rewrite,(1 of) Calcite | gypsum | talc
+calls or songs,rewrite,(1 of) calls | songs
+Cambodia &/or Laos,rewrite,(1 of) Cambodia | Laos
+Cambridge or Boston,rewrite,(1 of) Cambridge | Boston
+came by (in person) or visited,rewrite,(1 of) came by (in person) | visited
+Camel or Elephant,rewrite,(1 of) Camel | Elephant
+Cancer the crab or Leo the lion,rewrite,(1 of) Cancer the crab | Leo the lion
+"candles (or okuri-dango, or lanterns)",rewrite,(1 of) candles | okuri-dango | lanterns
+canine teeth or eye teeth,rewrite,(1 of) canine teeth | eye teeth
+Cape Hatteras or Cape Lookout,rewrite,(1 of) Cape Hatteras | Cape Lookout
+capital punishment or the death penalty,rewrite,(1 of) capital punishment | the death penalty
+carbonated soda (or soda water or carbonated water),rewrite,(1 of) carbonated soda | soda water | carbonated water
+Cardinals (St. Louis (baseball) & Arizona (football)) or Giants (San Francisco (baseball) & New York (football)),rewrite,(1 of) Cardinals (St. Louis (baseball) & Arizona (football)) | Giants (San Francisco (baseball) & New York (football))
+Carolina Panthers or Jacksonville Jaguars,rewrite,(1 of) Carolina Panthers | Jacksonville Jaguars
+cash (or collect) on delivery,rewrite,(1 of) cash on delivery | collect on delivery
+"cashews & pecans (also hazelnuts, brazils, & almonds)",rewrite,(2 of) cashews | pecans | hazelnuts | brazils | almonds
+Caspar Weinberger (Secretary of Defense) or Samuel Pierce of HUD,rewrite,(1 of) Caspar Weinberger (Secretary of Defense) | Samuel Pierce of HUD
+"Catherine the Great (or Catherine II or ""Great Catherine"")",rewrite,"(1 of) Catherine the Great | Catherine II | ""Great Catherine"""
+"cauliflower, broccoli or artichoke",rewrite,(1 of) cauliflower | broccoli | artichoke
+cesium (Cs) (or chlorine (Cl)),rewrite,(1 of) cesium (Cs) | chlorine (Cl)
+change the suit or the number,rewrite,(1 of) change the suit | change the number
+Charles Dawes or Theodore Roosevelt,rewrite,(1 of) Charles Dawes | Theodore Roosevelt
+"chastity, obedience or poverty",rewrite,(1 of) chastity | obedience | poverty
+Cheryl Tiegs (or Christie Brinkley or Elle Macpherson),rewrite,(1 of) Cheryl Tiegs | Christie Brinkley | Elle Macpherson
+Chester A. Arthur (or Hayes or Garfield),rewrite,(1 of) Chester A. Arthur | Hayes | Garfield
+Children or animals,rewrite,(1 of) Children | animals
+"chile, or chili, powder",rewrite,(1 of) chile powder | chili powder | chile | chili
+circular or round,rewrite,(1 of) circular | round
+claw or talon,rewrite,(1 of) claw | talon
+"coffee, tea or milk",rewrite,(1 of) coffee | tea | milk
+Cole or Kohl,rewrite,(1 of) Cole | Kohl
+Colombia or Peru,rewrite,(1 of) Colombia | Peru
+come hell or high water,keep,
+Come Rain or Come shine,keep,
+comic book characters or groups,rewrite,(1 of) comic book characters | comic book groups
+compact (com-PACT) or a compact (COM-pact),rewrite,(1 of) compact (com-PACT) | a compact (COM-pact)
+complement or compliment,rewrite,(1 of) complement | compliment
+concurrent or concurrently,rewrite,(1 of) concurrent | concurrently
+Conservative or Liberal,rewrite,(1 of) Conservative | Liberal
+consume or eat the male,rewrite,(1 of) consume the male | eat the male
+cosmetics (dyeing also acceptable),rewrite,(1 of) cosmetics | dyeing
+cosmos or universe,rewrite,(1 of) cosmos | universe
+Costa Rica or Belize,rewrite,(1 of) Costa Rica | Belize
+crest or heraldic emblem (or coat of arms),rewrite,(1 of) crest | heraldic emblem | coat of arms
+Cretaceous (or Cambrian or Carboniferous),rewrite,(1 of) Cretaceous | Cambrian | Carboniferous
+cross Hell or high water,keep,
+Crown Royal or Royal Crown,rewrite,(1 of) Crown Royal | Royal Crown
+cruel or unusual,rewrite,(1 of) cruel | unusual
+"crunches, or crunch",rewrite,(1 of) crunches | crunch
+cubs or kits,rewrite,(1 of) cubs | kits
+"cytosine (or adenine, guanine or thymine)",rewrite,(1 of) cytosine | adenine | guanine | thymine
+"D.C., or Washington, D.C.",rewrite,"(1 of) D.C. | Washington, D.C."
+Dan Fouts or Dan Dierdorf,rewrite,(1 of) Dan Fouts | Dan Dierdorf
+Daniel K. Inouye or Daniel K. Akaka,rewrite,(1 of) Daniel K. Inouye | Daniel K. Akaka
+Danish or Greenlandic,rewrite,(1 of) Danish | Greenlandic
+"day & night (""Daylight and darkness, or nighttime"" accepted)",rewrite,(1 of) day & night | Daylight & darkness | daylight & nighttime
+Dead or alive,keep,
+Dead or Alive,keep,
+dead or alive,rewrite,(1 of) dead | alive
+Deal or No Deal,keep,
+December 21 or 22,rewrite,(1 of) December 21 | December 22
+decorator or designer,rewrite,(1 of) decorator | designer
+Dee or D,rewrite,(1 of) Dee | D
+"desegregate, or integrate",keep,
+diamond or graphite,rewrite,(1 of) diamond | graphite
+Diana Ross or Phil Collins,rewrite,(1 of) Diana Ross | Phil Collins
+Did you take a bath (or shower)?,rewrite,(1 of) Did you take a bath? | Did you take a shower?
+dinner or supper,rewrite,(1 of) dinner | supper
+dirt (or dust or earth or soil),rewrite,(1 of) dirt | dust | earth | soil
+discord or discordance,rewrite,(1 of) discord | discordance
+discreet or discrete,rewrite,(1 of) discreet | discrete
+distillation (or desalination or desalinization),rewrite,(1 of) distillation | desalination | desalinization
+do or die,keep,
+Doctors Without Borders or Médecins Sans Frontières,rewrite,(1 of) Doctors Without Borders | Médecins Sans Frontières
+Does she or doesn't she?,keep,
+Doesn't matter if you're rich or poor,keep,
+Dollars or Shampoo,rewrite,(1 of) Dollars | Shampoo
+Dom or Vince,rewrite,(1 of) Dom | Vince
+double or nothing,keep,
+Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb,rewrite,Dr. Strangelove (How I Learned to Stop Worrying and Love the Bomb)
+drones or males,keep,
+drop or trap,rewrite,(1 of) drop | trap
+Duma or Soviet,rewrite,(1 of) Duma | Soviet
+dwarfs or dwarves,rewrite,(1 of) dwarfs | dwarves
+"eagle, elk or moose",rewrite,(1 of) eagle | elk | moose
+Earl Warren or Thurgood Marshall,rewrite,(1 of) Earl Warren | Thurgood Marshall
+Earth or Pluto,rewrite,(1 of) Earth | Pluto
+"earth, wind (or air), water and fire",rewrite,"(1 of) earth, wind, water and fire | earth, air, water and fire"
+Ecuador or Peru,rewrite,(1 of) Ecuador | Peru
+editorial marks (or editing marks or proofreading marks),rewrite,(1 of) editorial marks | editing marks | proofreading marks
+Edward V or Edward VIII,rewrite,(1 of) Edward V | Edward VIII
+"Egbert (or Ethelbald. Ethelbert, Ethelred, or Ethelwolf)",rewrite,(1 of) Egbert | Ethelbald | Ethelbert | Ethelred | Ethelwolf
+Ehrich Weiss or Houdini,rewrite,(1 of) Ehrich Weiss | Houdini
+"Elizabeth I or Mary I (""Bloody Mary"")",rewrite,"(1 of) Elizabeth I | Mary I (""Bloody Mary"")"
+"Elsie the Cow, the Energizer Bunny or Tony the Tiger",rewrite,(1 of) Elsie the Cow | the Energizer Bunny | Tony the Tiger
+"Elsinore (or Helsingør, or Kronborg)",rewrite,(1 of) Elsinore | Helsingør | Kronborg
+Emperor Akihito or Empress Michiko,rewrite,(1 of) Emperor Akihito | Empress Michiko
+empirical or a posteriori,rewrite,(1 of) empirical | a posteriori
+Energy or Transportation,rewrite,(1 of) Energy | Transportation
+engines or motors,rewrite,(1 of) engines | motors
+England (or Great Britain; or France),rewrite,(1 of) England | Great Britain | France
+England (the United Kingdom acceptable),rewrite,(1 of) England | the United Kingdom
+England or Japan,rewrite,(1 of) England | Japan
+English or Arabic,rewrite,(1 of) English | Arabic
+"epsilon, omicron or upsilon",rewrite,(1 of) epsilon | omicron | upsilon
+equestrian events or sailing,rewrite,(1 of) equestrian events | sailing
+Erie or Huron,rewrite,(1 of) Erie | Huron
+Ernie or Uncle Charley,rewrite,(1 of) Ernie | Uncle Charley
+"errors (or mistakes, typos)",rewrite,(1 of) errors | mistakes | typos
+Eskimo or Inuit,rewrite,(1 of) Eskimo | Inuit
+"every 500 years (or twice every 1,000 years)",rewrite,"(1 of) every 500 years | twice every 1,000 years"
+explosion or eruption of Krakatoa,rewrite,(1 of) explosion of Krakatoa | eruption of Krakatoa
+extenuating (or mitigating) circumstances,rewrite,(1 of) extenuating circumstances | mitigating circumstances
+"F. Roosevelt, Truman, Taft &/or Hoover",rewrite,(2 of) F. Roosevelt | Truman | Taft | Hoover
+fact or fiction,keep,
+fair or foul,keep,
+Falkland (or Malvinas) Islands,rewrite,(1 of) Falkland Islands | Malvinas Islands
+Fantastic Mr. Fox or Men Who Stare At Goats,rewrite,(1 of) Fantastic Mr. Fox | Men Who Stare At Goats
+Fifty-four forty or fight,keep,
+Fifty-Four Forty or Fight,keep,
+Fifty-four forty or fight!,keep,
+fight or flight,keep,
+fight or flight of the conchords,keep,
+fight-or-flight,keep,
+fireflies (or lightning bugs or glowworms),rewrite,(1 of) fireflies | lightning bugs | glowworms
+fish or cut bait,keep,
+Fish or cut bait,keep,
+flags or banners,rewrite,(1 of) flags | banners
+flinch or cringe,rewrite,(1 of) flinch | cringe
+Flip or Flop,keep,
+flippers they can lean on or ears,rewrite,(1 of) flippers they can lean on | ears
+floppy (or 3 1/2 inch) disk drive,rewrite,(1 of) floppy disk drive | 3 1/2 inch disk drive
+fluting or crimping,rewrite,(1 of) fluting | crimping
+Folsom or San Quentin,rewrite,(1 of) Folsom | San Quentin
+food or meals,rewrite,(1 of) food | meals
+For Better or for Worse,keep,
+For Better or For Worse,keep,
+for richer or poorer,keep,
+forearm or hand or fist,rewrite,(1 of) forearm | hand | fist
+Foreign or strange,rewrite,(1 of) Foreign | strange
+fox or outfox,rewrite,(1 of) fox | outfox
+Fraternities or sororities,rewrite,(1 of) Fraternities | sororities
+French Kiss or Prelude to a Kiss,rewrite,(1 of) French Kiss | Prelude to a Kiss
+freshwater or saltwater,keep,
+Funny or Die,keep,
+futures (or commodities) exchange,rewrite,(1 of) futures exchange | commodities exchange
+game or gamy,rewrite,(1 of) game | gamy
+Ganymede or Titan,rewrite,(1 of) Ganymede | Titan
+"Gary Bauer, Orrin Hatch or Alan Keyes",rewrite,(1 of) Gary Bauer | Orrin Hatch | Alan Keyes
+Gaul or France,rewrite,(1 of) Gaul | France
+Gene Kelly Girl (or Gene Kelly Services or Gene Kelly Resources),rewrite,(1 of) Gene Kelly Girl | Gene Kelly Services | Gene Kelly Resources
+Genesis or Galatians,rewrite,(1 of) Genesis | Galatians
+George II or George III,rewrite,(1 of) George II | George III
+"George V, Edward VIII or George VI",rewrite,(1 of) George V | Edward VIII | George VI
+Get Rich or Die Tryin',keep,
+Gigi or West Side Story,rewrite,(1 of) Gigi | West Side Story
+Give me liberty or give me death,keep,
+give me liberty or give me death,keep,
+"Give me liberty, or give me death!",keep,
+give or take,keep,
+Glen or Glenda,keep,
+glide or fly through the air,rewrite,(1 of) glide | fly through the air
+"Gold, silver &/or copper",rewrite,(2 of) Gold | silver | copper
+gone or went,rewrite,(1 of) gone | went
+gorgeous (or cute or beautiful or pretty),rewrite,(1 of) gorgeous | cute | beautiful | pretty
+governor or their respective states,rewrite,governor of their respective states
+Grace or Mrs. Calvin Coolidge,rewrite,(1 of) Grace Coolidge | Mrs. Calvin Coolidge
+Grant or Eisenhower,rewrite,(1 of) Grant | Eisenhower
+grapes or olives,rewrite,(1 of) grapes | olives
+grate or grind (chop),rewrite,(1 of) grate | grind | chop
+Great Sandy or Great Victoria,rewrite,(1 of) Great Sandy | Great Victoria
+greater than or equal to,keep,
+Greek (or Eastern) Orthodox,rewrite,(1 of) Greek Orthodox | Eastern Orthodox
+green & gold or yellow,rewrite,(1 of) green and gold | green and yellow
+green (or red or blue),rewrite,(1 of) green | red | blue
+Grenada or St. Vincent and the Grenadines,rewrite,(1 of) Grenada | St. Vincent and the Grenadines
+grody or groaty,rewrite,(1 of) grody | groaty
+Guam or Puerto Rico,rewrite,(1 of) Guam | Puerto Rico
+Guatemala (or El Salvador or Honduras),rewrite,(1 of) Guatemala | El Salvador | Honduras
+Guernsey or Jersey,rewrite,(1 of) Guernsey | Jersey
+gulch (or gulley or streambeds),rewrite,(1 of) gulch | gulley | streambeds
+"Ham, Japheth or Shem (Noah's sons)",rewrite,(2 of) Ham | Japheth | Shem
+Hamlet or Henry V,rewrite,(1 of) Hamlet | Henry V
+hammer or tongs,rewrite,(1 of) hammer | tongs
+"Han Solo, Jack Ryan, Indiana Jones or Bob (from ""American Graffiti"")",rewrite,"(1 of) Han Solo | Jack Ryan | Indiana Jones | Bob (from ""American Graffiti"")"
+"Harold II, Edward the Confessor or William the Conqueror",rewrite,(1 of) Harold II | Edward the Confessor | William the Conqueror
+hat trick-or-treat,keep,
+"Hawkeye (or Natty Bumppo, or Pathfinder, or Deerslayer)",rewrite,(1 of) Hawkeye | Natty Bumppo | Pathfinder | Deerslayer
+head (or president) of the I.O.C.,rewrite,(1 of) head of the I.O.C. | president of the I.O.C.
+heads or tails,keep,
+Heads or tails,keep,
+Heads or tails?,keep,
+"heartburn, dyspepsia or gastritis",rewrite,(1 of) heartburn | dyspepsia | gastritis
+heat or temperature,rewrite,(1 of) heat | temperature
+heaven or hell,rewrite,(1 of) heaven | hell
+Hebrew or Jewish calendar,rewrite,(1 of) Hebrew calendar | Jewish calendar
+heliotropism or phototropism,rewrite,(1 of) heliotropism | phototropism
+Hell or High Water,keep,
+Henry (Heinrich) Schliemann,rewrite,(1 of) Henry Schliemann | Heinrich Schliemann
+"herringbone tweed (or weave, or twill)",rewrite,(1 of) herringbone tweed | weave | twill
+high seas or the open seas,rewrite,(1 of) high seas | the open seas
+his knees (or his feet or his legs),rewrite,(1 of) his knees | his feet | his legs
+his or her left hand,rewrite,(1 of) his left hand | her left hand
+his throat or his speaking voice,rewrite,(1 of) his throat | his speaking voice
+history or literature,rewrite,(1 of) history | literature
+Hoover or Boulder Dam,rewrite,(1 of) Hoover Dam | Boulder Dam
+how to prove you're either drunk or not drunk (a sobriety test),rewrite,(1 of) how to prove you're either drunk or not drunk | a sobriety test
+Hungary or Czechoslovakia,rewrite,(1 of) Hungary | Czechoslovakia
+hurry (or quick or fast),rewrite,(1 of) hurry | quick | fast
+hydrochloric acid or HCl,rewrite,(1 of) hydrochloric acid | HCl
+hydrogen (or helium or methane),rewrite,(1 of) hydrogen | helium | methane
+"hyperactivity (or hyperactive, hyperkinetic)",rewrite,(1 of) hyperactivity | hyperactive | hyperkinetic
+Hyperthyroidism or goiter,rewrite,(1 of) Hyperthyroidism | goiter
+Iceland or Ireland,rewrite,(1 of) Iceland | Ireland
+illegal or immoral,keep,
+"immoral, illegal or fattening",keep,
+in (or on) the sands of time,rewrite,(1 of) in the sands of time | on the sands of time
+in orbit or in zero gravity (outer space),rewrite,(1 of) in orbit | in zero gravity | in outer space
+in reverse or antichronological (backwards),rewrite,(1 of) in reverse | antichronological | backwards
+India or Pakistan,rewrite,(1 of) India | Pakistan
+Indianapolis or Oklahoma City,rewrite,(1 of) Indianapolis | Oklahoma City
+intoxicated or inebriated,rewrite,(1 of) intoxicated | inebriated
+invert it or turn it upside down,rewrite,(1 of) invert it | turn it upside down
+Iraq or Syria,rewrite,(1 of) Iraq | Syria
+iron (or nickel or cobalt),rewrite,(1 of) iron | nickel | cobalt
+"Isak Dinesen, or Karen Blixen",rewrite,(1 of) Isak Dinesen | Karen Blixen
+It's now or never,keep,
+it's now or never,keep,
+J.S. (or Johann Sebastian) Bach,rewrite,(1 of) J.S. Bach | Johann Sebastian Bach
+Jack Nicholson or Sir Laurence Olivier,rewrite,(1 of) Jack Nicholson | Sir Laurence Olivier
+jack-o-lanterns (or pumpkins_,rewrite,(1 of) jack-o-lanterns | pumpkins
+James I (also known as James VI of Scotland),rewrite,(1 of) James I | James VI of Scotland
+James Monroe (or Jefferson or Tyler),rewrite,(1 of) James Monroe | Jefferson | Tyler
+James or Jacob,rewrite,(1 of) James | Jacob
+James VI (of Scotland) or (James I of England),rewrite,(1 of) James VI (of Scotland) | James I (of England)
+James VI of Scotland or James I of England,rewrite,(1 of) James VI of Scotland | James I of England
+January or February,rewrite,(1 of) January | February
+jeans (or pants or marks),rewrite,(1 of) jeans | pants | marks
+jeans or genes,rewrite,(1 of) jeans | genes
+Jerusalem or Tel Aviv,rewrite,(1 of) Jerusalem | Tel Aviv
+Jesu or Jesus,rewrite,(1 of) Jesu | Jesus
+"Jimmy Cagney (for George M. Cohan), Ronald Colman, or Richard Dreyfuss",rewrite,(1 of) Jimmy Cagney (for George M. Cohan) | Ronald Colman | Richard Dreyfuss
+Jimmy Carter or George H.W. Bush,rewrite,(1 of) Jimmy Carter | George H.W. Bush
+"Jimmy Carter, Andrew Johnson, Zachary Taylor or William Henry Harrison",rewrite,(1 of) Jimmy Carter | Andrew Johnson | Zachary Taylor | William Henry Harrison
+John Quincy Adams or Andrew Johnson,rewrite,(1 of) John Quincy Adams | Andrew Johnson
+John Tyler or Woodrow Wilson,rewrite,(1 of) John Tyler | Woodrow Wilson
+"John, James or Donnel",rewrite,(1 of) John | James | Donnel
+Josip Broz or Tito,rewrite,(1 of) Josip Broz | Tito
+June 21 or 22,rewrite,(1 of) June 21 | June 22
+"Juneau, Alaska or Honolulu, Hawaii",rewrite,(1 of) Juneau (Alaska) | Honolulu (Hawaii)
+juris doctor or juvenile delinquent,rewrite,(1 of) juris doctor | juvenile delinquent
+jury-rigged or jerry-rigged,rewrite,(1 of) jury-rigged | jerry-rigged
+Karachi or Rawalpindi,rewrite,(1 of) Karachi | Rawalpindi
+keeping them warm (or hatching or incubating them),rewrite,(1 of) keeping them warm | hatching | incubating them
+Kenya or Tanzania,rewrite,(1 of) Kenya | Tanzania
+kickoff or receive,rewrite,(1 of) kickoff | receive
+"Kim Carnes, Sheena Easton or Dolly Parton",rewrite,(1 of) Kim Carnes | Sheena Easton | Dolly Parton
+kine or cows (or cattle),rewrite,(1 of) kine | cows | cattle
+Kinshasa or Brazzaville,rewrite,(1 of) Kinshasa | Brazzaville
+"Klingons, Romulans or Vulcans",rewrite,(1 of) Klingons | Romulans | Vulcans
+Knight Rider or Michael Knight (David Hasselhoff),rewrite,(1 of) Knight Rider | Michael Knight (David Hasselhoff)
+Kurt Browning or Elvis Stojko,rewrite,(1 of) Kurt Browning | Elvis Stojko
+L'Etranger or The Stranger,rewrite,(1 of) L'Etranger | The Stranger
+Lady of (or with) the Lamp,rewrite,(1 of) Lady of the Lamp | Lady with the Lamp
+Laffit Pincay or Willie Shoemaker,rewrite,(1 of) Laffit Pincay | Willie Shoemaker
+land (or soil or earth),rewrite,(1 of) land | soil | earth
+Lassen Peak or Mt. St. Helens,rewrite,(1 of) Lassen Peak | Mt. St. Helens
+Lassie or Miss Piggy,rewrite,(1 of) Lassie | Miss Piggy
+Latvia (or Lithuania or Estonia),rewrite,(1 of) Latvia | Lithuania | Estonia
+laughing gas or nitrous oxide,rewrite,(1 of) laughing gas | nitrous oxide
+Laverne & Shirley and Mork & Mindy or Joanie Loves Chachi,rewrite,(2 of) Laverne & Shirley | Mork & Mindy | Joanie Loves Chachi
+"Lawrence of Arabia, or T.E. Lawrence",rewrite,(1 of) Lawrence of Arabia | T.E. Lawrence
+"lazy eye (or cross-eyes, wandering eyes)",rewrite,(1 of) lazy eye | cross-eyes | wandering eyes
+Le Coq d'Or,keep,
+learning or speaking a language,rewrite,(1 of) learning a language | speaking a language
+Lee Remick or Stefanie Powers,rewrite,(1 of) Lee Remick | Stefanie Powers
+leech or sponge,rewrite,(1 of) leech | sponge
+Leigh or Li,rewrite,(1 of) Leigh | Li
+Leningrad or St. Petersburg,rewrite,(1 of) Leningrad | St. Petersburg
+Lennon or Lenin,rewrite,(1 of) Lennon | Lenin
+Leon or Michael,rewrite,(1 of) Leon | Michael
+"Les Liasions dangereuses, or Dangerous Liasions",rewrite,(1 of) Les Liasions dangereuses | Dangerous Liasions
+"Lesotho, Morocco or Swaziland",rewrite,(1 of) Lesotho | Morocco | Swaziland
+less than or equal to,keep,
+Let's Make a Deal or No Deal,keep,
+Lew Alcindor or Kareem Abdul-Jabbar,rewrite,(1 of) Lew Alcindor | Kareem Abdul-Jabbar
+Liberia or Ethiopia,rewrite,(1 of) Liberia | Ethiopia
+life (or liberty or property),rewrite,(1 of) life | liberty | property
+like or as,rewrite,(1 of) like | as
+lilies or fleurs-de-lis (fleur-de-lis),rewrite,(1 of) lilies | fleurs-de-lis | fleur-de-lis
+Ling-Ling or Hsing-Hsing,rewrite,(1 of) Ling-Ling | Hsing-Hsing
+Live free or die,keep,
+Live Free or Die,keep,
+live free or die,keep,
+Live Free or Die Hard,keep,
+London or Paris,rewrite,(1 of) London | Paris
+Loretta Swit (or Meg Foster or Sharon Gless),rewrite,(1 of) Loretta Swit | Meg Foster | Sharon Gless
+"Lou Grant or Trapper John, M.D.",rewrite,"(1 of) Lou Grant | Trapper John, M.D."
+"Lou Grant, Phyllis and/or Rhoda",rewrite,(2 of) Lou Grant | Phyllis | Rhoda
+Love Me or Leave Me,keep,
+Low Countries (or the Netherlands or Holland),rewrite,(1 of) Low Countries | the Netherlands | Holland
+LSU or Louisiana State,rewrite,(1 of) LSU | Louisiana State
+Lucretia Mott or Elizabeth Cady Stanton,rewrite,(1 of) Lucretia Mott | Elizabeth Cady Stanton
+"Luxembourg, Brussels & The Hague (Amsterdam also acceptable)",rewrite,"(1 of) Luxembourg, Brussels & The Hague | Luxembourg, Brussels & Amsterdam"
+mad (or silly) (Fool's War accepted),rewrite,(1 of) mad | silly | Fool's War
+"Madagascar (or Mauritius, the Seychelles & the Comoros)",rewrite,(1 of) Madagascar | Mauritius | the Seychelles | the Comoros
+make heads or tails of it,keep,
+Make It or Break It,keep,
+male or female,keep,
+Manama (Bahrain) or Manila (Philippines),rewrite,(1 of) Manama (Bahrain) | Manila (Philippines)
+manatee or sea cow,rewrite,(1 of) manatee | sea cow
+marching & concert or symphonic,rewrite,(1 of) marching | concert | symphonic
+marionettes or string puppets,rewrite,(1 of) marionettes | string puppets
+Marlon Brando or Dustin Hoffman,rewrite,(1 of) Marlon Brando | Dustin Hoffman
+marmosets or mandrills,rewrite,(1 of) marmosets | mandrills
+Martha's Vineyard or Nantucket Island,rewrite,(1 of) Martha's Vineyard | Nantucket Island
+Martinique or Guadeloupe,rewrite,(1 of) Martinique | Guadeloupe
+Maryland or Rhode Island,rewrite,(1 of) Maryland | Rhode Island
+masterpieces or paintings (art forgery),rewrite,(1 of) masterpieces | paintings | art forgery
+Matthew or Luke,rewrite,(1 of) Matthew | Luke
+Max Baer or Max Schmeling,rewrite,(1 of) Max Baer | Max Schmeling
+meat or beef,rewrite,(1 of) meat | beef
+Metacomet or King Philip,rewrite,(1 of) Metacomet | King Philip
+mice or rats,rewrite,(1 of) mice | rats
+Millard Fillmore or John Tyler,rewrite,(1 of) Millard Fillmore | John Tyler
+Missouri or Tennessee,rewrite,(1 of) Missouri | Tennessee
+Mo' Better Blues or Malcolm X,rewrite,(1 of) Mo' Better Blues | Malcolm X
+mobile home or trailer,rewrite,(1 of) mobile home | trailer
+Modern Bride or Modern Maturity,rewrite,(1 of) Modern Bride | Modern Maturity
+mollusks or crustaceans,rewrite,(1 of) mollusks | crustaceans
+monogamy or monotony,rewrite,(2 of) monogamy | monotony
+Monopoly (or Scrabble or Game of Life or Candyland),rewrite,(1 of) Monopoly | Scrabble | Game of Life | Candyland
+"Montgomery (or Richmond, Virginia)",rewrite,(1 of) Montgomery | Richmond (Virginia)
+Montreal Expos or Toronto Blue Jays,rewrite,(1 of) Montreal Expos | Toronto Blue Jays
+Morgan Stanley or Goldman Sachs,rewrite,(1 of) Morgan Stanley | Goldman Sachs
+Morgana le Fey (or Morgan le Fay) (Morgaine accepted),rewrite,(1 of) Morgana le Fey | Morgan le Fay | Morgaine
+Moses or Elijah (or Elias),rewrite,(1 of) Moses | Elijah | Elias
+Mt. McKinley or Denali,rewrite,(1 of) Mt. McKinley | Denali
+Muzak (or music or elevator music),rewrite,(1 of) Muzak | music | elevator music
+"My Favorite Martian or Goodnight, Beantown",rewrite,"(1 of) My Favorite Martian | Goodnight, Beantown"
+"My Friend Flicka (or Lassie Come Home or Thunderhead, Son of Flicka)",rewrite,"(1 of) My Friend Flicka | Lassie Come Home | Thunderhead, Son of Flicka"
+my way or the highway,keep,
+Myanmar or Burma,rewrite,(1 of) Myanmar | Burma
+name or name tag,rewrite,(1 of) name | name tag
+Natty Bumppo (or Hawkeye or Deerslayer),rewrite,(1 of) Natty Bumppo | Hawkeye | Deerslayer
+Neil or Marvin,rewrite,(1 of) Neil | Marvin
+Nepal or China,rewrite,(1 of) Nepal | China
+"Neptunium, Plutonium &/or Uranium",rewrite,(2 of) Neptunium | Plutonium | Uranium
+New Delhi (or Ulan Bator or Phnom Penh),rewrite,(1 of) New Delhi | Ulan Bator | Phnom Penh
+Nippon (or Nihon) (Dai-Nippon accepted),rewrite,(1 of) Nippon | Nihon | Dai-Nippon
+"No, Gaston, after you (""After you, Gaston"" accepted)",rewrite,"(1 of) No, Gaston, after you | ""After you, Gaston"""
+noble (or inert) gases,rewrite,(1 of) noble gases | inert gases
+non (or no) rapid eye movement,rewrite,(1 of) non rapid eye movement | no rapid eye movement
+Norman Rockwell or Rockwell Kent,rewrite,(1 of) Norman Rockwell | Rockwell Kent
+novocaine or procaine,rewrite,(1 of) novocaine | procaine
+"nuclear reaction, or nuclear explosion",rewrite,(1 of) nuclear reaction | nuclear explosion
+nullify or nullification,rewrite,(1 of) nullify | nullification
+O or E  (oenophile or enophile),rewrite,(1 of) O (oenophile) | E (enophile)
+"O-negative (A-negative, B-negative, AB-negative also acceptable)",rewrite,(1 of) O-negative | A-negative | B-negative | AB-negative
+object (ob-JECT) or object (OB-ject),rewrite,(1 of) object (ob-JECT) | object (OB-ject)
+obsolete (or old or antiquated),rewrite,(1 of) obsolete | old | antiquated
+Octavian or Augustus,rewrite,(1 of) Octavian | Augustus
+October or November,rewrite,(1 of) October | November
+Odin or Woden,rewrite,(1 of) Odin | Woden
+oil or petroleum,rewrite,(1 of) oil | petroleum
+on the bus or off the bus,keep,
+one can never be too rich or too thin,keep,
+or,keep,
+or (in Ork),keep,
+"or, yet & so",keep,
+or/ore,keep,
+Original Recipe or Extra Crispy?,keep,
+"Oslo, Norway or Sarajevo, Bosnia-Herzegovina",rewrite,(1 of) Oslo (Norway) | Sarajevo (Bosnia-Herzegovina)
+Ottawa (or Oslo or Ouagadougou),rewrite,(1 of) Ottawa | Oslo | Ouagadougou
+Ottawa or St. Lawrence,rewrite,(1 of) Ottawa | St. Lawrence
+outdraw him or her,rewrite,(1 of) outdraw him | outdraw her
+ox or ass,rewrite,(1 of) ox | ass
+P.D. James or Ruth Rendell,rewrite,(1 of) P.D. James | Ruth Rendell
+Palme d'Or,keep,
+palmistry or palm reading,rewrite,(1 of) palmistry | palm reading
+Paper or plastic?,keep,
+"Paris (or Washington, D.C.)",rewrite,"(1 of) Paris | Washington, D.C."
+part of the back or spinal column,rewrite,(1 of) part of the back | spinal column
+pause or paws,rewrite,(1 of) pause | paws
+peanuts or Cracker Jacks,rewrite,(1 of) peanuts | Cracker Jacks
+"pearly, mother of pearl or nacre",rewrite,(1 of) pearly | mother of pearl | nacre
+Percival (or Galahad or Bors),rewrite,(1 of) Percival | Galahad | Bors
+pesticides or insecticides,rewrite,(1 of) pesticides | insecticides
+"phone a friend, ask the audience, or 50/50",rewrite,(3 of) phone a friend | ask the audience | 50/50
+piece or peace,rewrite,(1 of) piece | peace
+pimentos or pimientos,rewrite,(1 of) pimentos | pimientos
+"pink & Pinky, red & Blinky, blue & Inky, gold or orange & Sue",rewrite,(1 of) pink & Pinky | red & Blinky | blue & Inky | gold & Sue | orange & Sue
+plant or grow trees,rewrite,(1 of) plant trees | grow trees
+"platoon, Hannah, lesser, room and/or mission",rewrite,(2 of) platoon | Hannah | lesser | room | mission
+plus or minus,keep,
+pod (or husk or skin),rewrite,(1 of) pod | husk | skin
+Pont Notre Dame or Pont Neuf,rewrite,(1 of) Pont Notre Dame | Pont Neuf
+pool (or billiards or snooker),rewrite,(1 of) pool | billiards | snooker
+porcelain (or pottery or ceramics),rewrite,(1 of) porcelain | pottery | ceramics
+Poseidon or Hades,rewrite,(1 of) Poseidon | Hades
+pot roast or pot au feu,rewrite,(1 of) pot roast | pot au feu
+potatoes or French fries,rewrite,(1 of) potatoes | French fries
+President (or General) Suharto,rewrite,(1 of) President Suharto | General Suharto
+"Prince Andrew (or Prince Edward, Princess Anne, or Fergie, the Duchess of York)",rewrite,"(1 of) Prince Andrew | Prince Edward | Princess Anne | Fergie, the Duchess of York"
+Princess Diana or The Virgin Mary,rewrite,(1 of) Princess Diana | The Virgin Mary
+"Prohibition, or the Volstead Act",rewrite,(1 of) Prohibition | the Volstead Act
+Protestantism (or Anglicanism or Christianity),rewrite,(1 of) Protestantism | Anglicanism | Christianity
+Protista or protists,rewrite,(1 of) Protista | protists
+Puerto Rico or Guam,rewrite,(1 of) Puerto Rico | Guam
+puma or mountain lion,rewrite,(1 of) puma | mountain lion
+pylons or traffic cones,rewrite,(1 of) pylons | traffic cones
+pâté or pate,rewrite,(1 of) pâté | pate
+quaint or curious,rewrite,(1 of) quaint | curious
+quartz or topaz,rewrite,(1 of) quartz | topaz
+Queen Victoria or Edward VII,rewrite,(1 of) Queen Victoria | Edward VII
+R or L (right and left),rewrite,(1 of) R (right) | L (left)
+Rabbit or duck season,keep,
+rabbit or hare,rewrite,(1 of) rabbit | hare
+race or color,keep,
+"Rain, rain, go away/Come again another day (Rain, rain, go away/Come again some other day accepted)",rewrite,"(1 of) Rain, rain, go away / Come again another day | Rain, rain, go away / Come again some other day"
+rainfall (or return or revenue),rewrite,(1 of) rainfall | return | revenue
+"rattlesnake (a rattle accepted, rattler also acceptable)",rewrite,(1 of) rattlesnake | a rattle | rattler
+RBI or run batted in,rewrite,(1 of) RBI | run batted in
+red (or black) grape,rewrite,(1 of) red grape | black grape
+Reggie Bush or Bo Jackson,rewrite,(1 of) Reggie Bush | Bo Jackson
+register (or registration) marks,rewrite,(1 of) register marks | registration marks
+regret or regrets,rewrite,(1 of) regret | regrets
+reindeer or caribou,rewrite,(1 of) reindeer | caribou
+resent (RE-sent) or resent (re-SENT),rewrite,(1 of) resent (RE-sent) | resent (re-SENT)
+"rest & recreation (also would accept rehabilitation, recuperation)",rewrite,(1 of) rest & recreation | rest & rehabilitation | rest & recuperation
+restore (or replace or repair),rewrite,(1 of) restore | replace | repair
+Richard Nixon or George H.W. Bush,rewrite,(1 of) Richard Nixon | George H.W. Bush
+"Richard Nixon, Gerald Ford or Charles Evans Hughes",rewrite,(1 of) Richard Nixon | Gerald Ford | Charles Evans Hughes
+right or wrong,keep,
+Right or wrong,keep,
+Ripley's Believe It Or Not,keep,
+Ripley's Believe It or Not,keep,
+Ripley's Believe it or Not,keep,
+Ripley's Believe It or Not!,keep,
+"Robert E. Lee, Jefferson Davis or Stonewall Jackson",rewrite,(1 of) Robert E. Lee | Jefferson Davis | Stonewall Jackson
+Roberto Benigni (Life Is Beautiful) or Sir Laurence Olivier (Hamlet),rewrite,(1 of) Roberto Benigni (Life Is Beautiful) | Sir Laurence Olivier (Hamlet)
+roe or rho,rewrite,(1 of) roe | rho
+roof of your mouth or back of the throat,rewrite,(1 of) roof of your mouth | back of the throat
+"Roosevelt Grier, Deacon Jones, Lamar Lundy or Merlin Olsen",rewrite,(1 of) Roosevelt Grier | Deacon Jones | Lamar Lundy | Merlin Olsen
+rooster or cock,rewrite,(1 of) rooster | cock
+Rosemary Clooney or Vera-Ellen,rewrite,(1 of) Rosemary Clooney | Vera-Ellen
+"Rudy (or Knute Rockne, All American)",rewrite,"(1 of) Rudy | Knute Rockne, All American"
+Ruth Buzzi or Gary Owens,rewrite,(1 of) Ruth Buzzi | Gary Owens
+Sadomasochism or Sadism & Masochism,rewrite,(1 of) Sadomasochism | Sadism & Masochism
+Sal Mineo or Natalie Wood,rewrite,(1 of) Sal Mineo | Natalie Wood
+Sale of the Century or Scrabble,rewrite,(1 of) Sale of the Century | Scrabble
+Sam Dash and/or Sen. Sam Ervin,rewrite,(1 of) Sam Dash | Sen. Sam Ervin
+Sam Rayburn (or John Nance Garner or Jim Wright),rewrite,(1 of) Sam Rayburn | John Nance Garner | Jim Wright
+Samuel Adams or John Hancock,rewrite,(1 of) Samuel Adams | John Hancock
+Santa Claus or Father Christmas,rewrite,(1 of) Santa Claus | Father Christmas
+"Saudi Arabia (or Iran, Oman, Yemen or Qatar)",rewrite,(1 of) Saudi Arabia | Iran | Oman | Yemen | Qatar
+Saul or Paul,rewrite,(1 of) Saul | Paul
+Schindler's List or Saving Private Ryan,rewrite,(1 of) Schindler's List | Saving Private Ryan
+scripts or screenplays,rewrite,(1 of) scripts | screenplays
+"seeing, speaking or hearing no evil",keep,
+Seinfeld (or I Love Lucy or The Andy Griffith Show),rewrite,(1 of) Seinfeld | I Love Lucy | The Andy Griffith Show
+senior or elder care,rewrite,(1 of) senior care | elder care
+Shadrach (also Meshach or Abednego),rewrite,(1 of) Shadrach | Meshach | Abednego
+sheath or scabbard,rewrite,(1 of) sheath | scabbard
+shootout (or gunfight) at the O.K. Corral,rewrite,(1 of) shootout at the O.K. Corral | gunfight at the O.K. Corral
+show up for someone or to show them up,rewrite,(1 of) show up (for someone) | to show them up
+Siamese or conjoined twins,rewrite,(1 of) Siamese twins | conjoined twins
+Sierra Leone (or Guinea or Côte d'Ivoire),rewrite,(1 of) Sierra Leone | Guinea | Côte d'Ivoire
+signal (or signals) intelligence,rewrite,(1 of) signal intelligence | signals intelligence
+silver or blue (gray),rewrite,(1 of) silver | blue | gray
+"sing it, or dance to it",rewrite,(1 of) sing it | dance to it
+sink or swim,keep,
+skeet (or trap) shooting,rewrite,(1 of) skeet shooting | trap shooting
+skunk (or swamp) cabbage,rewrite,(1 of) skunk cabbage | swamp cabbage
+slander (or libel or defamation),rewrite,(1 of) slander | libel | defamation
+"slug-like, or sluggish",rewrite,(1 of) slug-like | sluggish
+smallpox or mall,rewrite,(1 of) smallpox | mall
+SNL or Saturday Night Live,rewrite,(1 of) SNL | Saturday Night Live
+snow (or rain or any kind of precipitation),rewrite,(1 of) snow | rain | precipitation
+socialization or how to live in society (how to get along with other people),rewrite,(1 of) socialization | how to live in society | how to get along with other people
+solid or liquid,rewrite,(2 of) solid | liquid
+South Africa and/or North Korea & South Korea,rewrite,(2 of) South Africa | North Korea | South Korea
+South or Southeast,rewrite,(1 of) South | Southeast
+"spin a web (spin silk, weave accepted)",rewrite,(1 of) spin a web | spin silk | weave
+springs or weights,rewrite,(1 of) springs | weights
+Square Deal or No Deal,keep,
+St. Jerome's or the Vulgate,rewrite,(1 of) St. Jerome's | the Vulgate
+standing or rearing,rewrite,(1 of) standing | rearing
+"steel wool (or SOS, or Brillo)",rewrite,(1 of) steel wool | SOS | Brillo
+Stephen Vincent Benet or William Rose Benet,rewrite,(1 of) Stephen Vincent Benet | William Rose Benet
+stunt or daredevil flying,rewrite,(1 of) stunt flying | daredevil flying
+suntan lotion or sunscreen,rewrite,(1 of) suntan lotion | sunscreen
+superglue or Krazy Glue,rewrite,(1 of) superglue | Krazy Glue
+symmetric or symmetrical,rewrite,(1 of) symmetric | symmetrical
+T-R-A-V-E-R-S (or Y-A-R-R-O-W or S-T-O-O-K-E-Y),rewrite,(1 of) T-R-A-V-E-R-S | Y-A-R-R-O-W | S-T-O-O-K-E-Y
+T. Jefferson or G. Washington,rewrite,(1 of) T. Jefferson | G. Washington
+tab top or pull top cans,rewrite,(1 of) tab top cans | pull top cans
+Taiwan (also known as Nationalist China),rewrite,(1 of) Taiwan | Nationalist China
+Taiwan or Formosa,rewrite,(1 of) Taiwan | Formosa
+Take It or Leave It,keep,
+Tamburlaine or Tamerlane,rewrite,(1 of) Tamburlaine | Tamerlane
+Tanzania (or Mozambique or Swaziland),rewrite,(1 of) Tanzania | Mozambique | Swaziland
+tap or pat,rewrite,(1 of) tap | pat
+TAs or teaching assistants,rewrite,(1 of) TAs | teaching assistants
+tattoes or painted designs,rewrite,(1 of) tattoes | painted designs
+"Tecumseh (or ""The Prophet"", referring to Tenskwatawa)",rewrite,"(1 of) Tecumseh | ""The Prophet"" | Tenskwatawa"
+Ted (or Edward) Kennedy,rewrite,(1 of) Ted Kennedy | Edward Kennedy
+Teddy Roosevelt or Woodrow Wilson,rewrite,(1 of) Teddy Roosevelt | Woodrow Wilson
+Thailand or Burma/Myanmar,rewrite,(1 of) Thailand | Burma | Myanmar
+the $10 bill or the $50 bill,rewrite,(1 of) the $10 bill | the $50 bill
+"The $10,000 (or $20,000, or $100,000) Pyramid",rewrite,"(1 of) The $10,000 Pyramid | The $20,000 Pyramid | The $100,000 Pyramid"
+the Apologia or Apology,rewrite,(1 of) the Apologia | Apology
+"the Atlanta-Fulton County Stadium (or the Kingdome, Milwaukee County Stadium, or the Oakland-Alameda County Coliseum)",rewrite,"(1 of) the Atlanta-Fulton County Stadium | the Kingdome, Milwaukee County Stadium | the Oakland-Alameda County Coliseum"
+the Australian or secret ballot,rewrite,(1 of) the Australian ballot | secret ballot
+the back door (or back room or back channel),rewrite,(1 of) the back door | back room | back channel
+the Battle of Breed's or Bunker Hill,rewrite,(1 of) the Battle of Breed's | Bunker Hill
+the Battle of Bunker Hill (also the Battle of Breed's Hill),rewrite,(1 of) the Battle of Bunker Hill | the Battle of Breed's Hill
+the Big Bopper (or Buddy Holly or Ritchie Valens),rewrite,(1 of) the Big Bopper | Buddy Holly | Ritchie Valens
+the bile ducts (or the hepatic ducts or cystic ducts),rewrite,(1 of) the bile ducts | the hepatic ducts | cystic ducts
+the bill or the beak,rewrite,(1 of) the bill | the beak
+the Book of Ruth or Esther,rewrite,(1 of) the Book of Ruth | Book of Esther
+the bow or the prow,rewrite,(2 of) bow | prow
+the Bowery Boys (or the Dead End Kids or the East Side Kids),rewrite,(1 of) the Bowery Boys | the Dead End Kids | the East Side Kids
+the buffalo or Indian head nickel,rewrite,(1 of) the buffalo | Indian head nickel
+"the Centaur (or Sagittarius, Pegasus, Unicorn, or Little Horse)",rewrite,(1 of) the Centaur | Sagittarius | Pegasus | Unicorn | Little Horse
+the Ch'ing (or Manchu) Dynasty,rewrite,(1 of) the Ch'ing Dynasty | the Manchu Dynasty
+the chicken or the egg,keep,
+"the Civil War, or the War between the States",rewrite,(1 of) the Civil War | the War between the States
+the coins or the currency of the country,rewrite,(1 of) the coins | the currency of the country
+the common (or red) mangrove,rewrite,(1 of) the common mangrove | the red mangrove
+"the date that Delaware became part of the United States, or the First State",rewrite,(1 of) the date that Delaware became part of the United States | the date that Delaware became the First State
+the Department of the Interior (or Interior Department) (in made part mental),rewrite,(1 of) the Department of the Interior (in made part mental) | Interior Department (in made part mental)
+the drum family or percussion instruments,rewrite,(1 of) the drum family | percussion instruments
+the elderly or old people (aging),rewrite,(1 of) the elderly | old people | aging
+the electoral college or the electors,rewrite,(1 of) the electoral college | the electors
+the end of World War II or V-J Day,rewrite,(1 of) the end of World War II | V-J Day
+the federal district or the District of Columbia,rewrite,(1 of) the federal district | the District of Columbia
+the Fierce (or Fab) Five,rewrite,(1 of) the Fierce Five | the Fab Five
+The Four Tops or The Four Seasons,rewrite,(1 of) The Four Tops | The Four Seasons
+the Franklin Stove (or Oven or Furnace),rewrite,(1 of) the Franklin Stove | the Franklin Oven | the Franklin Furnace
+The Front Page or His Girl Friday,rewrite,(1 of) The Front Page | His Girl Friday
+the Great Lakes or Lake Champlain,rewrite,(1 of) the Great Lakes | Lake Champlain
+"the Grim Reaper, or Death",rewrite,(1 of) the Grim Reaper | Death
+the hardware or the software,rewrite,(2 of) hardware | software
+the head of or the source of the Nile,rewrite,(1 of) the head of the Nile | the source of the Nile
+The Heidi Chronicles or Driving Miss Daisy,rewrite,(1 of) The Heidi Chronicles | Driving Miss Daisy
+the Hulk or Bruce Banner,rewrite,(1 of) the Hulk | Bruce Banner
+"the iris (or lens, cone, rods, or uvea)",rewrite,(1 of) the iris | lens | cone | rods | uvea
+the king or queen,rewrite,(1 of) the king | the queen
+the Knights Hospitaller or the Knights of Malta,rewrite,(1 of) the Knights Hospitaller | the Knights of Malta
+the Lady of the Lake (or Vivien or Nimue),rewrite,(1 of) the Lady of the Lake | Vivien | Nimue
+The Lady or the Tiger?,keep,
+the Laplanders (or Lapps or Sami),rewrite,(1 of) the Laplanders | Lapps | Sami
+the Lapps or Lapplanders,rewrite,(1 of) the Lapps | Lapplanders
+The Last Emperor (or Last Tango in Paris,rewrite,(1 of) The Last Emperor | Last Tango in Paris
+The Louvre or the National Gallery,rewrite,(1 of) The Louvre | the National Gallery
+"the mountain lion (or cougar, or panther, or puma)",rewrite,(1 of) the mountain lion | cougar | panther | puma
+the National Football Conference West or the American Football Conference Central,rewrite,(1 of) the National Football Conference West | the American Football Conference Central
+The Neverhood or Skullmonkeys,rewrite,(1 of) The Neverhood | Skullmonkeys
+the nineteen-aughts or 1900s,rewrite,(1 of) the nineteen-aughts | 1900s
+the Nobel Prize in Physiology or Medicine,rewrite,(1 of) the Nobel Prize in Physiology | Medicine
+the nose or snout,rewrite,(1 of) the nose | snout
+"the OED, or the Oxford Dictionary",rewrite,(1 of) the OED | the Oxford Dictionary
+the oil or petroleum industry,rewrite,(1 of) the oil industry | petroleum industry
+the origin (or source) of the Nile,rewrite,(1 of) the origin of the Nile | the source of the Nile
+the overhead compartment or under the seat,rewrite,(2 of) the overhead compartment | under the seat
+the Palme d'Or,keep,
+the Perisphere or the Trylon,rewrite,(1 of) the Perisphere | the Trylon
+The Phantom Menace or Attack of the Clones,rewrite,(1 of) The Phantom Menace | Attack of the Clones
+the Populist (or People's) Party,rewrite,(1 of) the Populist Party | the People's Party
+The Producers or A Funny Thing Happened on the Way to the Forum,rewrite,(1 of) The Producers | A Funny Thing Happened on the Way to the Forum
+the Quakers or the Society of Friends,rewrite,(1 of) the Quakers | the Society of Friends
+the Republic of China or Taiwan,rewrite,(1 of) the Republic of China | Taiwan
+the Reserves or National Guard,rewrite,(1 of) the Reserves | National Guard
+the Sault Ste. Marie (or Soo) Locks,rewrite,(1 of) the Sault Ste. Marie Locks | the Soo Locks
+"the Scottish Play, or Macbeth",rewrite,(1 of) the Scottish Play | Macbeth
+"the Senate (or the House of Representatives, but only during a speech or a debate)",rewrite,(1 of) the Senate | the House of Representatives (but only during a speech or a debate)
+the serpent or Balaam's ass,rewrite,(1 of) the serpent | Balaam's ass
+The Silence of the Lambs or As Good as It Gets,rewrite,(1 of) The Silence of the Lambs | As Good as It Gets
+The Silence of the Lambs or One Flew Over the Cuckoo's Nest,rewrite,(1 of) The Silence of the Lambs | One Flew Over the Cuckoo's Nest
+The Sound and the Fury (or Light in August or As I Lay Dying),rewrite,(1 of) The Sound and the Fury | Light in August | As I Lay Dying
+the Soviet Union (or the U.S.S.R. or Russia),rewrite,(1 of) the Soviet Union | the U.S.S.R. | Russia
+the starter or ignition,rewrite,(1 of) the starter | ignition
+the Straits of Gibraltar & the Straits of Bosporus (or the Dardanelles) (& the Suez Canal),rewrite,(2 of) the Straits of Gibraltar | the Straits of Bosporus | the Dardanelles | the Suez Canal
+the Surgeon General or (C. Everett) Coop,rewrite,(1 of) the Surgeon General | (C. Everett) Coop
+the Thai or Siamese alphabet,rewrite,(1 of) the Thai | Siamese alphabet
+the Thuggee or the thugs,rewrite,(1 of) the Thuggee | the thugs
+the underground (or the metro or subway system),rewrite,(1 of) the underground | the metro | subway system
+"the wire breaks (or melts) inside, the contact is broken",rewrite,"(1 of) the wire breaks inside, the contact is broken | the wire melts inside, the contact is broken"
+"the WPA, or the Works Progress Administration",rewrite,(1 of) the WPA | the Works Progress Administration
+the zloty or the zaire,rewrite,(1 of) the zloty | the zaire
+"things with beats, or things you can beat",rewrite,(1 of) things with beats | things you can beat
+"thunder, lightning or in rain",rewrite,(1 of) thunder | lightning | in rain
+to be or not to be,keep,
+To Be or Not to Be,keep,
+To be or not to be,keep,
+To Be Or Not To Be,keep,
+"To be, or not be",keep,
+"To be, or not to be",keep,
+to take back the sale or the buy himself,rewrite,(1 of) to take back the sale himself | take back the buy himself
+tomatoes or peppers,rewrite,(1 of) tomatoes | peppers
+Toni Morrison or Pearl Buck,rewrite,(1 of) Toni Morrison | Pearl Buck
+too long; didn't read (too long; don't read accepted),rewrite,(1 of) too long; didn't read | too long; don't read
+Toronto Raptors or Vancouver Grizzlies,rewrite,(1 of) Toronto Raptors | Vancouver Grizzlies
+tramps (or hobos or truck drivers),rewrite,(1 of) tramps | hobos | truck drivers
+triage (or MASH) units,rewrite,(1 of) triage units | MASH units
+Trick or Treat,keep,
+trick or treat,keep,
+Trick or treat,keep,
+Trick or treat!,keep,
+Trick-or-Treat for UNICEF,keep,
+Trigger (or Champion or Tony),rewrite,(1 of) Trigger | Champion | Tony
+Truth or Consequences,keep,
+Truth or Consequences (Hot Springs),keep,
+truth or dare,keep,
+Truth or Dare,keep,
+Truth or Daredevil,keep,
+Tudor or Lancaster,rewrite,(1 of) Tudor | Lancaster
+"turning it off, turning it on (or unplugging it, plugging it back in)",rewrite,(1 of) turning it off and turning it on | unplugging it and plugging it back in
+turning or cranking,rewrite,(1 of) turning | cranking
+"Twelfth Night, or What You Will",keep,
+U.S. Treasurer or U.S. Treasury Secretary,rewrite,(1 of) U.S. Treasurer | U.S. Treasury Secretary
+Uganda (in Hug and accept),rewrite,Uganda
+un (or une) (in Dune),rewrite,(1 of) un | une
+Uncle (or Count) Olaf,rewrite,(1 of) Uncle Olaf | Count Olaf
+"upselling (upsize accepted, upgrade later accepted)",rewrite,(1 of) upselling | upsize | upgrade
+using their upper legs or arms,rewrite,(1 of) using their upper legs | using their arms
+Vatican City or San Marino,rewrite,(1 of) Vatican City | San Marino
+Venezuela or Ecuador,rewrite,(1 of) Venezuela | Ecuador
+ventral or abdominal,rewrite,(1 of) ventral | abdominal
+verboden or verboten,rewrite,(1 of) verboden | verboten
+Victoria or the Victorian Age,rewrite,(1 of) Victoria | the Victorian Age
+Vienna (or Belgrade or Bratislava),rewrite,(1 of) Vienna | Belgrade | Bratislava
+"Virginia (or Massachusetts, Pennsylvania, or Kentucky)",rewrite,(1 of) Virginia | Massachusetts | Pennsylvania | Kentucky
+W or L (win or loss),rewrite,(1 of) W (win) | L (loss)
+waiter or waitress (carhop),rewrite,(1 of) waiter | waitress | carhop
+Wal-Mart or (Walmart),rewrite,(1 of) Wal-Mart | Walmart
+"Walden; or, Life in the Woods",keep,
+Wallis Simpson or Duchess of Windsor,rewrite,(1 of) Wallis Simpson | Duchess of Windsor
+want or fear,rewrite,(1 of) want | fear
+Wanted Dead or Alive,keep,
+Wanted: Dead or Alive,keep,
+Warren G. Harding or John F. Kennedy,rewrite,(1 of) Warren G. Harding | John F. Kennedy
+wasp or wisp,rewrite,(1 of) wasp | wisp
+water or rain,rewrite,(1 of) water | rain
+wear in (or break in) a (baseball) glove (or mitt),rewrite,(1 of) wear in a (baseball) glove | wear in a (baseball) mitt | break in a (baseball) glove | break in a (baseball) mitt
+Werewolf or  The Night Stalker,rewrite,(1 of) Werewolf | The Night Stalker
+West or East Germany,rewrite,(1 of) West Germany | East Germany | Germany
+West Virginia (or Kentucky or North Carolina),rewrite,(1 of) West Virginia | Kentucky | North Carolina
+West/or opposite to the Earth's rotation,keep,
+wheel or helm,rewrite,(1 of) wheel | helm
+where either Professor Moriarity or Sherlock Holmes went into the falls,keep,
+whether poisonous or edible,keep,
+"Which came first, the chicken or the egg?",keep,
+"Who came first, the chicken or the egg?",keep,
+Why does the sun go on shining? (Why does the sun keep on shining? accepted),rewrite,(1 of) Why does the sun go on shining? | Why does the sun keep on shining?
+widemouth (or largemouth) bass,rewrite,(1 of) widemouth bass | largemouth bass
+"wife, house, ass (or man servant, maid servant, ox)",rewrite,(3 of) wife | house | ass | man servant | maid servant | ox
+William (or Wilhelm) (Hohenzollern accepted),rewrite,(1 of) William | Wilhelm | Hohenzollern
+William Henry Harrison or Millard Fillmore,rewrite,(1 of) William Henry Harrison | Millard Fillmore
+William Prescott or Israel Putnam,rewrite,(1 of) William Prescott | Israel Putnam
+William Simon or Henry Kissinger,rewrite,(1 of) William Simon | Henry Kissinger
+"Win, Lose or Draw",keep,
+"Winter, spring, summer or fall",keep,
+"winter, spring, summer, or fall",keep,
+women's suffrage (or women's right to vote or the 19th Amendment),rewrite,(1 of) women's suffrage | women's right to vote | the 19th Amendment
+Woodrow Wilson or John Tyler,rewrite,(1 of) Woodrow Wilson | John Tyler
+Wyoming (or Vermont or North Dakota),rewrite,(1 of) Wyoming | Vermont | North Dakota
+X's or O's,keep,
+X-ray topography (or treatment or therapy),rewrite,(1 of) X-ray topography | X-ray treatment | X-ray therapy
+ye (or thou or thee),rewrite,(1 of) ye | thou | thee
+yea or nay,keep,
+Yeshiva (or Yale or Youngstown State),rewrite,(1 of) Yeshiva | Yale | Youngstown State
+you or someone in your family will die,keep,
+You'll Never Get Rich or the Sergeant Bilko show (The Phil Silvers Show),rewrite,(1 of) You'll Never Get Rich | the Sergeant Bilko show | The Phil Silvers Show
+your address or your next of kin (to be notified in case of a problem),rewrite,(1 of) your address | your next of kin
+your little finger or your baby toe,rewrite,(1 of) your little finger | your baby toe
+Your money or your life?,keep,
+Yukon River or Columbia River,rewrite,(1 of) Yukon River | Columbia River
+Zachary Taylor or William Henry Harrison,rewrite,(1 of) Zachary Taylor | William Henry Harrison
