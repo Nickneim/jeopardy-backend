@@ -659,15 +659,55 @@ class GameSessionTest {
         session.finishRevealingClue();
         session.buzz(player2.getId());
 
+        // Double Jeopardy needs the question form.
         session.answerClue(
                 player2.getId(),
-                "Mars"
+                "What is Mars?"
         );
 
         assertEquals(
                 400,
                 player2.getScore()
         );
+    }
+
+    @Test
+    void answerClue_inJeopardy_acceptsALenientAnswerWithoutTheQuestionForm() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.answerClue(player2.getId(), "washingtn george");
+
+        assertEquals(200, player2.getScore());
+        assertTrue(session.getClueAnswers().getFirst().correct());
+    }
+
+    @Test
+    void answerClue_inDoubleJeopardy_rejectsAnAnswerWithoutTheQuestionForm() {
+        session.startGame(player1.getId());
+        finishJeopardyRound();
+        session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.answerClue(player2.getId(), "Mars");
+
+        assertEquals(-400, player2.getScore());
+        assertFalse(session.getClueAnswers().getFirst().correct());
+    }
+
+    @Test
+    void isFinalJeopardyAnswerCorrect_needsTheQuestionForm() {
+        reachFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+
+        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+        session.answerFinalJeopardy(player2.getId(), "what's the american revolutoin");
+
+        assertFalse(session.isFinalJeopardyAnswerCorrect(player1.getId()));
+        assertTrue(session.isFinalJeopardyAnswerCorrect(player2.getId()));
     }
 
 
@@ -1743,7 +1783,7 @@ class GameSessionTest {
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
-                () -> session.answerFinalJeopardy(player1.getId(), "The American Revolution")
+                () -> session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?")
         );
 
         assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
@@ -1756,7 +1796,7 @@ class GameSessionTest {
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
-                () -> session.answerFinalJeopardy(999L, "The American Revolution")
+                () -> session.answerFinalJeopardy(999L, "What is the American Revolution?")
         );
 
         assertEquals(GameErrorCode.PLAYER_NOT_IN_SESSION, exception.getCode());
@@ -1768,9 +1808,9 @@ class GameSessionTest {
         session.timeoutFinalJeopardyWagering();
 
         session.answerFinalJeopardy(player1.getId(), "The Civil War");
-        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+        session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
 
-        assertEquals("The American Revolution", session.getFinalJeopardyAnswer(player1.getId()));
+        assertEquals("What is the American Revolution?", session.getFinalJeopardyAnswer(player1.getId()));
         assertTrue(session.isFinalJeopardyAnswerCorrect(player1.getId()));
     }
 
@@ -1780,7 +1820,7 @@ class GameSessionTest {
         player1.addScore(1000);
         session.placeFinalJeopardyWager(player1.getId(), 500);
         session.timeoutFinalJeopardyWagering();
-        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+        session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
 
         session.timeoutFinalJeopardyAnswering();
 
@@ -1802,7 +1842,7 @@ class GameSessionTest {
         session.placeFinalJeopardyWager(player3.getId(), 200);
         session.timeoutFinalJeopardyWagering();
 
-        session.answerFinalJeopardy(player1.getId(), "The American Revolution");
+        session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
         session.answerFinalJeopardy(player2.getId(), "The Civil War");
         // Player 3 never answers, which counts as wrong.
         session.timeoutFinalJeopardyAnswering();

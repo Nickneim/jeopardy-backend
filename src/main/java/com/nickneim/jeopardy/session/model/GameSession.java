@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.model;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
@@ -755,8 +756,9 @@ public class GameSession {
         removeDepartedPlayers();
     }
 
+    /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
     private boolean isCorrectAnswer(BoardClue clue, String answer) {
-        return clue.answer().equals(answer);
+        return AnswerMatcher.matches(clue.answer(), answer, round != GameRound.JEOPARDY);
     }
 
     // Players who have left can't buzz, so they don't count.

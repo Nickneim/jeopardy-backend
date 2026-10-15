@@ -21,7 +21,9 @@ class FinalJeopardyResponseTest {
 
     private static final String FINAL_QUESTION = "This war began in 1775.";
     private static final String FINAL_ANSWER = "The American Revolution";
-    private static final String WRONG_ANSWER = "The War of 1812";
+    // Final Jeopardy needs the question form.
+    private static final String FINAL_RESPONSE = "What is the American Revolution?";
+    private static final String WRONG_ANSWER = "What is the War of 1812?";
     private static final String FINAL_COMMENTS = "(Alex: Wars the U.S. fought in.)";
 
     // The JSON checks look for "wager":777 rather than the bare number, which
@@ -155,7 +157,7 @@ class FinalJeopardyResponseTest {
                         FINAL_QUESTION,
                         FINAL_ANSWER,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_ANSWER, true),
+                                new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_RESPONSE, true),
                                 new FinalJeopardyPlayerResponse(2L, true, true, 0, WRONG_ANSWER, false)
                         )
                 ),
@@ -194,7 +196,7 @@ class FinalJeopardyResponseTest {
         session.placeFinalJeopardyWager(player1.getId(), SECRET_WAGER);
         session.placeFinalJeopardyWager(player2.getId(), 0);
         session.timeoutFinalJeopardyWagering();
-        session.answerFinalJeopardy(player1.getId(), FINAL_ANSWER);
+        session.answerFinalJeopardy(player1.getId(), FINAL_RESPONSE);
         session.answerFinalJeopardy(player2.getId(), WRONG_ANSWER);
         session.timeoutFinalJeopardyAnswering();
     }

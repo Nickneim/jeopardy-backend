@@ -1249,7 +1249,7 @@ class GameSessionServiceTest {
         Runnable answerTimeout =
                 captureScheduledRunnable(session, Duration.ofSeconds(30));
 
-        gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "Final answer");
+        gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "What is the final answer?");
         clearInvocations(timer, broadcaster);
 
         answerTimeout.run();
