@@ -48,6 +48,7 @@ answer,decision,new_answer
 """Prime Time"" or ""Neon Deion""",rewrite,"(1 of) ""Prime Time"" | ""Neon Deion"""
 """Promises, Promises"" or ""I'll Never Fall In Love Again""",rewrite,"(1 of) ""Promises, Promises"" | ""I'll Never Fall In Love Again"""
 """Que Sera, Sera"" or (""Secret Love"")",rewrite,"(1 of) ""Que Sera, Sera"" | ""Secret Love"""
+"""Rag Doll"" (or ""Sherry"", ""Big Girls Don't Cry"", ""Walk Like A Man"", or ""December, 1963 (Oh, What a Night)""",rewrite,"(1 of) ""Rag Doll"" | ""Sherry"" | ""Big Girls Don't Cry"" | ""Walk Like A Man"" | ""December, 1963 (Oh, What a Night)"""
 """Rhinestone Cowboy"" or ""Southern Nights""",rewrite,"(1 of) ""Rhinestone Cowboy"" | ""Southern Nights"""
 """Ripley's Believe It or Not!""",keep,
 """Should I Stay Or Should I Go""",keep,
@@ -66,6 +67,7 @@ answer,decision,new_answer
 """We Three Kings (Of Orient Are)"" or ""We Three Kings From Orient Are""",rewrite,"(1 of) ""We Three Kings (Of Orient Are)"" | ""We Three Kings From Orient Are"""
 """Where In The World (or Time) is Carmen Sandiego?""",rewrite,"(1 of) ""Where In The World is Carmen Sandiego?"" | ""Where In The Time is Carmen Sandiego?"""
 """Who Am"" or ""I am that I am...""",rewrite,"(1 of) ""Who Am"" | ""That I am"""
+"""With A Little Help From My Friends"" (or I get by ""With A Little Help From My Friends""",rewrite,"(1 of) ""With A Little Help From My Friends"" | I get by ""With A Little Help From My Friends"""
 """With Or Without You""",keep,
 """With Or Without You"" (or ""I Still Haven't Found What I'm Looking For"")",rewrite,"(1 of) ""With Or Without You"" | ""I Still Haven't Found What I'm Looking For"""
 """You're out of the game!"" or ""You're ejected!""",rewrite,"(1 of) ""You're out of the game!"" | ""You're ejected!"""
@@ -1078,6 +1080,7 @@ cash (or collect) on delivery,rewrite,(1 of) cash on delivery | collect on deliv
 Caspar Weinberger (Secretary of Defense) or Samuel Pierce of HUD,rewrite,(1 of) Caspar Weinberger (Secretary of Defense) | Samuel Pierce of HUD
 "Catherine the Great (or Catherine II or ""Great Catherine"")",rewrite,"(1 of) Catherine the Great | Catherine II | ""Great Catherine"""
 "cauliflower, broccoli or artichoke",rewrite,(1 of) cauliflower | broccoli | artichoke
+cesium (Cs) (or chlorine (Cl)),rewrite,(1 of) cesium (Cs) | chlorine (Cl)
 change the suit or the number,rewrite,(1 of) change the suit | change the number
 Charles Dawes or Theodore Roosevelt,rewrite,(1 of) Charles Dawes | Theodore Roosevelt
 "chastity, obedience or poverty",rewrite,(1 of) chastity | obedience | poverty
@@ -1287,6 +1290,7 @@ It's now or never,keep,
 it's now or never,keep,
 J.S. (or Johann Sebastian) Bach,rewrite,(1 of) J.S. Bach | Johann Sebastian Bach
 Jack Nicholson or Sir Laurence Olivier,rewrite,(1 of) Jack Nicholson | Sir Laurence Olivier
+jack-o-lanterns (or pumpkins_,rewrite,(1 of) jack-o-lanterns | pumpkins
 James I (also known as James VI of Scotland),rewrite,(1 of) James I | James VI of Scotland
 James Monroe (or Jefferson or Tyler),rewrite,(1 of) James Monroe | Jefferson | Tyler
 James or Jacob,rewrite,(1 of) James | Jacob
@@ -1610,6 +1614,7 @@ the Lady of the Lake (or Vivien or Nimue),rewrite,(1 of) the Lady of the Lake | 
 The Lady or the Tiger?,keep,
 the Laplanders (or Lapps or Sami),rewrite,(1 of) the Laplanders | Lapps | Sami
 the Lapps or Lapplanders,rewrite,(1 of) the Lapps | Lapplanders
+The Last Emperor (or Last Tango in Paris,rewrite,(1 of) The Last Emperor | Last Tango in Paris
 The Louvre or the National Gallery,rewrite,(1 of) The Louvre | the National Gallery
 "the mountain lion (or cougar, or panther, or puma)",rewrite,(1 of) the mountain lion | cougar | panther | puma
 the National Football Conference West or the American Football Conference Central,rewrite,(1 of) the National Football Conference West | the American Football Conference Central

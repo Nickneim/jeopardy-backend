@@ -57,6 +57,9 @@ PARENS = re.compile(r"\([^)]*\)?|\[[^\]]*\]?")
 AND_OR = re.compile(r"(and|&)\s*/\s*or", re.I)
 # Parentheses that hold an alternative: "(or X)", "(X accepted)", "(also X)".
 ALTERNATIVE_GROUP = re.compile(r"\(\s*(?:or|also)\s[^()]*\)|\([^()]*\baccept[^()]*\)", re.I)
+# The start of one, also when J-Archive left it unclosed ("The Last Emperor (or
+# Last Tango in Paris") or put parentheses inside it ("cesium (Cs) (or chlorine (Cl))").
+ALTERNATIVE_START = re.compile(r"\(\s*(?:or|also)\s|\([^()]*\baccept(?:ed|able)\b", re.I)
 IDIOMS = re.compile(
     r"\b(either|whether|more or less|or not|or else|or bust|or die|or never|or treat|or swim|"
     r"or alive|or nothing|or shine|or later|or other|or so|give or take|for richer or poorer|"
@@ -302,7 +305,7 @@ def needs_review(answer):
         return format_n_of(n, list_items(answer)) != answer
     if auto_rewrite(answer):
         return False
-    return bool(BARE_OR.search(PARENS.sub("", answer)) or ALTERNATIVE_GROUP.search(answer))
+    return bool(BARE_OR.search(PARENS.sub("", answer)) or ALTERNATIVE_START.search(answer))
 
 
 def alternatives_in_parentheses(answer):
