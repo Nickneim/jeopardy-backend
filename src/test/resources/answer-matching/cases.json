@@ -1,0 +1,539 @@
+{
+  "description": "Real answers from the J-Archive database (after the scripts/data cleanup), with responses the answer matcher must accept or reject. 'round' defaults to JEOPARDY, where the question form is optional; DOUBLE_JEOPARDY and FINAL_JEOPARDY require it. 'numberExpected' (default false) is the flag that tells the front end only an exact number will do. Notes starting with 'Decision:' record a rule the user chose.",
+  "cases": [
+    {
+      "answer": "(Orville) Wright",
+      "note": "Optional part: both with and without it, never the optional part alone.",
+      "accept": ["Wright", "Orville Wright", "wright", "Wright Orville", "Orvile Wright", "Wrihgt"],
+      "reject": ["Orville", "Wilbur Wright", "the Wright brothers"]
+    },
+    {
+      "answer": "(the first Battle of) Bull Run",
+      "note": "Decision: words of an optional part can be dropped one by one, so 'Battle of Bull Run' is accepted.",
+      "accept": ["Bull Run", "the first Battle of Bull Run", "first battle of bull run", "Battle of Bull Run"],
+      "reject": ["the first Battle", "Bull"]
+    },
+    {
+      "answer": "(Little) Red Riding Hood",
+      "accept": ["Little Red Riding Hood", "Red Riding Hood", "red ridding hood"],
+      "reject": ["Riding Hood", "Little Red"]
+    },
+    {
+      "answer": "(P.J.) O'Rourke",
+      "note": "Periods and apostrophes are dropped; a space where the apostrophe was is a spacing typo.",
+      "accept": ["O'Rourke", "PJ O'Rourke", "P.J. ORourke", "O Rourke"],
+      "reject": ["P.J."]
+    },
+    {
+      "answer": "Billy the Kid (William Bonney)",
+      "note": "Decision: what's in parentheses is only an optional part, never accepted alone.",
+      "accept": ["Billy the Kid", "Billy the Kid William Bonney"],
+      "reject": ["William Bonney"]
+    },
+    {
+      "answer": "the HUAC (House Un-American Activities Committee)",
+      "note": "Decision: same rule as Billy the Kid, so the full name alone is wrong.",
+      "accept": ["HUAC", "the HUAC", "H.U.A.C."],
+      "reject": ["House Un-American Activities Committee"]
+    },
+    {
+      "answer": "(1 of) Henry Schliemann | Heinrich Schliemann",
+      "note": "Decision: rewritten from 'Henry (Heinrich) Schliemann', whose parentheses held another first name.",
+      "accept": ["Henry Schliemann", "Heinrich Schliemann", "Heinrich Schlieman"],
+      "reject": ["Schliemann", "Henry Heinrich"]
+    },
+    {
+      "answer": "the (common) loon",
+      "accept": ["loon", "common loon", "the common loon", "a loon"],
+      "reject": ["common", "loons and grebes"]
+    },
+    {
+      "answer": "the Temple of Solomon (the Temple of Jerusalem)",
+      "accept": ["Temple of Solomon", "the temple of solomon"],
+      "reject": ["Temple of Jerusalem"]
+    },
+    {
+      "answer": "(1 of) (duck-bill(ed)) platypus | an echidna",
+      "note": "Nested optional parts.",
+      "accept": ["platypus", "duck-billed platypus", "duckbill platypus", "duck bill platypus", "echidna", "an echidna", "platypus or echidna"],
+      "reject": ["duck", "billed platypus echidna kangaroo"]
+    },
+    {
+      "answer": "(1 of) cesium (Cs) | chlorine (Cl)",
+      "accept": ["cesium", "chlorine", "Cs cesium", "caesium"],
+      "reject": ["Cs", "sodium"]
+    },
+    {
+      "answer": "(1 of) Myanmar | Burma",
+      "note": "Decision: naming more options than needed is fine while every one is on the list.",
+      "accept": ["Myanmar", "Burma", "Myanmar or Burma", "Burma Myanmar", "Myanmer"],
+      "reject": ["Thailand", "Burma Thailand"]
+    },
+    {
+      "answer": "(1 of) Santa Claus | Father Christmas",
+      "accept": ["Santa Claus", "Father Christmas", "santa clause"],
+      "reject": ["Santa", "Father", "Saint Nicholas"]
+    },
+    {
+      "answer": "(1 of) Shorty | Stumpy",
+      "accept": ["Shorty", "Stumpy", "Shorty and Stumpy"],
+      "reject": ["Grumpy", "Shorty Grumpy"]
+    },
+    {
+      "answer": "(1 of) the Fierce Five | the Fab Five",
+      "accept": ["the Fab Five", "Fierce Five", "fab five"],
+      "reject": ["the Five", "Fab"]
+    },
+    {
+      "answer": "(1 of) barometric pressure | atmospheric pressure",
+      "accept": ["barometric pressure", "atmospheric pressure", "atmospheric presure"],
+      "reject": ["barometric", "air pressure"]
+    },
+    {
+      "answer": "(1 of) the Australian ballot | secret ballot",
+      "accept": ["the Australian ballot", "a secret ballot"],
+      "reject": ["Australian", "ballot"]
+    },
+    {
+      "answer": "(1 of) head of the I.O.C. | president of the I.O.C.",
+      "accept": ["head of the IOC", "president of the I.O.C.", "President of the IOC"],
+      "reject": ["head of the UN", "president"]
+    },
+    {
+      "answer": "(1 of) a meteorite | asteroid | meteor",
+      "note": "Typos must not turn one option into another: 'meteor' is its own option, 'meteorites' is a typo of 'meteorite'.",
+      "accept": ["meteorite", "an asteroid", "meteor", "meteorites"],
+      "reject": ["comet"]
+    },
+    {
+      "answer": "(1 of) wear in a (baseball) glove | wear in a (baseball) mitt | break in a (baseball) glove | break in a (baseball) mitt",
+      "accept": ["break in a glove", "wear in a baseball mitt", "break in a baseball glove"],
+      "reject": ["break a glove", "wear a mitt"]
+    },
+    {
+      "answer": "(1 of) the Ch'ing Dynasty | the Manchu Dynasty",
+      "note": "Only what the data says: 'Qing' is 2 edits from 'Ching', more than a 5-letter word allows.",
+      "accept": ["Ching Dynasty", "the Ch'ing dynasty", "Manchu Dynasty"],
+      "reject": ["Qing Dynasty", "Ming Dynasty"]
+    },
+    {
+      "answer": "(1 of) object (ob-JECT) | object (OB-ject)",
+      "accept": ["object", "ob-ject"],
+      "reject": ["subject"]
+    },
+    {
+      "answer": "(2 of) gold | frankincense | myrrh",
+      "note": "Decision: at least N options, every item named must be on the list, any order, any separator or none.",
+      "accept": ["gold and myrrh", "gold, frankincense", "myrrh & gold", "gold frankincense myrrh", "gold or frankincence", "frankincense, myrrh and gold"],
+      "reject": ["gold", "gold and silver", "gold and gold", "gold, frankincense and silver"]
+    },
+    {
+      "answer": "(3 of) Taft | Hoover | Carter | Ford",
+      "accept": ["Taft, Hoover and Ford", "Ford Carter Taft", "Taft Hoover Carter Ford"],
+      "reject": ["Taft and Hoover", "Taft Hoover Nixon", "Taft Hoover Ford Nixon"]
+    },
+    {
+      "answer": "(2 of) Garfield | Arthur | Rutherford B. Hayes",
+      "accept": ["Garfield and Arthur", "Arthur, Rutherford B. Hayes", "Garfield Rutherford B Hayes"],
+      "reject": ["Garfield and Hayes", "Arthur"]
+    },
+    {
+      "answer": "(2 of) Ecuador | Colombia | Brazil | Gabon | Congo | Zaire | Kenya | Somalia | Uganda",
+      "accept": ["Kenya and Uganda", "brazil ecuador", "Colombia, Gabon, Congo"],
+      "reject": ["Kenya and Peru", "Kenya"]
+    },
+    {
+      "answer": "(2 of) the Montreal Expos | the Seattle Mariners | the California Angels | the Texas Rangers | the Toronto Blue Jays | the Houston Astros",
+      "note": "Decision: an option's words are all required, so 'the Expos' (without Montreal) is wrong.",
+      "accept": ["the Montreal Expos and the Toronto Blue Jays", "Seattle Mariners, Houston Astros"],
+      "reject": ["the Expos and the Mariners", "Montreal Expos"]
+    },
+    {
+      "answer": "(2 of) German shepherds | golden retrievers | Labrador retrievers",
+      "note": "Singular for plural is one edit, within the typo allowance.",
+      "accept": ["German shepherd and golden retriever", "Labrador retrievers and golden retrievers"],
+      "reject": ["golden retrievers", "German shepherds and poodles"]
+    },
+    {
+      "answer": "(2 of) Aries | Taurus | Capricorn",
+      "accept": ["Aries Taurus", "Aries, Taurus and Capricorn", "Capricorn or Aries"],
+      "reject": ["Aries and Leo", "Aries"]
+    },
+    {
+      "answer": "(2 of) Laverne & Shirley | Mork & Mindy | Joanie Loves Chachi",
+      "note": "'and' is both a separator and part of an option here.",
+      "accept": ["Laverne & Shirley and Mork & Mindy", "Mork and Mindy, Joanie Loves Chachi", "Laverne and Shirley Mork and Mindy"],
+      "reject": ["Laverne and Mindy", "Laverne & Shirley"]
+    },
+    {
+      "answer": "(2 of) solid | liquid",
+      "note": "Decision: N equal to the number of options means all of them.",
+      "accept": ["solid and liquid", "liquid solid", "a solid or a liquid"],
+      "reject": ["solid", "solid or gas"]
+    },
+    {
+      "answer": "(2 of) monogamy | monotony",
+      "accept": ["monogamy and monotony"],
+      "reject": ["monogamy", "monotony"]
+    },
+    {
+      "answer": "(2 of) a 2 | a 12",
+      "numberExpected": true,
+      "accept": ["2 and 12", "a 2 and a 12", "12, 2"],
+      "reject": ["2", "2 and 11", "two and twelve"]
+    },
+    {
+      "answer": "(1 of) Juneau, Alaska | Augusta, Maine",
+      "note": "Decision: the state is part of the option, so the city alone is wrong.",
+      "accept": ["Juneau, Alaska", "Augusta Maine"],
+      "reject": ["Juneau", "Juneau, Maine"]
+    },
+    {
+      "answer": "(1 of) Dover (DE) | Boise (ID) | Salem (OR)",
+      "accept": ["Boise", "Dover DE", "Salem"],
+      "reject": ["Dallas", "Salem Massachusetts"]
+    },
+    {
+      "answer": "1970",
+      "numberExpected": true,
+      "note": "Decision: numbers must match exactly; no number words.",
+      "accept": ["1970", "What is 1970?"],
+      "reject": ["1971", "1907", "nineteen seventy"]
+    },
+    {
+      "answer": "1,001",
+      "numberExpected": true,
+      "accept": ["1001", "1,001"],
+      "reject": ["1000", "1,010"]
+    },
+    {
+      "answer": "5,280",
+      "numberExpected": true,
+      "accept": ["5280", "5,280"],
+      "reject": ["5208", "528"]
+    },
+    {
+      "answer": "$25,000",
+      "numberExpected": true,
+      "note": "The dollar sign is optional.",
+      "accept": ["$25,000", "25000", "25,000"],
+      "reject": ["$250,000", "$25"]
+    },
+    {
+      "answer": "4.0",
+      "numberExpected": true,
+      "accept": ["4.0"],
+      "reject": ["4.1", "40"]
+    },
+    {
+      "answer": "-4",
+      "numberExpected": true,
+      "accept": ["-4"],
+      "reject": ["4", "-5"]
+    },
+    {
+      "answer": "37.9%",
+      "numberExpected": true,
+      "note": "Decision: the percent sign is optional, and the word 'percent' counts as the sign.",
+      "accept": ["37.9%", "37.9", "37.9 percent"],
+      "reject": ["38%", "3.79%"]
+    },
+    {
+      "answer": "50th",
+      "numberExpected": true,
+      "accept": ["50th"],
+      "reject": ["50", "51st", "fiftieth"]
+    },
+    {
+      "answer": "⅛",
+      "numberExpected": true,
+      "accept": ["1/8", "⅛"],
+      "reject": ["1/4", "8"]
+    },
+    {
+      "answer": "(1 of) 8/12 | 2/3",
+      "numberExpected": true,
+      "accept": ["2/3", "8/12"],
+      "reject": ["2", "8", "3/4"]
+    },
+    {
+      "answer": "2 (Judah & Benjamin)",
+      "numberExpected": true,
+      "note": "The required part is a number, so the front end is told so.",
+      "accept": ["2", "2 Judah and Benjamin"],
+      "reject": ["3", "Judah and Benjamin"]
+    },
+    {
+      "answer": "34 (20 + 10 + 4)",
+      "numberExpected": true,
+      "accept": ["34"],
+      "reject": ["33", "20 + 10 + 4"]
+    },
+    {
+      "answer": "the 1980s",
+      "note": "Decision: decades accept the short forms but stay exact, and don't set numberExpected.",
+      "accept": ["the 1980s", "1980s", "1980's", "the '80s", "80s", "'80s"],
+      "reject": ["1990s", "the 1890s", "1980", "the eighties", "the 1908s"]
+    },
+    {
+      "answer": "the 1950s",
+      "accept": ["1950s", "50s", "the '50s"],
+      "reject": ["1960s", "1950", "the fifties"]
+    },
+    {
+      "answer": "the 60s",
+      "note": "Decision: the stored answer has no century; '1960s' is accepted.",
+      "accept": ["60s", "'60s", "the 60's", "1960s"],
+      "reject": ["70s", "1860s"]
+    },
+    {
+      "answer": "52nd Street",
+      "accept": ["52nd Street", "52nd street"],
+      "reject": ["53rd Street", "52 Street"]
+    },
+    {
+      "answer": "a stitch in time saves 9",
+      "accept": ["a stitch in time saves 9", "stitch in time saves 9"],
+      "reject": ["a stitch in time saves 8", "a stitch in time saves nine"]
+    },
+    {
+      "answer": "200 million",
+      "accept": ["200 million"],
+      "reject": ["300 million", "200 billion", "200"]
+    },
+    {
+      "answer": "April 14, 1865",
+      "accept": ["April 14, 1865", "April 14 1865"],
+      "reject": ["April 15, 1865", "April 1865"]
+    },
+    {
+      "answer": "1600 Pennsylvania Ave.",
+      "note": "Decision: abbreviations aren't expanded, so 'Avenue' is wrong.",
+      "accept": ["1600 Pennsylvania Ave", "1600 pennsylvania ave."],
+      "reject": ["1600 Pennsylvania Avenue", "1601 Pennsylvania Ave"]
+    },
+    {
+      "answer": "Harry Potter and the Deathly Hallows Part 2",
+      "accept": ["Harry Potter and the Deathly Hallows Part 2", "harry potter and the deathly hallows part 2"],
+      "reject": ["Harry Potter and the Deathly Hallows Part 1", "Harry Potter and the Deathly Hallows"]
+    },
+    {
+      "answer": "Sábado",
+      "accept": ["Sabado", "sábado"],
+      "reject": ["Domingo"]
+    },
+    {
+      "answer": "Zoë Baird",
+      "accept": ["Zoe Baird", "Baird Zoe"],
+      "reject": ["Zoe", "Baird"]
+    },
+    {
+      "answer": "Napoleón Duarte",
+      "accept": ["Napoleon Duarte"],
+      "reject": ["Napoleon"]
+    },
+    {
+      "answer": "James Madison & James Monroe",
+      "note": "Not a list: every word is required, in any order.",
+      "accept": ["James Madison and James Monroe", "James Monroe & James Madison"],
+      "reject": ["James Madison", "James Madison and James Polk"]
+    },
+    {
+      "answer": "to have & to hold",
+      "accept": ["to have and to hold", "To have & to hold"],
+      "reject": ["to have"]
+    },
+    {
+      "answer": "Pros & Cons",
+      "accept": ["pros and cons", "Pros & Cons"],
+      "reject": ["pros"]
+    },
+    {
+      "answer": "the Beatles",
+      "note": "Articles are ignored on both sides.",
+      "accept": ["Beatles", "The Beatles", "beetles", "the beatle"],
+      "reject": ["the Monkees", "the Beach Boys"]
+    },
+    {
+      "answer": "\"The Iliad\"",
+      "accept": ["The Iliad", "Iliad", "the illiad"],
+      "reject": ["The Odyssey"]
+    },
+    {
+      "answer": "\"I Saw Mommy Kissing Santa Claus\"",
+      "accept": ["I saw mommy kissing santa clause", "I Saw Mommy Kissing Santa Claus"],
+      "reject": ["I saw mommy kissing santa", "I saw daddy kissing santa claus"]
+    },
+    {
+      "answer": "Baskin-Robbins",
+      "accept": ["Baskin Robbins", "baskinrobbins", "Baskin-Robins"],
+      "reject": ["Baskin", "Dairy Queen"]
+    },
+    {
+      "answer": "A-line",
+      "note": "Short hyphenated words are close to their neighbours: 'line' and 'B-line' are 1 edit from 'aline', so they'd be accepted as typos.",
+      "accept": ["A line", "aline", "A-line"],
+      "reject": ["empire waist"]
+    },
+    {
+      "answer": "Half-staff",
+      "accept": ["half staff", "halfstaff", "half-staff"],
+      "reject": ["half mast", "staff"]
+    },
+    {
+      "answer": "Pan-Africanism",
+      "accept": ["pan africanism", "panafricanism", "Pan-Africanizm"],
+      "reject": ["Africanism", "Pan-Slavism"]
+    },
+    {
+      "answer": "fact-checkers",
+      "accept": ["fact checkers", "fact checker", "factcheckers"],
+      "reject": ["checkers"]
+    },
+    {
+      "answer": "P.W. Botha",
+      "accept": ["PW Botha", "P. W. Botha", "P.W. Botha"],
+      "reject": ["Botha", "F.W. Botha"]
+    },
+    {
+      "answer": "A.M.",
+      "note": "Periods inside an acronym are dropped before splitting into words, so 'A.M.' isn't read as the article 'a'.",
+      "accept": ["AM", "a.m.", "A.M."],
+      "reject": ["PM"]
+    },
+    {
+      "answer": "U.S. senator",
+      "accept": ["US senator", "a U.S. Senator", "u.s. senator"],
+      "reject": ["senator", "U.S. representative"]
+    },
+    {
+      "answer": "It's the economy, stupid",
+      "accept": ["its the economy stupid", "It's the economy, stupid"],
+      "reject": ["the economy", "it's the economy"]
+    },
+    {
+      "answer": "love means never having to say you're sorry",
+      "accept": ["love means never having to say youre sorry", "Love means never having to say you're sorry"],
+      "reject": ["love means always having to say you're sorry", "never having to say you're sorry"]
+    },
+    {
+      "answer": "self-contained underwater breathing apparatus",
+      "accept": ["self contained underwater breathing aparatus", "self-contained underwater breathing apparatus"],
+      "reject": ["underwater breathing apparatus", "scuba"]
+    },
+    {
+      "answer": "bed",
+      "note": "Words of 3 letters or fewer allow no typos.",
+      "accept": ["bed", "a bed", "Bed"],
+      "reject": ["bad", "bet", "beds"]
+    },
+    {
+      "answer": "AIG",
+      "accept": ["AIG", "A.I.G."],
+      "reject": ["AIF", "AIGG"]
+    },
+    {
+      "answer": "kir",
+      "accept": ["kir", "a kir"],
+      "reject": ["kit", "kiri"]
+    },
+    {
+      "answer": "MMI",
+      "accept": ["MMI"],
+      "reject": ["MMII", "MCMI"]
+    },
+    {
+      "answer": "bear/bare",
+      "note": "A slash means either side (but not in a fraction like 8/12).",
+      "accept": ["bear", "bare", "bear/bare"],
+      "reject": ["cub"]
+    },
+    {
+      "answer": "Graduation/Commencement",
+      "accept": ["graduation", "commencement", "Graduation / Commencement"],
+      "reject": ["matriculation"]
+    },
+    {
+      "answer": "worse/swore",
+      "accept": ["worse", "swore"],
+      "reject": ["better"]
+    },
+    {
+      "answer": "give or take",
+      "note": "Decision: this 'or' is part of the answer, not a choice.",
+      "accept": ["give or take"],
+      "reject": ["give", "take", "give and take"]
+    },
+    {
+      "answer": "trick or treat",
+      "accept": ["trick or treat", "trick-or-treat", "Trick or Treat"],
+      "reject": ["trick", "treat"]
+    },
+    {
+      "answer": "heads or tails",
+      "accept": ["heads or tails"],
+      "reject": ["heads", "tails"]
+    },
+    {
+      "answer": "Birdman (The Unexpected Virtue of Ignorance)",
+      "accept": ["Birdman", "Birdman The Unexpected Virtue of Ignorance"],
+      "reject": ["The Unexpected Virtue of Ignorance"]
+    },
+    {
+      "answer": "Who's The Boss?",
+      "note": "An answer that is already a question can be said bare in any round.",
+      "accept": ["Who's the Boss", "whos the boss", "What is Who's the Boss?"],
+      "reject": ["The Boss", "Who's the boss now"]
+    },
+    {
+      "answer": "Who's The Boss?",
+      "round": "DOUBLE_JEOPARDY",
+      "accept": ["Who's the Boss?", "What is Who's the Boss?", "whos the boss"],
+      "reject": ["the Boss", "What is the Boss?"]
+    },
+    {
+      "answer": "Where's the beef?",
+      "round": "DOUBLE_JEOPARDY",
+      "accept": ["Where's the beef", "What is \"Where's the beef?\""],
+      "reject": ["the beef", "What is the beef?"]
+    },
+    {
+      "answer": "Who's Afraid of Virginia Woolf?",
+      "round": "FINAL_JEOPARDY",
+      "accept": ["Who's Afraid of Virginia Woolf?", "What is Who's Afraid of Virginia Wolf"],
+      "reject": ["Virginia Woolf", "Who is Virginia Woolf?"]
+    },
+    {
+      "answer": "(Abraham) Lincoln",
+      "note": "Decision: a bare answer is fine in the Jeopardy round.",
+      "accept": ["Lincoln", "Abraham Lincoln", "Lincoln Abraham", "lincln", "Who is Lincoln?", "What's Lincoln"],
+      "reject": ["Abraham", "Abe Lincoln", "Who is Abraham?"]
+    },
+    {
+      "answer": "(Abraham) Lincoln",
+      "round": "DOUBLE_JEOPARDY",
+      "note": "Decision: Double and Final Jeopardy need the question form; any question word and is/are/was/were or 's works, plus known prefix typos.",
+      "accept": ["Who is Lincoln?", "who's Lincoln", "whos lincoln", "What is Abraham Lincoln", "Who was Lincoln", "Where is Lincoln", "Who are Lincoln", "What's lincln", "Waht is Lincoln", "Wat is Lincoln", "Hwo is Lincoln", "whats Lincoln"],
+      "reject": ["Lincoln", "Abraham Lincoln?", "Who Lincoln", "Is Lincoln", "Who is Abraham", "Lincoln is who"]
+    },
+    {
+      "answer": "Montreal",
+      "round": "FINAL_JEOPARDY",
+      "note": "Decision: extra words are wrong everywhere, even a correct detail like the province.",
+      "accept": ["What is Montreal?", "Where is Montreal", "where's montreal"],
+      "reject": ["Montreal", "Montreal?", "What is Toronto?", "What is Montreal, Quebec"]
+    },
+    {
+      "answer": "the 1980s",
+      "round": "FINAL_JEOPARDY",
+      "accept": ["What are the 1980s?", "When is the '80s", "What were the 80s"],
+      "reject": ["the 1980s", "What are the 1970s?"]
+    },
+    {
+      "answer": "(2 of) gold | frankincense | myrrh",
+      "round": "DOUBLE_JEOPARDY",
+      "accept": ["What are gold and myrrh?", "What is gold, frankincense"],
+      "reject": ["gold and myrrh"]
+    }
+  ]
+}
