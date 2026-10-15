@@ -307,14 +307,15 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `numberExpected` (only an exact number is accepted, §6.7) | `FINAL_JEOPARDY_ANSWERING` |
 | `answer` (the correct response, written as in §6.7) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
-| `players[]` → `wager`, `answer`, `correct` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's) |
+| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer. |
 
 ### 5.4 `clueAnswers`
 
-What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct }`:
+What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct, phrasedAsQuestion }`:
 
 - `answer` is the text the player submitted, or `null` if they ran out of time (which counts as wrong).
 - `correct` is the result of the answer check (§6.2).
+- `phrasedAsQuestion` says whether the answer was phrased as a question (§6.7), in every round, also where that isn't required. It's `null` when the player ran out of time.
 
 An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
 
@@ -501,7 +502,7 @@ To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` 
 - **Optional parts** can be said or left out, word by word. Everything outside them is needed, so the optional part alone isn't enough: `(Abraham) Lincoln` accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
 - **Nothing extra:** words that aren't in the answer make a response wrong, even true ones ("the Wright brothers" for `(Orville) Wright`).
 - **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
-- **The question form** is optional in the Jeopardy round and required in Double Jeopardy and Final Jeopardy. It's any of what, who, where, when, which, why or how, followed by is, are, was, were, 's or 're ("What is", "Who's", "whats", "Where were"), whatever kind of answer it is. A few typos of the question word count too ("waht is", "hwo is"). A response without it is wrong there, unless the correct response is itself a question ("Who's the Boss?"), which can then be said as it is.
+- **The question form** is optional in the Jeopardy round and required in Double Jeopardy and Final Jeopardy. It's any of what, who, where, when, which, why or how, followed by is, are, was, were, 's or 're ("What is", "Who's", "whats", "Where were"), whatever kind of answer it is. A few typos of the question word count too ("waht is", "hwo is"). A response without it is wrong there, unless the correct response is itself a question ("Who's the Boss?"), which can then be said as it is. Every answer reports `phrasedAsQuestion` (in `clueAnswers` and, from the reveal, in `finalJeopardy.players`), in every round: `true` when it has the question form, or is a correct response that is itself a question said as it is. In the Jeopardy round, use it to warn a player who left it out that this would be wrong from Double Jeopardy on; in Double and Final Jeopardy, `false` explains a wrong answer. It doesn't say the rest was right: an answer can be wrong both ways.
 
 ---
 
@@ -738,6 +739,7 @@ interface ClueAnswerResponse {
   playerId: number;
   answer: string | null;    // null: ran out of time
   correct: boolean;
+  phrasedAsQuestion: boolean | null;  // set in every round; null: ran out of time
 }
 
 interface FinalJeopardyPlayerResponse {
@@ -747,6 +749,7 @@ interface FinalJeopardyPlayerResponse {
   wager: number | null;     // revealed in FINAL_JEOPARDY_REVEALING
   answer: string | null;    // revealed in FINAL_JEOPARDY_REVEALING
   correct: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING
+  phrasedAsQuestion: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING; null without an answer
 }
 
 interface FinalJeopardyResponse {

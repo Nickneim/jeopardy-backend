@@ -6,19 +6,23 @@ import com.nickneim.jeopardy.session.model.ClueAnswer;
  * An answer given to the clue in play (or the last one played), as everyone
  * sees it. It holds what the player submitted, never the stored correct
  * response, which is only sent as {@code currentClue.answer} during the
- * answer reveal.
+ * answer reveal. {@code phrasedAsQuestion} is set in every round (null when
+ * the player ran out of time), so a client can warn about a missing "What
+ * is" even where it isn't required.
  */
 public record ClueAnswerResponse(
         Long playerId,
         String answer,
-        boolean correct
+        boolean correct,
+        Boolean phrasedAsQuestion
 ) {
 
     public static ClueAnswerResponse from(ClueAnswer clueAnswer) {
         return new ClueAnswerResponse(
                 clueAnswer.playerId(),
                 clueAnswer.answer(),
-                clueAnswer.correct()
+                clueAnswer.correct(),
+                clueAnswer.phrasedAsQuestion()
         );
     }
 }

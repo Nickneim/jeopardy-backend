@@ -24,18 +24,29 @@ public final class AnswerMatcher {
     }
 
     public static boolean matches(String answer, String response, boolean questionRequired) {
+        return check(answer, response, questionRequired).correct();
+    }
+
+    /** Whether the response is correct, and whether it was phrased as a question. */
+    public static AnswerCheck check(String answer, String response, boolean questionRequired) {
         if (answer == null || response == null || response.isBlank()) {
-            return false;
+            return new AnswerCheck(false, false);
         }
         ExpectedAnswer expected = ExpectedAnswer.parse(answer);
 
         Optional<String> afterQuestion = QuestionForm.strip(response);
-        if (afterQuestion.isPresent() && expected.isMatchedBy(AnswerText.wholeTokens(afterQuestion.get()))) {
-            return true;
+        if (afterQuestion.isPresent()) {
+            boolean correct = expected.isMatchedBy(AnswerText.wholeTokens(afterQuestion.get()))
+                    // "Who's the Boss?" for "Who's the Boss?": the question form is part of the answer.
+                    || ((!questionRequired || expected.question()) && expected.isMatchedBy(AnswerText.wholeTokens(response)));
+            return new AnswerCheck(correct, true);
         }
-        // Said bare: fine when no question form is needed, or when the answer
-        // is itself a question ("Who's the Boss?").
-        return (!questionRequired || expected.question()) && expected.isMatchedBy(AnswerText.wholeTokens(response));
+
+        // Said bare. An answer that is itself a question ("Who's the Boss?"),
+        // said as it is, counts as phrased as one.
+        boolean saidAsItIs = expected.isMatchedBy(AnswerText.wholeTokens(response));
+        boolean phrasedAsQuestion = expected.question() && saidAsItIs;
+        return new AnswerCheck((!questionRequired || phrasedAsQuestion) && saidAsItIs, phrasedAsQuestion);
     }
 
     /**
