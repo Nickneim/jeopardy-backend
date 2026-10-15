@@ -63,6 +63,42 @@ class AnswerMatcherTest {
     }
 
     @Test
+    void check_reportsTheQuestionFormInEveryRound() {
+        // Jeopardy round: optional, but still reported.
+        assertEquals(new AnswerCheck(true, false), AnswerMatcher.check("Lincoln", "Lincoln", false));
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "Who is Lincoln?", false));
+        // Double and Final Jeopardy: a bare answer is wrong because of it.
+        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", "Lincoln", true));
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "Who is Lincoln?", true));
+    }
+
+    @Test
+    void check_countsATypoOfTheQuestionWord() {
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "waht is Lincoln", true));
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "whats lincln", true));
+    }
+
+    @Test
+    void check_reportsTheQuestionFormOfAWrongAnswerToo() {
+        assertEquals(new AnswerCheck(false, true), AnswerMatcher.check("Lincoln", "Who is Washington?", true));
+        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", "Washington", false));
+    }
+
+    @Test
+    void check_answerThatIsItselfAQuestion_saidAsItIs_isPhrasedAsOne() {
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Who's The Boss?", "Who's the Boss?", true));
+        // Without a question word the matcher recognises, said as it is (with a typo).
+        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Who's The Boss?", "Whoo's the Boss", true));
+        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Who's The Boss?", "the Boss", true));
+    }
+
+    @Test
+    void check_missingResponseIsNeitherCorrectNorPhrasedAsAQuestion() {
+        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", null, true));
+        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", " ", true));
+    }
+
+    @Test
     void matches_unclosedParenthesesRunToTheEnd() {
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Lincoln", false));
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Abraham Lincoln", false));

@@ -397,13 +397,13 @@ class GameSessionResponseTest {
         GameSessionResponse response = GameSessionResponse.from(session);
         assertEquals(GameSessionState.WAITING_FOR_BUZZER, response.state());
         assertEquals(
-                List.of(new ClueAnswerResponse(player.getId(), "Silver", false)),
+                List.of(new ClueAnswerResponse(player.getId(), "Silver", false, false)),
                 response.clueAnswers()
         );
 
         String json = toJson(response);
         assertTrue(
-                json.contains("{\"playerId\":1,\"answer\":\"Silver\",\"correct\":false}"),
+                json.contains("{\"playerId\":1,\"answer\":\"Silver\",\"correct\":false,\"phrasedAsQuestion\":false}"),
                 json
         );
         assertFalse(json.contains("\"" + scienceRow1.answer() + "\""), "leaked the correct response: " + json);
@@ -423,7 +423,7 @@ class GameSessionResponseTest {
         // contains is public by now anyway.
         assertEquals(GameSessionState.REVEALING_ANSWER, response.state());
         assertEquals(
-                List.of(new ClueAnswerResponse(player.getId(), "Au", true)),
+                List.of(new ClueAnswerResponse(player.getId(), "Au", true, false)),
                 response.clueAnswers()
         );
         assertEquals("Au", response.currentClue().answer());

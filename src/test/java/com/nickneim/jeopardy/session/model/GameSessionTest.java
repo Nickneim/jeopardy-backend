@@ -681,7 +681,10 @@ class GameSessionTest {
         session.answerClue(player2.getId(), "washingtn george");
 
         assertEquals(200, player2.getScore());
-        assertTrue(session.getClueAnswers().getFirst().correct());
+        assertEquals(
+                new ClueAnswer(player2.getId(), "washingtn george", true, false),
+                session.getClueAnswers().getFirst()
+        );
     }
 
     @Test
@@ -695,7 +698,27 @@ class GameSessionTest {
         session.answerClue(player2.getId(), "Mars");
 
         assertEquals(-400, player2.getScore());
-        assertFalse(session.getClueAnswers().getFirst().correct());
+        assertEquals(
+                new ClueAnswer(player2.getId(), "Mars", false, false),
+                session.getClueAnswers().getFirst()
+        );
+    }
+
+    @Test
+    void answerClue_inDoubleJeopardy_acceptsATypoOfTheQuestionWord() {
+        session.startGame(player1.getId());
+        finishJeopardyRound();
+        session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        session.answerClue(player2.getId(), "waht is Mars");
+
+        assertEquals(400, player2.getScore());
+        assertEquals(
+                new ClueAnswer(player2.getId(), "waht is Mars", true, true),
+                session.getClueAnswers().getFirst()
+        );
     }
 
     @Test
@@ -707,7 +730,18 @@ class GameSessionTest {
         session.answerFinalJeopardy(player2.getId(), "what's the american revolutoin");
 
         assertFalse(session.isFinalJeopardyAnswerCorrect(player1.getId()));
+        assertFalse(session.isFinalJeopardyAnswerPhrasedAsQuestion(player1.getId()));
         assertTrue(session.isFinalJeopardyAnswerCorrect(player2.getId()));
+        assertTrue(session.isFinalJeopardyAnswerPhrasedAsQuestion(player2.getId()));
+    }
+
+    @Test
+    void isFinalJeopardyAnswerPhrasedAsQuestion_isNullWithoutAnAnswer() {
+        reachFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+        session.timeoutFinalJeopardyAnswering();
+
+        assertNull(session.isFinalJeopardyAnswerPhrasedAsQuestion(player1.getId()));
     }
 
 
@@ -1562,7 +1596,7 @@ class GameSessionTest {
 
         assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "Abraham Lincoln", false)),
+                List.of(new ClueAnswer(player1.getId(), "Abraham Lincoln", false, false)),
                 session.getClueAnswers()
         );
 
@@ -1574,8 +1608,8 @@ class GameSessionTest {
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
         assertEquals(
                 List.of(
-                        new ClueAnswer(player1.getId(), "Abraham Lincoln", false),
-                        new ClueAnswer(player2.getId(), "George Washington", true)
+                        new ClueAnswer(player1.getId(), "Abraham Lincoln", false, false),
+                        new ClueAnswer(player2.getId(), "George Washington", true, false)
                 ),
                 session.getClueAnswers()
         );
@@ -1590,7 +1624,7 @@ class GameSessionTest {
         session.timeoutAnswer();
 
         assertEquals(
-                List.of(new ClueAnswer(player2.getId(), null, false)),
+                List.of(new ClueAnswer(player2.getId(), null, false, null)),
                 session.getClueAnswers()
         );
     }
@@ -1603,7 +1637,7 @@ class GameSessionTest {
         session.answerClue(player1.getId(), "Thomas Jefferson");
 
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "Thomas Jefferson", false)),
+                List.of(new ClueAnswer(player1.getId(), "Thomas Jefferson", false, false)),
                 session.getClueAnswers()
         );
     }
@@ -1619,7 +1653,7 @@ class GameSessionTest {
 
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "George Washington", true)),
+                List.of(new ClueAnswer(player1.getId(), "George Washington", true, false)),
                 session.getClueAnswers()
         );
 

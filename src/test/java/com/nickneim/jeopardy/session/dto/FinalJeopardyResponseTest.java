@@ -97,8 +97,8 @@ class FinalJeopardyResponseTest {
                         null,
                         null,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null),
-                                new FinalJeopardyPlayerResponse(2L, false, false, null, null, null)
+                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null),
+                                new FinalJeopardyPlayerResponse(2L, false, false, null, null, null, null)
                         )
                 ),
                 response.finalJeopardy()
@@ -129,8 +129,8 @@ class FinalJeopardyResponseTest {
                         false,
                         null,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null),
-                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null)
+                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null),
+                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null, null)
                         )
                 ),
                 response.finalJeopardy()
@@ -141,6 +141,24 @@ class FinalJeopardyResponseTest {
         assertFalse(json.contains("\"wager\":" + SECRET_WAGER), "leaked a wager: " + json);
         assertFalse(json.contains(WRONG_ANSWER), "leaked a player's answer: " + json);
         assertFalse(json.contains(FINAL_ANSWER), "leaked the correct response: " + json);
+        assertFalse(json.contains("\"phrasedAsQuestion\":true"), "leaked how a player answered: " + json);
+    }
+
+    @Test
+    void revealing_saysWhetherEachAnswerWasPhrasedAsAQuestion() {
+        reachFinalJeopardy();
+        session.timeoutFinalJeopardyWagering();
+        // Right apart from the question form; player 2 doesn't answer.
+        session.answerFinalJeopardy(player1.getId(), FINAL_ANSWER);
+        session.timeoutFinalJeopardyAnswering();
+
+        List<FinalJeopardyPlayerResponse> players = GameSessionResponse.from(session).finalJeopardy().players();
+
+        assertEquals(FINAL_ANSWER, players.get(0).answer());
+        assertEquals(false, players.get(0).correct());
+        assertEquals(false, players.get(0).phrasedAsQuestion());
+        assertNull(players.get(1).answer());
+        assertNull(players.get(1).phrasedAsQuestion());
     }
 
     @Test
@@ -160,8 +178,8 @@ class FinalJeopardyResponseTest {
                         false,
                         FINAL_ANSWER,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_RESPONSE, true),
-                                new FinalJeopardyPlayerResponse(2L, true, true, 0, WRONG_ANSWER, false)
+                                new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_RESPONSE, true, true),
+                                new FinalJeopardyPlayerResponse(2L, true, true, 0, WRONG_ANSWER, false, true)
                         )
                 ),
                 response.finalJeopardy()

@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.model;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -723,9 +724,22 @@ public class GameSession {
     }
 
     public boolean isFinalJeopardyAnswerCorrect(Long playerId) {
+        AnswerCheck check = checkFinalJeopardyAnswer(playerId);
+
+        return check != null && check.correct();
+    }
+
+    /** Whether the player's Final Jeopardy answer was phrased as a question; null without an answer. */
+    public Boolean isFinalJeopardyAnswerPhrasedAsQuestion(Long playerId) {
+        AnswerCheck check = checkFinalJeopardyAnswer(playerId);
+
+        return check == null ? null : check.phrasedAsQuestion();
+    }
+
+    private AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
         String answer = finalJeopardyAnswers.get(playerId);
 
-        return answer != null && isCorrectAnswer(getFinalJeopardyClue(), answer);
+        return answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
     }
 
     private void startWaitingForBuzzer() {
@@ -738,7 +752,7 @@ public class GameSession {
 
     public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
-        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false));
+        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false, null));
         if (board.isDailyDouble(chosenClueId)) {
             changeScore(player, -player.getWager());
             startRevealingAnswer();
@@ -757,8 +771,8 @@ public class GameSession {
     }
 
     /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
-    private boolean isCorrectAnswer(BoardClue clue, String answer) {
-        return AnswerMatcher.matches(clue.answer(), answer, round != GameRound.JEOPARDY);
+    private AnswerCheck checkAnswer(BoardClue clue, String answer) {
+        return AnswerMatcher.check(clue.answer(), answer, round != GameRound.JEOPARDY);
     }
 
     // Players who have left can't buzz, so they don't count.
@@ -823,8 +837,9 @@ public class GameSession {
             clueValue = clue.value();
         }
         GameSessionPlayer player = getPlayer(playerId);
-        boolean correct = isCorrectAnswer(clue, answer);
-        clueAnswers.add(new ClueAnswer(playerId, answer, correct));
+        AnswerCheck check = checkAnswer(clue, answer);
+        boolean correct = check.correct();
+        clueAnswers.add(new ClueAnswer(playerId, answer, correct, check.phrasedAsQuestion()));
         if (correct) {
             changeScore(player, clueValue);
             playerChoosingClue = playerId;

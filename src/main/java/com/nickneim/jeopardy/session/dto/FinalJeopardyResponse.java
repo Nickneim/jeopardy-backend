@@ -64,7 +64,8 @@ public record FinalJeopardyResponse(
                         session.hasFinalJeopardyAnswer(player.getId()),
                         showResults ? session.getFinalJeopardyWager(player.getId()) : null,
                         showResults ? session.getFinalJeopardyAnswer(player.getId()) : null,
-                        showResults ? session.isFinalJeopardyAnswerCorrect(player.getId()) : null
+                        showResults ? session.isFinalJeopardyAnswerCorrect(player.getId()) : null,
+                        showResults ? session.isFinalJeopardyAnswerPhrasedAsQuestion(player.getId()) : null
                 ))
                 .toList();
 
