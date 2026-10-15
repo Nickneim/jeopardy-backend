@@ -12,10 +12,24 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-if [ -f .env ]; then
+# The nearest .env in the project root or a folder above it, so it's also
+# found from a git worktree (.claude/worktrees/<name>) of the project.
+env_file=""
+dir="$(pwd)"
+while true; do
+    if [ -f "$dir/.env" ]; then
+        env_file="$dir/.env"
+        break
+    fi
+    parent="$(dirname "$dir")"
+    [ "$parent" = "$dir" ] && break
+    dir="$parent"
+done
+
+if [ -n "$env_file" ]; then
     set -a
-    # shellcheck disable=SC1091
-    . ./.env
+    # shellcheck disable=SC1090
+    . <(tr -d '\r' < "$env_file")
     set +a
 fi
 

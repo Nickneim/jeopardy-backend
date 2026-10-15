@@ -10,7 +10,7 @@ The React frontend lives in a separate repository. **`docs/api.md` is the contra
 
 ## Commands
 
-**To run tests, use `scripts/test.sh`** (bash). It loads `.env`, runs Gradle quietly and prints only the totals, each failing test with its message and location, or the compiler errors; the full output goes to `build/test-output.log`. Extra arguments go to Gradle, and `TASK=build` runs the build instead of `test`:
+**To run tests, use `scripts/test.sh`** (bash). It loads the nearest `.env` (the project's, or the main checkout's when run from a git worktree), runs Gradle quietly and prints only the totals, each failing test with its message and location, or the compiler errors; the full output goes to `build/test-output.log`. Extra arguments go to Gradle, and `TASK=build` runs the build instead of `test`:
 
 ```bash
 scripts/test.sh                                    # all tests
