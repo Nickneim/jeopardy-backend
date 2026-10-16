@@ -272,6 +272,11 @@ def auto_rewrite(answer):
     (optional parts like "(Abraham)" are fine) and X is a single option: no
     comma, "or", "?" or parentheses, any of which could be a list or part of a
     title ("Rudy (or Knute Rockne, All American)").
+
+    X must also clearly replace all of A, so A can't be a list ("coroner &
+    coronet (or coronel)", where coronel replaces only one item) or have a
+    comma, and X can't have fewer words than A ("a linen closet (or
+    cupboard)", which means "a linen cupboard"). Those go to review.
     """
     if MARKER.match(answer):
         return None
@@ -292,7 +297,18 @@ def auto_rewrite(answer):
         return None
     if re.search(r"[,;?()]|\bor\b", other, re.I):
         return None
+    if "," in first or LIST_AND.search(first) or len(content_words(other)) < len(content_words(first)):
+        return None  # X may replace only part of A
     return format_n_of(1, [first, other])
+
+
+LIST_AND = re.compile(r"\s(?:&|and)\s", re.I)
+ARTICLES = {"a", "an", "the"}
+
+
+def content_words(text):
+    """The words outside parentheses, without articles."""
+    return [word for word in PARENS.sub(" ", text).lower().split() if word not in ARTICLES]
 
 
 # --- Suggestions for review -------------------------------------------------------
@@ -308,9 +324,42 @@ def needs_review(answer):
     return bool(BARE_OR.search(PARENS.sub("", answer)) or ALTERNATIVE_START.search(answer))
 
 
+def single_alternative(answer):
+    """(A, X) for an answer that ends in one plain alternative, "A (or X)" or
+    "A (X accepted)", that the rule left for review; otherwise None."""
+    end = ALTERNATIVE_AT_END.search(answer)
+    if not end:
+        return None
+    first = answer[:end.start()].strip()
+    other = (end["or"] or end["accepted"]).strip()
+    if not first or ALTERNATIVE_GROUP.search(first) or re.search(r"[,;?()]|\bor\b", other, re.I):
+        return None
+    return first, other
+
+
+def partial_alternative(answer):
+    """Options for one alternative at the end that has fewer words than what
+    it follows, so it may replace only the last of them: "a linen closet (or
+    cupboard)" suggests "a linen cupboard". None for other answers."""
+    single = single_alternative(answer)
+    if not single or len(content_words(single[1])) >= len(content_words(single[0])):
+        return None
+    first_words = single[0].split()
+    other_words = single[1].split()
+    return [single[0], " ".join(first_words[:max(0, len(first_words) - len(other_words))] + other_words)]
+
+
 def alternatives_in_parentheses(answer):
     """Options for "A (or B, C or D)", "baker (breadmaker acceptable)",
-    "Greek (or Eastern) Orthodox"."""
+    "Greek (or Eastern) Orthodox", "a linen closet (or cupboard)"."""
+    partial = partial_alternative(answer)
+    if partial:
+        return partial
+    single = single_alternative(answer)
+    if single:
+        # "hook and loop (or hook and eye)": the alternative is one option, "and" and all.
+        return list(single)
+
     # An "(or X)" in the middle replaces as many words before it as X has.
     inline = re.search(r"\(\s*or\s+([^()]*)\)\s*(?=\w)", answer, re.I)
     if inline:
@@ -357,6 +406,10 @@ def hint(candidate):
         n = n_of[0] if n_of else 1
         if re.search(r"\(\s*or\s+[^()]*\)\s*\w", answer, re.I):
             label = "\"(or X)\" in the middle: check which words X replaces."
+        elif partial_alternative(answer):
+            label = "The alternative may replace only some words (suggested: the last ones), or all of them."
+        elif LIST_AND.search(PARENS.sub("", answer)):
+            label = "The alternative may replace only one item of the list, or all of it."
         else:
             label = "Alternatives in parentheses: check the split."
         return 8, warnings(label, options), format_n_of(n, options) if len(options) > 1 else None

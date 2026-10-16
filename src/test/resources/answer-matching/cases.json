@@ -75,6 +75,12 @@
       "reject": ["Santa", "Father", "Saint Nicholas"]
     },
     {
+      "answer": "(1 of) coroner & coronet | coronel & coronet",
+      "note": "Decision: rewritten by hand from 'coroner & coronet (or coronel)', where coronel replaces only one item of the pair.",
+      "accept": ["coroner & coronet", "coronel and coronet", "coronet & coroner"],
+      "reject": ["coronel", "coroner", "coronet"]
+    },
+    {
       "answer": "(1 of) Shorty | Stumpy",
       "accept": ["Shorty", "Stumpy", "Shorty and Stumpy"],
       "reject": ["Grumpy", "Shorty Grumpy"]
