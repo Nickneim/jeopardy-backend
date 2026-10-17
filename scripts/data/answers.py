@@ -307,8 +307,9 @@ ARTICLES = {"a", "an", "the"}
 
 
 def content_words(text):
-    """The words outside parentheses, without articles."""
-    return [word for word in PARENS.sub(" ", text).lower().split() if word not in ARTICLES]
+    """The words outside parentheses, without articles or lone punctuation."""
+    return [word for word in PARENS.sub(" ", text).lower().split()
+            if word not in ARTICLES and re.search(r"\w", word)]
 
 
 # --- Suggestions for review -------------------------------------------------------
@@ -337,27 +338,21 @@ def single_alternative(answer):
     return first, other
 
 
-def partial_alternative(answer):
-    """Options for one alternative at the end that has fewer words than what
-    it follows, so it may replace only the last of them: "a linen closet (or
-    cupboard)" suggests "a linen cupboard". None for other answers."""
+def is_shorter_alternative(answer):
+    """True for one alternative at the end with fewer words than what it
+    follows: "a linen closet (or cupboard)" may mean "a linen cupboard", or
+    "a duck-billed platypus (or echidna)" just "echidna"."""
     single = single_alternative(answer)
-    if not single or len(content_words(single[1])) >= len(content_words(single[0])):
-        return None
-    first_words = single[0].split()
-    other_words = single[1].split()
-    return [single[0], " ".join(first_words[:max(0, len(first_words) - len(other_words))] + other_words)]
+    return bool(single) and len(content_words(single[1])) < len(content_words(single[0]))
 
 
 def alternatives_in_parentheses(answer):
     """Options for "A (or B, C or D)", "baker (breadmaker acceptable)",
-    "Greek (or Eastern) Orthodox", "a linen closet (or cupboard)"."""
-    partial = partial_alternative(answer)
-    if partial:
-        return partial
+    "Greek (or Eastern) Orthodox"."""
     single = single_alternative(answer)
     if single:
-        # "hook and loop (or hook and eye)": the alternative is one option, "and" and all.
+        # A different whole answer, "and" and all: "hook and loop (or hook
+        # and eye)", "a duck-billed platypus (or echidna)".
         return list(single)
 
     # An "(or X)" in the middle replaces as many words before it as X has.
@@ -406,8 +401,8 @@ def hint(candidate):
         n = n_of[0] if n_of else 1
         if re.search(r"\(\s*or\s+[^()]*\)\s*\w", answer, re.I):
             label = "\"(or X)\" in the middle: check which words X replaces."
-        elif partial_alternative(answer):
-            label = "The alternative may replace only some words (suggested: the last ones), or all of them."
+        elif is_shorter_alternative(answer):
+            label = "The alternative is shorter: it may be a different answer (suggested), or replace only some words."
         elif LIST_AND.search(PARENS.sub("", answer)):
             label = "The alternative may replace only one item of the list, or all of it."
         else:

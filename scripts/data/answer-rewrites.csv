@@ -2,12 +2,15 @@ answer,decision,new_answer
 " Life With Father, Life With Buster Keaton, Life With Elizabeth, Life With Linkletter, Life With Luigi, Life With the Irwins, or Life With Snarky Parker",rewrite,(1 of) Life With Father | Life With Buster Keaton | Life With Elizabeth | Life With Linkletter | Life With Luigi | Life With the Irwins | Life With Snarky Parker
 """25 or 6 to 4""",keep,
 """54-40 or fight!""",keep,
+"""A Visit from St. Nicholas"" (""'Twas the Night Before Christmas"" accepted)",rewrite,"(1 of) ""A Visit from St. Nicholas"" | ""'Twas the Night Before Christmas"""
 """Ain't No Mountain High Enough"" or ""Ain't Nothing Like The Real Thing""",rewrite,"(1 of) ""Ain't No Mountain High Enough"" | ""Ain't Nothing Like The Real Thing"""
 """Alfie"" (""What's It All About, Alfie?"" accepted)",rewrite,"(1 of) ""Alfie"" | ""What's It All About, Alfie?"""
 """America"" (""My Country, 'Tis Of Thee"" accepted)",rewrite,"(1 of) ""America"" | ""My Country, 'Tis Of Thee"""
 """America"" (or ""My Country, 'Tis Of Thee"")",rewrite,"(1 of) ""America"" | ""My Country, 'Tis Of Thee"""
 """Annie's Song"" (or ""Sunshine On My Shoulders"", ""Thank God I'm A Country Boy"" or ""I'm Sorry"")",rewrite,"(1 of) ""Annie's Song"" | ""Sunshine On My Shoulders"" | ""Thank God I'm A Country Boy"" | ""I'm Sorry"""
+"""Beam us up, Scotty"" (or ""Energize"")",rewrite,"(1 of) ""Beam us up, Scotty"" | ""Energize"""
 """Believe It Or Not""",keep,
+"""Bette Davis Eyes"" (or ""Private Eyes"")",rewrite,"(1 of) ""Bette Davis Eyes"" | ""Private Eyes"""
 """Bewitched, Bothered, and Bewildered"" or ""Bewitched""",rewrite,"(1 of) ""Bewitched, Bothered, and Bewildered"" | ""Bewitched"""
 """Black Or White Men Can't Jump""",keep,
 """Black Or White""",keep,
@@ -18,12 +21,16 @@ answer,decision,new_answer
 """do not fold, spindle, or mutilate""",keep,
 """Do you feel lucky?"" (or ""Do I feel lucky?"")",rewrite,"(1 of) ""Do you feel lucky?"" | ""Do I feel lucky?"""
 """Don't Be Cruel"", ""Don't Cry, Daddy"", or ""Don't""",rewrite,"(1 of) ""Don't Be Cruel"" | ""Don't Cry, Daddy"" | ""Don't"""
+"""Don't Cry For Me Argentina"" (or Evita)",rewrite,"(1 of) ""Don't Cry For Me Argentina"" | Evita"
 """Elvira"" or ""Bobbie Sue""",rewrite,"(1 of) ""Elvira"" | ""Bobbie Sue"""
 """Fifty-four forty or fight!""",keep,
 """fifty-four forty or fight""",keep,
 """Give me liberty or give me Death of a Salesman""",keep,
 """Give me liberty or give me death""",keep,
 """give me liberty or give me death""",keep,
+"""God Save the King"" (or ""Queen"")",rewrite,"(1 of) ""God Save the King"" | ""God Save the Queen"""
+"""God Save The Queen"" (or ""King"")",rewrite,"(1 of) ""God Save The Queen"" | ""God Save The King"""
+"""God Save The Queen"" (or The King)",rewrite,"(1 of) ""God Save The Queen"" | God Save The King"
 """Gypsys, Tramps & Thieves"" (or ""Half-Breed"" or ""Dark Lady"")",rewrite,"(1 of) ""Gypsys, Tramps & Thieves"" | ""Half-Breed"" | ""Dark Lady"""
 """Hans Brinker"" or ""The Silver Skates""",rewrite,"(1 of) ""Hans Brinker"" | ""The Silver Skates"""
 """here"" means ""men""; going in or elsewhere would be dependent on one's gender",rewrite,"(1 of) ""here"" means ""men"" (going in or elsewhere would be dependent on one's gender) | go in if you are a man | go elsewhere if you are a woman"
@@ -37,6 +44,7 @@ answer,decision,new_answer
 """Killing Me Softly"" (or ""Feel Like Makin' Love"" or ""The First Time Ever I Saw Your Face"")",rewrite,"(1 of) ""Killing Me Softly"" | ""Feel Like Makin' Love"" | ""The First Time Ever I Saw Your Face"""
 """let him speak now or forever hold his peace""",keep,
 """Light My Fire"" (or ""Hello, I Love You"")",rewrite,"(1 of) ""Light My Fire"" | ""Hello, I Love You"""
+"""Little Red Riding Hood"" (""Red Riding Hood"" accepted)",rewrite,"(1 of) ""Little Red Riding Hood"" | ""Red Riding Hood"""
 """Little Sister"", ""Don't Cry Daddy"", ""My Boy"", or ""Kissin' Cousins""",rewrite,"(1 of) ""Little Sister"" | ""Don't Cry Daddy"" | ""My Boy"" | ""Kissin' Cousins"""
 """Live free or die""",keep,
 """Live Free or Die""",keep,
@@ -45,6 +53,7 @@ answer,decision,new_answer
 """My Country, Right or Wrong""",keep,
 """My Old Kentucky Home"" or ""Old Folks At Home""",rewrite,"(1 of) ""My Old Kentucky Home"" | ""Old Folks At Home"""
 """One Less Bell to Answer"" or ""Wedding Bell Blues""",rewrite,"(1 of) ""One Less Bell to Answer"" | ""Wedding Bell Blues"""
+"""Pomp And Circumstance"" (""The Land Of Hope And Glory"" accepted)",rewrite,"(1 of) ""Pomp And Circumstance"" | ""The Land Of Hope And Glory"""
 """Prime Time"" or ""Neon Deion""",rewrite,"(1 of) ""Prime Time"" | ""Neon Deion"""
 """Promises, Promises"" or ""I'll Never Fall In Love Again""",rewrite,"(1 of) ""Promises, Promises"" | ""I'll Never Fall In Love Again"""
 """Que Sera, Sera"" or (""Secret Love"")",rewrite,"(1 of) ""Que Sera, Sera"" | ""Secret Love"""
@@ -56,6 +65,8 @@ answer,decision,new_answer
 """The Lady, or the Tiger?""",keep,
 """The Lady, or the tiger?""",keep,
 """The Last Frontier"", ""The Great Land"", or ""North to the Future""",rewrite,"(1 of) ""The Last Frontier"" | ""The Great Land"" | ""North to the Future"""
+"""The Littlest State"" (or ""Little Rhody"")",rewrite,"(1 of) ""The Littlest State"" | ""Little Rhody"""
+"""the Today girls"" (or ""weather girls"")",rewrite,"(1 of) ""the Today girls"" | ""weather girls"""
 """To be or not to be""",keep,
 """to be or not to be""",keep,
 """To be or not to be, that is the question""",keep,
@@ -65,12 +76,14 @@ answer,decision,new_answer
 """Walden; or, Life in the Woods""",keep,
 """Wanted Dead Or Alive""",keep,
 """We Three Kings (Of Orient Are)"" or ""We Three Kings From Orient Are""",rewrite,"(1 of) ""We Three Kings (Of Orient Are)"" | ""We Three Kings From Orient Are"""
+"""Where Did Our Love Go?"" (or ""Come See About Me"")",rewrite,"(1 of) ""Where Did Our Love Go?"" | ""Come See About Me"""
 """Where In The World (or Time) is Carmen Sandiego?""",rewrite,"(1 of) ""Where In The World is Carmen Sandiego?"" | ""Where In The Time is Carmen Sandiego?"""
 """Who Am"" or ""I am that I am...""",rewrite,"(1 of) ""Who Am"" | ""That I am"""
 """With A Little Help From My Friends"" (or I get by ""With A Little Help From My Friends""",rewrite,"(1 of) ""With A Little Help From My Friends"" | I get by ""With A Little Help From My Friends"""
 """With Or Without You""",keep,
 """With Or Without You"" (or ""I Still Haven't Found What I'm Looking For"")",rewrite,"(1 of) ""With Or Without You"" | ""I Still Haven't Found What I'm Looking For"""
 """You're out of the game!"" or ""You're ejected!""",rewrite,"(1 of) ""You're out of the game!"" | ""You're ejected!"""
+"""You're Sixteen"" (or ""Photograph"")",rewrite,"(1 of) ""You're Sixteen"" | ""Photograph"""
 """You've Got To Pick A Pocket Or Two""",keep,
 (1 of ) Jimmy Carter (Truman or Harding),rewrite,(1 of) Jimmy Carter | Truman | Harding
 "(1 of 2) Juneau, Alaska or Augusta, Maine",rewrite,"(1 of) Juneau, Alaska | Augusta, Maine"
@@ -912,36 +925,64 @@ answer,decision,new_answer
 "a ""Wimba Way"" or ""Wimoweh""",rewrite,"(1 of) a ""Wimba Way"" | ""Wimoweh"""
 a 2 or a 12,rewrite,(2 of) a 2 | a 12
 a bald-faced (or bare-faced) lie,rewrite,(1 of) a bald-faced lie | a bare-faced lie
+a beloved woman (chieftain accepted),rewrite,(1 of) a beloved woman | a chieftain
 "a billboard (three billboards outside Ebbing, Missouri accepted)",rewrite,"(1 of) a billboard | three billboards outside Ebbing, Missouri"
 a blasting (or detonating) cap,rewrite,(1 of) a blasting cap | a detonating cap
 a borrower or a lender be,rewrite,(1 of) a borrower | a lender be
+a boxing match (or fight),rewrite,(1 of) a boxing match | a boxing fight
 A Bug's Life or Antz,rewrite,(1 of) A Bug's Life | Antz
+a California condor (condor accepted),rewrite,(1 of) a condor | a California condor
 a carrot or a stick,keep,
 a clock or watch,rewrite,(1 of) a clock | watch
 a combine or to combine,rewrite,(1 of) a combine | to combine
 A Comedy of Errors or A Midsummer Night's Dream,rewrite,(1 of) A Comedy of Errors | A Midsummer Night's Dream
+a comic strip (or cartoon),rewrite,(1 of) a comic strip | a cartoon
+a compact disc (or a DVD),rewrite,(1 of) a compact disc | a DVD | a CD
 a couplet (rhyme later judged acceptable),rewrite,(1 of) a couplet | rhyme
 a cow (or bull or ox),rewrite,(1 of) a cow | bull | ox
+a Cupid's bow (or the philtrum),rewrite,(1 of) a Cupid's bow | the philtrum
 a czarina or empress,rewrite,(1 of) a czarina | empress
 a dale or a vale,keep,
 a deadlock (also deadbolt or deadlatch),rewrite,(1 of) a deadlock | deadbolt | deadlatch
 a dendrum (dendrite also acceptable),rewrite,(1 of) a dendrum | dendrite
 a double star or a binary star,rewrite,(1 of) a double star | a binary star
+a dressing table (a vanity accepted),rewrite,(1 of) a dressing table | a vanity
+a duck-billed platypus (or echidna),rewrite,(1 of) a duck-billed platypus | echidna
 a fawn or deer,rewrite,(1 of) a fawn | deer
+a fisher cat (or fishing),rewrite,(1 of) a fisher cat | fishing
+a flag of truce (or surrender),rewrite,(1 of) a flag of truce | flag of surrender
+a flea trap (or fleabag),rewrite,(1 of) a flea trap | fleabag
+a flying buttress (or a buttress),rewrite,(1 of) a flying buttress | a buttress
+a focal point (or focus),rewrite,(1 of) a focal point | focus
+a font type (or typeface),rewrite,(1 of) a font type | typeface
+a funeral home (or mortuary),rewrite,(1 of) a funeral home | mortuary
+a gas dispenser (or pump),rewrite,(1 of) a gas dispenser | pump
 "a gift (or office, title or emolument)",rewrite,(1 of) a gift | office | title | emolument
 a glider or sail plane,rewrite,(1 of) a glider | sail plane
 a gofer (or a runner or a production assistant),rewrite,(1 of) a gofer | a runner | a production assistant
+a golden retriever (or retriever),rewrite,(1 of) a golden retriever | retriever
 a guitar (or a fiddle or a trumpet),rewrite,(1 of) a guitar | a fiddle | a trumpet
 a gun or a pistol,rewrite,(1 of) a gun | a pistol
+a hissy fit (or a huff),rewrite,(1 of) a hissy fit | a huff
 a hockey arena or ice rink,rewrite,(1 of) a hockey arena | ice rink
+a hunger strike (a famine accepted),rewrite,(1 of) a hunger strike | a famine strike
+a hydroelectric plant (or dam),rewrite,(1 of) a hydroelectric plant | dam
+a knife to the heart (or stabbing),rewrite,(1 of) a knife to the heart | stabbing
 a knight fright fight (or plight or blight),rewrite,(1 of) a knight fright fight | knight fright plight | knight fright blight
+a letter jacket (or letterman),rewrite,(1 of) a letter jacket | letterman
 a light (or bright) flight,rewrite,(1 of) a light flight | a bright flight
 a limit (or stop-loss) order,rewrite,(1 of) a limit order | a stop-loss order
+a linen closet (or cupboard),rewrite,(1 of) a linen closet | cupboard
 a love note or letter,rewrite,(1 of) a love note | letter
 a manikin (a resuscitation doll or Resuscitation Annie accepted),rewrite,(1 of) a manikin | a resuscitation doll | Resuscitation Annie
 a meteorite (or asteroid; meteor accepted),rewrite,(1 of) a meteorite | asteroid | meteor
+A Midsummer Night's Dream and The Winter's Tale (A Winter's Tale accepted),rewrite,(1 of) A Midsummer Night's Dream and The Winter's Tale | A Midsummer Night's Dream and A Winter's Tale
 a mist (or a spray; a gas accepted),rewrite,(1 of) a mist | a spray | a gas
+a musical instrument (an instrument accepted),rewrite,(1 of) a musical instrument | an instrument
 a new moon or a full moon,rewrite,(1 of) a new moon | a full moon
+a new pair of shoes (new shoes accepted),rewrite,(1 of) a new pair of shoes | new shoes
+a no-hit game (or no-hitter),rewrite,(1 of) a no-hit game | no-hitter
+a nuclear explosion (or detonation),rewrite,(1 of) a nuclear explosion | a nuclear detonation
 a paddock (stockyard or stockade also acceptable),rewrite,(1 of) a paddock | stockyard | stockade
 a parent (or holding) company,rewrite,(1 of) a parent company | a holding company
 a physician (or medicine or a doctor),rewrite,(1 of) a physician | medicine | a doctor
@@ -950,22 +991,37 @@ a physician (or medicine or a doctor),rewrite,(1 of) a physician | medicine | a 
 a proton or a neutron,rewrite,(1 of) a proton | a neutron
 a quill or pen,rewrite,(1 of) a quill | pen
 a quill pig or a hedgehog,rewrite,(1 of) a quill pig | a hedgehog
+a red circle (a sun accepted),rewrite,(1 of) a red circle | a sun
 a refractor or a reflector (refracting or reflecting),rewrite,(1 of) a refractor (refracting) | a reflector (reflecting)
 a roentgenologist or a radiologist,rewrite,(1 of) a roentgenologist | a radiologist
+a saber-tooth tiger (or a lion),rewrite,(1 of) a saber-tooth tiger | a saber-tooth lion
+a selective service lottery (or draft lottery),rewrite,(1 of) a selective service lottery | draft lottery
+a separated big toe (a big toe accepted),rewrite,(1 of) a separated big toe | a big toe
+a shoe fetish (shoes accepted),rewrite,(1 of) a shoe fetish | shoes
+a shot glass (or a jigger),rewrite,(1 of) a shot glass | a jigger
 "a side view (or shadow, profile, sketch, or silhouette)",rewrite,(1 of) a side view | shadow | profile | sketch | silhouette
 a Ski-Doo (or a snowmobile or skimobile),rewrite,(1 of) a Ski-Doo | a snowmobile | skimobile
+a speech bubble (or balloon),rewrite,(1 of) a speech bubble | balloon
+a spinning wheel (or spindle),rewrite,(1 of) a spinning wheel | spindle
 a square chin or jaw,rewrite,(1 of) a square chin | a square jaw
+a string bean (or bean),rewrite,(1 of) a string bean | bean
 a stuntman or a stuntwoman,rewrite,(1 of) a stuntman | a stuntwoman
 a suction (or reciprocating) pump,rewrite,(1 of) a suction pump | a reciprocating pump
 a talis (tallit also acceptable),rewrite,(1 of) a talis | tallit
+a tidal wave (or tsunami),rewrite,(1 of) a tidal wave | tsunami
+a tie tack (or tiepin),rewrite,(1 of) a tie tack | tiepin
 a tip or bribe (or handout),rewrite,(1 of) a tip | a bribe | a handout
 "a TKO, or technical knockout",rewrite,(1 of) a TKO | technical knockout
 a tortoise or turtle,rewrite,(1 of) a tortoise | turtle
+a walking stick insect (stick insect accepted),rewrite,(1 of) a walking stick insect | stick insect
 a water dog (or a mud puppy) salamander,rewrite,(1 of) a water dog salamander | a mud puppy salamander
 a wig or toupée,rewrite,(1 of) a wig | toupée
 A-Rod or Alex Rodriguez,rewrite,(1 of) A-Rod | Alex Rodriguez
+Abigail Van Buren (or Dear Abby),rewrite,(1 of) Abigail Van Buren | Dear Abby
+accordion pleats (or folds),rewrite,(1 of) accordion pleats | accordion folds
 acumen (or acute or acuity),rewrite,(1 of) acumen | acute | acuity
 add or augment,rewrite,(1 of) add | augment
+air conditioning (or temperature),rewrite,(1 of) air conditioning | temperature
 air currents (or the wind or the weather),rewrite,(1 of) air currents | the wind | the weather
 Air France or British Airways,rewrite,(1 of) Air France | British Airways
 AKA (also known as),rewrite,(1 of) AKA | also known as
@@ -975,15 +1031,24 @@ Alexander Haig or George Marshall,rewrite,(1 of) Alexander Haig | George Marshal
 Alexei (or Dmitri or Ivan),rewrite,(1 of) Alexei | Dmitri | Ivan
 Algeria or Tunisia,rewrite,(1 of) Algeria | Tunisia
 Alice Walker or Toni Morrison,rewrite,(1 of) Alice Walker | Toni Morrison
+Alice's Adventures in Wonderland (Alice in Wonderland accepted),rewrite,(1 of) Alice's Adventures in Wonderland | Alice in Wonderland
+Aloe vera (aloe accepted),rewrite,(1 of) Aloe vera | aloe
+American Bar Association (or ABA),rewrite,(1 of) American Bar Association | ABA
+American Motors (or Rambler),rewrite,(1 of) American Motors | Rambler
 an accessory dwelling unit (or additional dwelling unit) (alternative dwelling unit accepted),rewrite,(1 of) an accessory dwelling unit | additional dwelling unit | alternative dwelling unit
 an acid or a base,rewrite,(1 of) an acid | a base
 an ass (or a jackass or a male donkey),rewrite,(1 of) an ass | a jackass | a male donkey
 "an end run, or end around",rewrite,(1 of) an end run | end around
 an endless or infinite runner,rewrite,(1 of) an endless runner | infinite runner
 an inclined plane (ramp later ruled acceptable),rewrite,(1 of) an inclined plane | ramp
+an official church (or religion),rewrite,(1 of) an official church | religion
+an olive branch (or leaf),rewrite,(1 of) an olive branch | an olive leaf
 Angela Kinsey or Jenna Fischer,rewrite,(1 of) Angela Kinsey | Jenna Fischer
+animal shelters (or pounds),rewrite,(1 of) animal shelters | pounds
 "animal, vegetable or mineral",keep,
 Ann Landers or Abigail,rewrite,(1 of) Ann Landers | Abigail
+Anne Hathway (or Hathaway),rewrite,(1 of) Anne Hathway | Hathaway
+Antony and Cleopatra (Anthony and Cleopatra accepted),rewrite,(1 of) Antony and Cleopatra | Anthony and Cleopatra
 Apia or Oslo,rewrite,(1 of) Apia | Oslo
 Ara or Leo,rewrite,(1 of) Ara | Leo
 archaeology or paleontology,rewrite,(1 of) archaeology | paleontology
@@ -994,38 +1059,53 @@ are you male or female,keep,
 Argentina or Brazil,rewrite,(1 of) Argentina | Brazil
 Aristotle or Plato,rewrite,(1 of) Aristotle | Plato
 Arizona (or New Mexico or Nevada),rewrite,(1 of) Arizona | New Mexico | Nevada
+arriving & departing (or arrival & departure),rewrite,(1 of) arriving & departing | arrival & departure
 arrows (or darts or spears),rewrite,(1 of) arrows | darts | spears
 "art is long, life is short (or art endures, life is short, or art lasts, life is short) (long art, short life accepted)",rewrite,"(1 of) art is long, life is short | art endures, life is short | art lasts, life is short | long art, short life"
 Arthur (or Alfred) Zimmerman,rewrite,(1 of) Arthur Zimmerman | Alfred Zimmerman
 as or like,rewrite,(1 of) as | like
+Asia Minor (or Anatolia),rewrite,(1 of) Asia Minor | Anatolia
+athlete's foot (or ringworm),rewrite,(1 of) athlete's foot | ringworm
 Atlanta (Georgia) or Augusta (Maine),rewrite,(1 of) Atlanta (Georgia) | Augusta (Maine)
+auditory hallucinations (or voices),rewrite,(1 of) auditory hallucinations | voices
 "Augustus, Tiberius or Claudius",rewrite,(1 of) Augustus | Tiberius | Claudius
 Australia or New Zealand,rewrite,(1 of) Australia | New Zealand
 Austria-Hungary & Germany (also Italy),rewrite,(2 of) Austria-Hungary | Germany | Italy
 awake (or alert or aware) & asleep (or anesthetized),rewrite,(1 of) awake & asleep | alert & asleep | aware & asleep | awake & anesthetized | alert & anesthetized | aware & anesthetized
+B-flat (or A),rewrite,(1 of) B-flat | A
 B.J. and the Bear (or My Two Dads or P.S. I Luv U),rewrite,(1 of) B.J. and the Bear | My Two Dads | P.S. I Luv U
 Babalu or Tropicana,rewrite,(1 of) Babalu | Tropicana
 Baby Boom or Three Men and a Baby,rewrite,(1 of) Baby Boom | Three Men and a Baby
+Babylonian Exile (or diaspora),rewrite,(1 of) Babylonian Exile | Babylonian diaspora
 Badlands or Wind Cave,rewrite,(1 of) Badlands | Wind Cave
 "badminton, baseball or women's judo",rewrite,(1 of) badminton | baseball | women's judo
 baker (breadmaker acceptable),rewrite,(1 of) baker | breadmaker
+ball of string (or twine),rewrite,(1 of) ball of string | twine
 Ballon d'Or,keep,
 balms or alms,rewrite,(1 of) balms | alms
 "Baltimore Orioles, St. Louis Cardinals &/or Toronto Blue Jays",rewrite,(2 of) Baltimore Orioles | St. Louis Cardinals | Toronto Blue Jays
 Banff or Jasper National Park,rewrite,(1 of) Banff | Jasper National Park
+banjo picking (or playing),rewrite,(1 of) banjo picking | banjo playing
 barometric or atmospheric pressure,rewrite,(1 of) barometric pressure | atmospheric pressure
 Bart Simpson or Rocky The Flying Squirrel,rewrite,(1 of) Bart Simpson | Rocky The Flying Squirrel
+bathtub rings (or scum),rewrite,(1 of) bathtub rings | bathtub scum
 "Baton Rouge (or Boise, Idaho)",rewrite,(1 of) Baton Rouge | Boise (Idaho)
+battle cruisers (or battleships),rewrite,(1 of) battle cruisers | battleships
+Bedloe's Island (Bedloe accepted),rewrite,(1 of) Bedloe's Island | Bedloe
 begging or egging,rewrite,(1 of) begging | egging
 "being bricked into a cell (or cellar, being walled up)",rewrite,(1 of) being bricked into a cell | being bricked into a cellar | being walled up
+being right-handed (or left-handed),rewrite,(1 of) being right-handed | being left-handed
 believe it or not,keep,
 Belize or Guatemala,rewrite,(1 of) Belize | Guatemala
 bell or dewlap,rewrite,(1 of) bell | dewlap
+Ben & Jerry's (Ben & Jerry accepted),rewrite,(1 of) Ben & Jerry's | Ben & Jerry
 Ben Franklin or Alexander Hamilton,rewrite,(1 of) Ben Franklin | Alexander Hamilton
 "Benjamin Franklin (or John Adams, John Jay, or Henry Laurens)",rewrite,(1 of) Benjamin Franklin | John Adams | John Jay | Henry Laurens
 Berkeley or Barkley,rewrite,(1 of) Berkeley | Barkley
+"Beverly Hills, 90210 (90210 accepted)",rewrite,"(1 of) Beverly Hills, 90210 | 90210"
 Bicycles or Bicyclettes,rewrite,(1 of) Bicycles | Bicyclettes
 Bill Daniels & Bonnie Bartlett or Steve Allen & Jayne Meadows,rewrite,(1 of) Bill Daniels & Bonnie Bartlett | Steve Allen & Jayne Meadows
+Bill Haley and His Comets (Bill Haley and The Comets accepted),rewrite,(1 of) Bill Haley and His Comets | Bill Haley and The Comets
 billed or build,keep,
 Billy goat or mockingbird,rewrite,(1 of) Billy goat | mockingbird
 Birdman or (The Unexpected Virtue of Ignorance),rewrite,Birdman (The Unexpected Virtue of Ignorance)
@@ -1035,11 +1115,15 @@ black or white,rewrite,(1 of) black | white
 Blackbeard or Edward Teach,rewrite,(1 of) Blackbeard | Edward Teach
 blastoff (or liftoff or takeoff),rewrite,(1 of) blastoff | liftoff | takeoff
 "Bloemfontein, Cape Town &/or Pretoria",rewrite,(2 of) Bloemfontein | Cape Town | Pretoria
+blood vessel (or vein),rewrite,(1 of) blood vessel | vein
 blowfish (or puff fish or fugu),rewrite,(1 of) blowfish | puff fish | fugu
+blue & yellow (or gold),rewrite,(1 of) blue & yellow | blue & gold
 blue cinemas or XXX houses,rewrite,(1 of) blue cinemas | XXX houses
+Boatmen of the Volga (or Volga Boatmen),rewrite,(1 of) Boatmen of the Volga | Volga Boatmen
 Bob Dole or Walter Mondale,rewrite,(1 of) Bob Dole | Walter Mondale
 body conscious or body contour,rewrite,(1 of) body conscious | body contour
 Bolivia or Paraguay,rewrite,(1 of) Bolivia | Paraguay
+bone in their tongue (lever accepted),rewrite,(1 of) bone | lever
 bonus or onus,keep,
 booze or ooze,keep,
 Borneo (or Greenland or New Guinea),rewrite,(1 of) Borneo | Greenland | New Guinea
@@ -1051,6 +1135,7 @@ Braveheart or Unforgiven,rewrite,(1 of) Braveheart | Unforgiven
 Breckinridge (or Douglas or Bell),rewrite,(1 of) Breckinridge | Douglas | Bell
 brut (dry and sekt acceptable),rewrite,(1 of) brut | dry | sekt
 Bryan Adams (or Rod Stewart or Sting),rewrite,(1 of) Bryan Adams | Rod Stewart | Sting
+buddhist monks (or priests),rewrite,(1 of) buddhist monks | buddhist priests
 bugle or drum,rewrite,(1 of) bugle | drum
 bump or ump,keep,
 Bunker (or Breed's) Hill,rewrite,(1 of) Bunker Hill | Breed's Hill
@@ -1058,10 +1143,12 @@ business class or middle class (merchant class accepted),rewrite,(1 of) business
 by hook or by crook,keep,
 C or S,rewrite,(1 of) C | S
 cabinetmaking or furniture making,rewrite,(1 of) cabinetmaking | furniture making
+Caesar Octavian (or Augustus),rewrite,(1 of) Caesar Octavian | Augustus
 Caesarion or Ptolemy XV,rewrite,(1 of) Caesarion | Ptolemy XV
 cafe or restaurant,rewrite,(1 of) cafe | restaurant
 Cairo or Khartoum,rewrite,(1 of) Cairo | Khartoum
 "Calcite, gypsum or talc",rewrite,(1 of) Calcite | gypsum | talc
+calipers & caliber (calipers & calibration accepted),rewrite,(1 of) calipers & caliber | calipers & calibration
 calls or songs,rewrite,(1 of) calls | songs
 Cambodia &/or Laos,rewrite,(1 of) Cambodia | Laos
 Cambridge or Boston,rewrite,(1 of) Cambridge | Boston
@@ -1071,13 +1158,18 @@ Cancer the crab or Leo the lion,rewrite,(1 of) Cancer the crab | Leo the lion
 "candles (or okuri-dango, or lanterns)",rewrite,(1 of) candles | okuri-dango | lanterns
 canine teeth or eye teeth,rewrite,(1 of) canine teeth | eye teeth
 Cape Hatteras or Cape Lookout,rewrite,(1 of) Cape Hatteras | Cape Lookout
+capital punishment (beheading accepted),rewrite,(1 of) capital punishment | beheading
 capital punishment or the death penalty,rewrite,(1 of) capital punishment | the death penalty
 carbonated soda (or soda water or carbonated water),rewrite,(1 of) carbonated soda | soda water | carbonated water
 Cardinals (St. Louis (baseball) & Arizona (football)) or Giants (San Francisco (baseball) & New York (football)),rewrite,(1 of) Cardinals (St. Louis (baseball) & Arizona (football)) | Giants (San Francisco (baseball) & New York (football))
 Carolina Panthers or Jacksonville Jaguars,rewrite,(1 of) Carolina Panthers | Jacksonville Jaguars
 cash (or collect) on delivery,rewrite,(1 of) cash on delivery | collect on delivery
+cash back (or rebate),rewrite,(1 of) cash back | rebate
 "cashews & pecans (also hazelnuts, brazils, & almonds)",rewrite,(2 of) cashews | pecans | hazelnuts | brazils | almonds
 Caspar Weinberger (Secretary of Defense) or Samuel Pierce of HUD,rewrite,(1 of) Caspar Weinberger (Secretary of Defense) | Samuel Pierce of HUD
+castles in the air (or in the sky),rewrite,(1 of) castles in the air | castles in the sky
+Cat on a Hot Tin Roof (or A Streetcar Named Desire),rewrite,(1 of) Cat on a Hot Tin Roof | A Streetcar Named Desire
+cataract removal (or surgery),rewrite,(1 of) cataract removal | cataract surgery
 "Catherine the Great (or Catherine II or ""Great Catherine"")",rewrite,"(1 of) Catherine the Great | Catherine II | ""Great Catherine"""
 "cauliflower, broccoli or artichoke",rewrite,(1 of) cauliflower | broccoli | artichoke
 cesium (Cs) (or chlorine (Cl)),rewrite,(1 of) cesium (Cs) | chlorine (Cl)
@@ -1086,10 +1178,13 @@ Charles Dawes or Theodore Roosevelt,rewrite,(1 of) Charles Dawes | Theodore Roos
 "chastity, obedience or poverty",rewrite,(1 of) chastity | obedience | poverty
 Cheryl Tiegs (or Christie Brinkley or Elle Macpherson),rewrite,(1 of) Cheryl Tiegs | Christie Brinkley | Elle Macpherson
 Chester A. Arthur (or Hayes or Garfield),rewrite,(1 of) Chester A. Arthur | Hayes | Garfield
+Chief Justice of the Supreme Court (or of the United States),rewrite,(1 of) Chief Justice of the Supreme Court | Chief Justice of the United States
+Chief Justice of the United States (C.J. of Supreme Court accepted),rewrite,(1 of) Chief Justice of the United States | C.J. of Supreme Court
 Children or animals,rewrite,(1 of) Children | animals
 "chile, or chili, powder",rewrite,(1 of) chile powder | chili powder | chile | chili
 circular or round,rewrite,(1 of) circular | round
 claw or talon,rewrite,(1 of) claw | talon
+Cleopatra's Needle (the obelisk accepted),rewrite,(1 of) Cleopatra's Needle | the obelisk
 "coffee, tea or milk",rewrite,(1 of) coffee | tea | milk
 Cole or Kohl,rewrite,(1 of) Cole | Kohl
 Colombia or Peru,rewrite,(1 of) Colombia | Peru
@@ -1101,10 +1196,13 @@ complement or compliment,rewrite,(1 of) complement | compliment
 concurrent or concurrently,rewrite,(1 of) concurrent | concurrently
 Conservative or Liberal,rewrite,(1 of) Conservative | Liberal
 consume or eat the male,rewrite,(1 of) consume the male | eat the male
+cooler cookies (or coolers),rewrite,(1 of) cooler cookies | coolers
+copy editor (or proofreader),rewrite,(1 of) copy editor | proofreader
 coroner & coronet (or coronel),rewrite,(1 of) coroner & coronet | coronel & coronet
 cosmetics (dyeing also acceptable),rewrite,(1 of) cosmetics | dyeing
 cosmos or universe,rewrite,(1 of) cosmos | universe
 Costa Rica or Belize,rewrite,(1 of) Costa Rica | Belize
+Creedence Clearwater Revival (or CCR),rewrite,(1 of) Creedence Clearwater Revival | CCR
 crest or heraldic emblem (or coat of arms),rewrite,(1 of) crest | heraldic emblem | coat of arms
 Cretaceous (or Cambrian or Carboniferous),rewrite,(1 of) Cretaceous | Cambrian | Carboniferous
 cross Hell or high water,keep,
@@ -1112,11 +1210,13 @@ Crown Royal or Royal Crown,rewrite,(1 of) Crown Royal | Royal Crown
 cruel or unusual,rewrite,(1 of) cruel | unusual
 "crunches, or crunch",rewrite,(1 of) crunches | crunch
 cubs or kits,rewrite,(1 of) cubs | kits
+cutting into blocks (or quarrying),rewrite,(1 of) cutting into blocks | quarrying
 "cytosine (or adenine, guanine or thymine)",rewrite,(1 of) cytosine | adenine | guanine | thymine
 "D.C., or Washington, D.C.",rewrite,"(1 of) D.C. | Washington, D.C."
 Dan Fouts or Dan Dierdorf,rewrite,(1 of) Dan Fouts | Dan Dierdorf
 Daniel K. Inouye or Daniel K. Akaka,rewrite,(1 of) Daniel K. Inouye | Daniel K. Akaka
 Danish or Greenlandic,rewrite,(1 of) Danish | Greenlandic
+David and Goliath (or the Philistines and the Israelites),rewrite,(1 of) David and Goliath | the Philistines and the Israelites
 "day & night (""Daylight and darkness, or nighttime"" accepted)",rewrite,(1 of) day & night | Daylight & darkness | daylight & nighttime
 Dead or alive,keep,
 Dead or Alive,keep,
@@ -1125,14 +1225,20 @@ Deal or No Deal,keep,
 December 21 or 22,rewrite,(1 of) December 21 | December 22
 decorator or designer,rewrite,(1 of) decorator | designer
 Dee or D,rewrite,(1 of) Dee | D
+deer meat (or venison),rewrite,(1 of) deer meat | venison
+Defense Department (Pentagon accepted),rewrite,(1 of) Defense Department | Pentagon
+delivering messages (or messenger),rewrite,(1 of) delivering messages | messenger
 "desegregate, or integrate",keep,
 diamond or graphite,rewrite,(1 of) diamond | graphite
 Diana Ross or Phil Collins,rewrite,(1 of) Diana Ross | Phil Collins
 Did you take a bath (or shower)?,rewrite,(1 of) Did you take a bath? | Did you take a shower?
+Die Hard with a Vengeance (or Die Hard 3),rewrite,(1 of) Die Hard with a Vengeance | Die Hard 3
 dinner or supper,rewrite,(1 of) dinner | supper
+diphtheria & pertussis (or tetanus),rewrite,(2 of) diphtheria | pertussis | tetanus
 dirt (or dust or earth or soil),rewrite,(1 of) dirt | dust | earth | soil
 discord or discordance,rewrite,(1 of) discord | discordance
 discreet or discrete,rewrite,(1 of) discreet | discrete
+dissenting opinions (or dissents),rewrite,(1 of) dissenting opinions | dissents
 distillation (or desalination or desalinization),rewrite,(1 of) distillation | desalination | desalinization
 do or die,keep,
 Doctors Without Borders or Médecins Sans Frontières,rewrite,(1 of) Doctors Without Borders | Médecins Sans Frontières
@@ -1140,13 +1246,18 @@ Does she or doesn't she?,keep,
 Doesn't matter if you're rich or poor,keep,
 Dollars or Shampoo,rewrite,(1 of) Dollars | Shampoo
 Dom or Vince,rewrite,(1 of) Dom | Vince
+Dorothy's red shoes (or the slippers),rewrite,(1 of) Dorothy's red shoes | the slippers
+double bassoon (or contrabassoon),rewrite,(1 of) double bassoon | contrabassoon
 double or nothing,keep,
 Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb,rewrite,Dr. Strangelove (How I Learned to Stop Worrying and Love the Bomb)
 drones or males,keep,
 drop or trap,rewrite,(1 of) drop | trap
+drug store (or pharmacy),rewrite,(1 of) drug store | pharmacy
 Duma or Soviet,rewrite,(1 of) Duma | Soviet
 dwarfs or dwarves,rewrite,(1 of) dwarfs | dwarves
+E for effort (or A for effort),rewrite,(1 of) E for effort | A for effort
 "eagle, elk or moose",rewrite,(1 of) eagle | elk | moose
+Eagles legals (or paralegals),rewrite,(1 of) Eagles legals | Eagles paralegals
 Earl Warren or Thurgood Marshall,rewrite,(1 of) Earl Warren | Thurgood Marshall
 Earth or Pluto,rewrite,(1 of) Earth | Pluto
 "earth, wind (or air), water and fire",rewrite,"(1 of) earth, wind, water and fire | earth, air, water and fire"
@@ -1155,6 +1266,7 @@ editorial marks (or editing marks or proofreading marks),rewrite,(1 of) editoria
 Edward V or Edward VIII,rewrite,(1 of) Edward V | Edward VIII
 "Egbert (or Ethelbald. Ethelbert, Ethelred, or Ethelwolf)",rewrite,(1 of) Egbert | Ethelbald | Ethelbert | Ethelred | Ethelwolf
 Ehrich Weiss or Houdini,rewrite,(1 of) Ehrich Weiss | Houdini
+elevator shoes (or boots),rewrite,(1 of) elevator shoes | elevator boots
 "Elizabeth I or Mary I (""Bloody Mary"")",rewrite,"(1 of) Elizabeth I | Mary I (""Bloody Mary"")"
 "Elsie the Cow, the Energizer Bunny or Tony the Tiger",rewrite,(1 of) Elsie the Cow | the Energizer Bunny | Tony the Tiger
 "Elsinore (or Helsingør, or Kronborg)",rewrite,(1 of) Elsinore | Helsingør | Kronborg
@@ -1172,6 +1284,8 @@ Erie or Huron,rewrite,(1 of) Erie | Huron
 Ernie or Uncle Charley,rewrite,(1 of) Ernie | Uncle Charley
 "errors (or mistakes, typos)",rewrite,(1 of) errors | mistakes | typos
 Eskimo or Inuit,rewrite,(1 of) Eskimo | Inuit
+Eva Perón (or Evita),rewrite,(1 of) Eva Perón | Evita
+Eve & the Serpent (or Satan),rewrite,(1 of) Eve & the Serpent | Eve & Satan
 "every 500 years (or twice every 1,000 years)",rewrite,"(1 of) every 500 years | twice every 1,000 years"
 explosion or eruption of Krakatoa,rewrite,(1 of) explosion of Krakatoa | eruption of Krakatoa
 extenuating (or mitigating) circumstances,rewrite,(1 of) extenuating circumstances | mitigating circumstances
@@ -1179,14 +1293,20 @@ extenuating (or mitigating) circumstances,rewrite,(1 of) extenuating circumstanc
 fact or fiction,keep,
 fair or foul,keep,
 Falkland (or Malvinas) Islands,rewrite,(1 of) Falkland Islands | Malvinas Islands
+Falkland Islands (or Malvinas),rewrite,(1 of) Falkland Islands | Malvinas
 Fantastic Mr. Fox or Men Who Stare At Goats,rewrite,(1 of) Fantastic Mr. Fox | Men Who Stare At Goats
+fear of being frozen (or of ice),rewrite,(1 of) fear of being frozen | fear of ice
+fear of bugs (or insects),rewrite,(1 of) fear of bugs | fear insects
+feed for cattle (or other animals),keep,
 Fifty-four forty or fight,keep,
 Fifty-Four Forty or Fight,keep,
 Fifty-four forty or fight!,keep,
 fight or flight,keep,
 fight or flight of the conchords,keep,
 fight-or-flight,keep,
+fire truck red (or fire engine),rewrite,(1 of) fire truck red | fire engine
 fireflies (or lightning bugs or glowworms),rewrite,(1 of) fireflies | lightning bugs | glowworms
+firing squad (shooting accepted),rewrite,(1 of) firing squad | shooting
 fish or cut bait,keep,
 Fish or cut bait,keep,
 flags or banners,rewrite,(1 of) flags | banners
@@ -1195,13 +1315,16 @@ Flip or Flop,keep,
 flippers they can lean on or ears,rewrite,(1 of) flippers they can lean on | ears
 floppy (or 3 1/2 inch) disk drive,rewrite,(1 of) floppy disk drive | 3 1/2 inch disk drive
 fluting or crimping,rewrite,(1 of) fluting | crimping
+fold up (or close),rewrite,(1 of) fold up | close
 Folsom or San Quentin,rewrite,(1 of) Folsom | San Quentin
 food or meals,rewrite,(1 of) food | meals
 For Better or for Worse,keep,
 For Better or For Worse,keep,
 for richer or poorer,keep,
+for the furnishment of the militia (or maintaining a militia),rewrite,(1 of) for the furnishment of the militia | maintaining a militia
 forearm or hand or fist,rewrite,(1 of) forearm | hand | fist
 Foreign or strange,rewrite,(1 of) Foreign | strange
+fossilized footprints (or tracks),rewrite,(1 of) fossilized footprints | fossilized tracks
 fox or outfox,rewrite,(1 of) fox | outfox
 Fraternities or sororities,rewrite,(1 of) Fraternities | sororities
 French Kiss or Prelude to a Kiss,rewrite,(1 of) French Kiss | Prelude to a Kiss
@@ -1210,10 +1333,13 @@ Funny or Die,keep,
 futures (or commodities) exchange,rewrite,(1 of) futures exchange | commodities exchange
 game or gamy,rewrite,(1 of) game | gamy
 Ganymede or Titan,rewrite,(1 of) Ganymede | Titan
+garbanzo beans (or chickpeas),rewrite,(1 of) garbanzo beans | chickpeas
 "Gary Bauer, Orrin Hatch or Alan Keyes",rewrite,(1 of) Gary Bauer | Orrin Hatch | Alan Keyes
 Gaul or France,rewrite,(1 of) Gaul | France
 Gene Kelly Girl (or Gene Kelly Services or Gene Kelly Resources),rewrite,(1 of) Gene Kelly Girl | Gene Kelly Services | Gene Kelly Resources
+General Electric (or G.E.),rewrite,(1 of) General Electric | G.E.
 Genesis or Galatians,rewrite,(1 of) Genesis | Galatians
+Genghis Khan (or Temujin),rewrite,(1 of) Genghis Khan | Temujin
 George II or George III,rewrite,(1 of) George II | George III
 "George V, Edward VIII or George VI",rewrite,(1 of) George V | Edward VIII | George VI
 Get Rich or Die Tryin',keep,
@@ -1226,14 +1352,19 @@ Glen or Glenda,keep,
 glide or fly through the air,rewrite,(1 of) glide | fly through the air
 "Gold, silver &/or copper",rewrite,(2 of) Gold | silver | copper
 gone or went,rewrite,(1 of) gone | went
+goober peas (or goobers),rewrite,(1 of) goober peas | goobers
 gorgeous (or cute or beautiful or pretty),rewrite,(1 of) gorgeous | cute | beautiful | pretty
 governor or their respective states,rewrite,governor of their respective states
 Grace or Mrs. Calvin Coolidge,rewrite,(1 of) Grace Coolidge | Mrs. Calvin Coolidge
+Grand Slam (a major accepted),rewrite,(1 of) Grand Slam | a major
 Grant or Eisenhower,rewrite,(1 of) Grant | Eisenhower
 grapes or olives,rewrite,(1 of) grapes | olives
 grate or grind (chop),rewrite,(1 of) grate | grind | chop
+Great Britain (or England),rewrite,(1 of) Great Britain | England
+Great Britain (Wales accepted),rewrite,(1 of) Great Britain | Wales
 Great Sandy or Great Victoria,rewrite,(1 of) Great Sandy | Great Victoria
 greater than or equal to,keep,
+greatest common denominator (or divisor),rewrite,(1 of) greatest common denominator | greatest common divisor
 Greek (or Eastern) Orthodox,rewrite,(1 of) Greek Orthodox | Eastern Orthodox
 green & gold or yellow,rewrite,(1 of) green and gold | green and yellow
 green (or red or blue),rewrite,(1 of) green | red | blue
@@ -1243,6 +1374,9 @@ Guam or Puerto Rico,rewrite,(1 of) Guam | Puerto Rico
 Guatemala (or El Salvador or Honduras),rewrite,(1 of) Guatemala | El Salvador | Honduras
 Guernsey or Jersey,rewrite,(1 of) Guernsey | Jersey
 gulch (or gulley or streambeds),rewrite,(1 of) gulch | gulley | streambeds
+gunfight at the O.K. Corral (shootout ... accepted),rewrite,(1 of) gunfight at the O.K. Corral | shootout at the O.K. Corral
+Gunfight at the OK Corral (shooutout accepted),rewrite,(1 of) Gunfight at the OK Corral | shooutout at the OK Corral
+hair loss (or baldness),rewrite,(1 of) hair loss | baldness
 "Ham, Japheth or Shem (Noah's sons)",rewrite,(2 of) Ham | Japheth | Shem
 Hamlet or Henry V,rewrite,(1 of) Hamlet | Henry V
 hammer or tongs,rewrite,(1 of) hammer | tongs
@@ -1263,35 +1397,52 @@ Hell or High Water,keep,
 Henry (Heinrich) Schliemann,rewrite,(1 of) Henry Schliemann | Heinrich Schliemann
 "herringbone tweed (or weave, or twill)",rewrite,(1 of) herringbone tweed | weave | twill
 high seas or the open seas,rewrite,(1 of) high seas | the open seas
+hill ahead (incline accepted),rewrite,(1 of) hill ahead | incline ahead
 his knees (or his feet or his legs),rewrite,(1 of) his knees | his feet | his legs
 his or her left hand,rewrite,(1 of) his left hand | her left hand
+his skateboard (or the blackboard),rewrite,(1 of) his skateboard | the blackboard
 his throat or his speaking voice,rewrite,(1 of) his throat | his speaking voice
 history or literature,rewrite,(1 of) history | literature
+Homo sapiens (or man),rewrite,(1 of) Homo sapiens | man
+hook and loop (or hook and eye),rewrite,(1 of) hook and loop | hook and eye
 Hoover or Boulder Dam,rewrite,(1 of) Hoover Dam | Boulder Dam
 how to prove you're either drunk or not drunk (a sobriety test),rewrite,(1 of) how to prove you're either drunk or not drunk | a sobriety test
+Hudson's Bay point blankets (Hudson Bay blankets accepted),rewrite,(1 of) Hudson's Bay point blankets | Hudson Bay blankets
 Hungary or Czechoslovakia,rewrite,(1 of) Hungary | Czechoslovakia
 hurry (or quick or fast),rewrite,(1 of) hurry | quick | fast
 hydrochloric acid or HCl,rewrite,(1 of) hydrochloric acid | HCl
 hydrogen (or helium or methane),rewrite,(1 of) hydrogen | helium | methane
 "hyperactivity (or hyperactive, hyperkinetic)",rewrite,(1 of) hyperactivity | hyperactive | hyperkinetic
 Hyperthyroidism or goiter,rewrite,(1 of) Hyperthyroidism | goiter
+I read you loud and clear (or five by five),rewrite,(1 of) I read you loud and clear | five by five
+ice cream (gelato accepted),rewrite,(1 of) ice cream | gelato
+ice sailing (or boating),rewrite,(1 of) ice sailing | ice boating
 Iceland or Ireland,rewrite,(1 of) Iceland | Ireland
 illegal or immoral,keep,
 "immoral, illegal or fattening",keep,
 in (or on) the sands of time,rewrite,(1 of) in the sands of time | on the sands of time
 in orbit or in zero gravity (outer space),rewrite,(1 of) in orbit | in zero gravity | in outer space
+in reverse (or backwards),rewrite,(1 of) in reverse | backwards
 in reverse or antichronological (backwards),rewrite,(1 of) in reverse | antichronological | backwards
+In Search of Lost Time (or Remembrance of Things Past),rewrite,(1 of) In Search of Lost Time | Remembrance of Things Past
+income tax returns (income taxes accepted),rewrite,(1 of) income tax returns | income taxes
 India or Pakistan,rewrite,(1 of) India | Pakistan
 Indianapolis or Oklahoma City,rewrite,(1 of) Indianapolis | Oklahoma City
+intellectual property rights (or copyright),rewrite,(1 of) intellectual property rights | copyright
 intoxicated or inebriated,rewrite,(1 of) intoxicated | inebriated
 invert it or turn it upside down,rewrite,(1 of) invert it | turn it upside down
 Iraq or Syria,rewrite,(1 of) Iraq | Syria
 iron (or nickel or cobalt),rewrite,(1 of) iron | nickel | cobalt
 "Isak Dinesen, or Karen Blixen",rewrite,(1 of) Isak Dinesen | Karen Blixen
+it gets kinged (or crowned),rewrite,(1 of) it gets kinged | it gets crowned
+it goes down (or gets colder),rewrite,(1 of) it goes down | gets colder
+it was submerged (or underwater),rewrite,(1 of) it was submerged | underwater
+it's getting quieter (or softer),rewrite,(1 of) it's getting quieter | it's getting softer
 It's now or never,keep,
 it's now or never,keep,
 J.S. (or Johann Sebastian) Bach,rewrite,(1 of) J.S. Bach | Johann Sebastian Bach
 Jack Nicholson or Sir Laurence Olivier,rewrite,(1 of) Jack Nicholson | Sir Laurence Olivier
+jack o'lanterns (or pumpkins),rewrite,(1 of) jack o'lanterns | pumpkins
 jack-o-lanterns (or pumpkins_,rewrite,(1 of) jack-o-lanterns | pumpkins
 James I (also known as James VI of Scotland),rewrite,(1 of) James I | James VI of Scotland
 James Monroe (or Jefferson or Tyler),rewrite,(1 of) James Monroe | Jefferson | Tyler
@@ -1306,11 +1457,14 @@ Jesu or Jesus,rewrite,(1 of) Jesu | Jesus
 "Jimmy Cagney (for George M. Cohan), Ronald Colman, or Richard Dreyfuss",rewrite,(1 of) Jimmy Cagney (for George M. Cohan) | Ronald Colman | Richard Dreyfuss
 Jimmy Carter or George H.W. Bush,rewrite,(1 of) Jimmy Carter | George H.W. Bush
 "Jimmy Carter, Andrew Johnson, Zachary Taylor or William Henry Harrison",rewrite,(1 of) Jimmy Carter | Andrew Johnson | Zachary Taylor | William Henry Harrison
+Joan the Mad (or Crazy),rewrite,(1 of) Joan the Mad | Joan the Crazy
+John D. Rockefeller (Rockefeller Chapel accepted),rewrite,(1 of) John D. Rockefeller | Rockefeller Chapel
 John Quincy Adams or Andrew Johnson,rewrite,(1 of) John Quincy Adams | Andrew Johnson
 John Tyler or Woodrow Wilson,rewrite,(1 of) John Tyler | Woodrow Wilson
 "John, James or Donnel",rewrite,(1 of) John | James | Donnel
 Josip Broz or Tito,rewrite,(1 of) Josip Broz | Tito
 June 21 or 22,rewrite,(1 of) June 21 | June 22
+June 6th (or D-Day),rewrite,(1 of) June 6th | D-Day
 "Juneau, Alaska or Honolulu, Hawaii",rewrite,(1 of) Juneau (Alaska) | Honolulu (Hawaii)
 juris doctor or juvenile delinquent,rewrite,(1 of) juris doctor | juvenile delinquent
 jury-rigged or jerry-rigged,rewrite,(1 of) jury-rigged | jerry-rigged
@@ -1320,22 +1474,32 @@ Kenya or Tanzania,rewrite,(1 of) Kenya | Tanzania
 kickoff or receive,rewrite,(1 of) kickoff | receive
 "Kim Carnes, Sheena Easton or Dolly Parton",rewrite,(1 of) Kim Carnes | Sheena Easton | Dolly Parton
 kine or cows (or cattle),rewrite,(1 of) kine | cows | cattle
+"King Priam (or ""Pree-um"")",rewrite,King Priam
 Kinshasa or Brazzaville,rewrite,(1 of) Kinshasa | Brazzaville
 "Klingons, Romulans or Vulcans",rewrite,(1 of) Klingons | Romulans | Vulcans
 Knight Rider or Michael Knight (David Hasselhoff),rewrite,(1 of) Knight Rider | Michael Knight (David Hasselhoff)
 Kurt Browning or Elvis Stojko,rewrite,(1 of) Kurt Browning | Elvis Stojko
 L'Etranger or The Stranger,rewrite,(1 of) L'Etranger | The Stranger
+La Paz (or Sucre),rewrite,(1 of) La Paz | Sucre
 Lady of (or with) the Lamp,rewrite,(1 of) Lady of the Lamp | Lady with the Lamp
 Laffit Pincay or Willie Shoemaker,rewrite,(1 of) Laffit Pincay | Willie Shoemaker
+Lake District (or Country),keep,
 land (or soil or earth),rewrite,(1 of) land | soil | earth
+"Larry ""Bud"" Melman (or Calvert DeForest)",rewrite,"(1 of) Larry ""Bud"" Melman | Calvert DeForest"
 Lassen Peak or Mt. St. Helens,rewrite,(1 of) Lassen Peak | Mt. St. Helens
 Lassie or Miss Piggy,rewrite,(1 of) Lassie | Miss Piggy
+latching on (or positioning),rewrite,(1 of) latching on | positioning
+late fees (or fines),rewrite,(1 of) late fees | fines
 Latvia (or Lithuania or Estonia),rewrite,(1 of) Latvia | Lithuania | Estonia
 laughing gas or nitrous oxide,rewrite,(1 of) laughing gas | nitrous oxide
 Laverne & Shirley and Mork & Mindy or Joanie Loves Chachi,rewrite,(2 of) Laverne & Shirley | Mork & Mindy | Joanie Loves Chachi
+lawn darts (Jarts accepted),rewrite,(1 of) lawn darts | Jarts
 "Lawrence of Arabia, or T.E. Lawrence",rewrite,(1 of) Lawrence of Arabia | T.E. Lawrence
+Lawrence Taylor (L.T. accepted),rewrite,(1 of) Lawrence Taylor | L.T.
 "lazy eye (or cross-eyes, wandering eyes)",rewrite,(1 of) lazy eye | cross-eyes | wandering eyes
 Le Coq d'Or,keep,
+Le petit prince (or The Little Prince),rewrite,(1 of) Le petit prince | The Little Prince
+lead the orchestra (or conduct),rewrite,(1 of) lead the orchestra | conduct
 learning or speaking a language,rewrite,(1 of) learning a language | speaking a language
 Lee Remick or Stefanie Powers,rewrite,(1 of) Lee Remick | Stefanie Powers
 leech or sponge,rewrite,(1 of) leech | sponge
@@ -1343,24 +1507,39 @@ Leigh or Li,rewrite,(1 of) Leigh | Li
 Leningrad or St. Petersburg,rewrite,(1 of) Leningrad | St. Petersburg
 Lennon or Lenin,rewrite,(1 of) Lennon | Lenin
 Leon or Michael,rewrite,(1 of) Leon | Michael
+Les Liaisons dangereuses (or Dangerous Liaisons),rewrite,(1 of) Les Liaisons dangereuses | Dangerous Liaisons
 "Les Liasions dangereuses, or Dangerous Liasions",rewrite,(1 of) Les Liasions dangereuses | Dangerous Liasions
 "Lesotho, Morocco or Swaziland",rewrite,(1 of) Lesotho | Morocco | Swaziland
 less than or equal to,keep,
+"let it all hang out (""to hang loose"" accepted)",rewrite,"(1 of) let it all hang out | ""to hang loose"""
+let the decision stand (or precedent),rewrite,(1 of) let the decision stand | precedent
 Let's Make a Deal or No Deal,keep,
 Lew Alcindor or Kareem Abdul-Jabbar,rewrite,(1 of) Lew Alcindor | Kareem Abdul-Jabbar
 Liberia or Ethiopia,rewrite,(1 of) Liberia | Ethiopia
 life (or liberty or property),rewrite,(1 of) life | liberty | property
+lightning bugs (or fireflies),rewrite,(1 of) lightning bugs | fireflies
 like or as,rewrite,(1 of) like | as
 lilies or fleurs-de-lis (fleur-de-lis),rewrite,(1 of) lilies | fleurs-de-lis | fleur-de-lis
+line of sight (or sightlines),rewrite,(1 of) line of sight | sightlines
 Ling-Ling or Hsing-Hsing,rewrite,(1 of) Ling-Ling | Hsing-Hsing
+Liquid Paper (white-out accepted),rewrite,(1 of) Liquid Paper | white-out
+Little Nash Rambler (or Cadillac),rewrite,(1 of) Little Nash Rambler | Cadillac
 Live free or die,keep,
 Live Free or Die,keep,
 live free or die,keep,
 Live Free or Die Hard,keep,
+live long and prosper (or the Vulcan salute),rewrite,(1 of) live long and prosper | the Vulcan salute
+Lloyd George (or Asquith),rewrite,(1 of) Lloyd George | Asquith
+local anesthetic (or anesthesia),rewrite,(1 of) local anesthetic | anesthesia
+"Lon Chaney, Jr. (or Bela Lugosi)",rewrite,"(1 of) Lon Chaney, Jr. | Bela Lugosi"
 London or Paris,rewrite,(1 of) London | Paris
+long service (or seniority),rewrite,(1 of) long service | seniority
+"Look Homeward, Angel (or You Can't Go Home Again)",rewrite,"(1 of) Look Homeward, Angel | You Can't Go Home Again"
 Loretta Swit (or Meg Foster or Sharon Gless),rewrite,(1 of) Loretta Swit | Meg Foster | Sharon Gless
+Los Angeles County (or Cook County),rewrite,(1 of) Los Angeles County | Cook County
 "Lou Grant or Trapper John, M.D.",rewrite,"(1 of) Lou Grant | Trapper John, M.D."
 "Lou Grant, Phyllis and/or Rhoda",rewrite,(2 of) Lou Grant | Phyllis | Rhoda
+Louisiana Territory (or Purchase),rewrite,(1 of) Louisiana Territory | Purchase
 Love Me or Leave Me,keep,
 Low Countries (or the Netherlands or Holland),rewrite,(1 of) Low Countries | the Netherlands | Holland
 LSU or Louisiana State,rewrite,(1 of) LSU | Louisiana State
@@ -1370,13 +1549,17 @@ mad (or silly) (Fool's War accepted),rewrite,(1 of) mad | silly | Fool's War
 "Madagascar (or Mauritius, the Seychelles & the Comoros)",rewrite,(1 of) Madagascar | Mauritius | the Seychelles | the Comoros
 make heads or tails of it,keep,
 Make It or Break It,keep,
+making a lasso (or lariat),rewrite,(1 of) making a lasso | lariat
 male or female,keep,
 Manama (Bahrain) or Manila (Philippines),rewrite,(1 of) Manama (Bahrain) | Manila (Philippines)
 manatee or sea cow,rewrite,(1 of) manatee | sea cow
+manic depression (or bipolar),rewrite,(1 of) manic depression | bipolar depression
 marching & concert or symphonic,rewrite,(1 of) marching | concert | symphonic
 marionettes or string puppets,rewrite,(1 of) marionettes | string puppets
+Marisa Berenson (or Berry),rewrite,(1 of) Marisa Berenson | Berry
 Marlon Brando or Dustin Hoffman,rewrite,(1 of) Marlon Brando | Dustin Hoffman
 marmosets or mandrills,rewrite,(1 of) marmosets | mandrills
+Mars & Venus (Venus & Mars accepted),rewrite,(2 of) Mars | Venus
 Martha's Vineyard or Nantucket Island,rewrite,(1 of) Martha's Vineyard | Nantucket Island
 Martinique or Guadeloupe,rewrite,(1 of) Martinique | Guadeloupe
 Maryland or Rhode Island,rewrite,(1 of) Maryland | Rhode Island
@@ -1384,20 +1567,25 @@ masterpieces or paintings (art forgery),rewrite,(1 of) masterpieces | paintings 
 Matthew or Luke,rewrite,(1 of) Matthew | Luke
 Max Baer or Max Schmeling,rewrite,(1 of) Max Baer | Max Schmeling
 meat or beef,rewrite,(1 of) meat | beef
+mercenary soldiers (or Hessians),rewrite,(1 of) mercenary soldiers | Hessians
 Metacomet or King Philip,rewrite,(1 of) Metacomet | King Philip
 mice or rats,rewrite,(1 of) mice | rats
 Millard Fillmore or John Tyler,rewrite,(1 of) Millard Fillmore | John Tyler
+minority government (a coalition accepted),rewrite,(1 of) minority government | a coalition
 Missouri or Tennessee,rewrite,(1 of) Missouri | Tennessee
+mix and match (or mis match),rewrite,(1 of) mix and match | mis match
 Mo' Better Blues or Malcolm X,rewrite,(1 of) Mo' Better Blues | Malcolm X
 mobile home or trailer,rewrite,(1 of) mobile home | trailer
 Modern Bride or Modern Maturity,rewrite,(1 of) Modern Bride | Modern Maturity
 mollusks or crustaceans,rewrite,(1 of) mollusks | crustaceans
 monogamy or monotony,rewrite,(2 of) monogamy | monotony
 Monopoly (or Scrabble or Game of Life or Candyland),rewrite,(1 of) Monopoly | Scrabble | Game of Life | Candyland
+monosodium glutamate (or MSG),rewrite,(1 of) monosodium glutamate | MSG
 "Montgomery (or Richmond, Virginia)",rewrite,(1 of) Montgomery | Richmond (Virginia)
 Montreal Expos or Toronto Blue Jays,rewrite,(1 of) Montreal Expos | Toronto Blue Jays
 Morgan Stanley or Goldman Sachs,rewrite,(1 of) Morgan Stanley | Goldman Sachs
 Morgana le Fey (or Morgan le Fay) (Morgaine accepted),rewrite,(1 of) Morgana le Fey | Morgan le Fay | Morgaine
+Morse code (or telegraph),rewrite,(1 of) Morse code | telegraph
 Moses or Elijah (or Elias),rewrite,(1 of) Moses | Elijah | Elias
 Mt. McKinley or Denali,rewrite,(1 of) Mt. McKinley | Denali
 Muzak (or music or elevator music),rewrite,(1 of) Muzak | music | elevator music
@@ -1406,16 +1594,23 @@ Muzak (or music or elevator music),rewrite,(1 of) Muzak | music | elevator music
 my way or the highway,keep,
 Myanmar or Burma,rewrite,(1 of) Myanmar | Burma
 name or name tag,rewrite,(1 of) name | name tag
+Napoleon III (or Louis-Napoleon),rewrite,(1 of) Napoleon III | Louis-Napoleon
+Natasha Richardson (or Joely),rewrite,(1 of) Natasha Richardson | Joely
 Natty Bumppo (or Hawkeye or Deerslayer),rewrite,(1 of) Natty Bumppo | Hawkeye | Deerslayer
 Neil or Marvin,rewrite,(1 of) Neil | Marvin
 Nepal or China,rewrite,(1 of) Nepal | China
 "Neptunium, Plutonium &/or Uranium",rewrite,(2 of) Neptunium | Plutonium | Uranium
 New Delhi (or Ulan Bator or Phnom Penh),rewrite,(1 of) New Delhi | Ulan Bator | Phnom Penh
+New Mexico (or Colorado),rewrite,(1 of) New Mexico | Colorado
+Nice 'n Easy (or Clairol),rewrite,(1 of) Nice 'n Easy | Clairol
+Nile & Euphrates (or the Tigris),rewrite,(2 of) Nile & Euphrates | the Tigris
 Nippon (or Nihon) (Dai-Nippon accepted),rewrite,(1 of) Nippon | Nihon | Dai-Nippon
 "No, Gaston, after you (""After you, Gaston"" accepted)",rewrite,"(1 of) No, Gaston, after you | ""After you, Gaston"""
+Noah's Ark (the ark accepted),rewrite,(1 of) Noah's Ark | the ark
 noble (or inert) gases,rewrite,(1 of) noble gases | inert gases
 non (or no) rapid eye movement,rewrite,(1 of) non rapid eye movement | no rapid eye movement
 Norman Rockwell or Rockwell Kent,rewrite,(1 of) Norman Rockwell | Rockwell Kent
+North & South (North & South and Love & War accepted),rewrite,(1 of) North & South | North & South and Love & War
 novocaine or procaine,rewrite,(1 of) novocaine | procaine
 "nuclear reaction, or nuclear explosion",rewrite,(1 of) nuclear reaction | nuclear explosion
 nullify or nullification,rewrite,(1 of) nullify | nullification
@@ -1426,8 +1621,13 @@ obsolete (or old or antiquated),rewrite,(1 of) obsolete | old | antiquated
 Octavian or Augustus,rewrite,(1 of) Octavian | Augustus
 October or November,rewrite,(1 of) October | November
 Odin or Woden,rewrite,(1 of) Odin | Woden
+oil & vinegar (vinegar & oil accepted),rewrite,(2 of) oil | vinegar
 oil or petroleum,rewrite,(1 of) oil | petroleum
+Old Ironsides (or Constitution),rewrite,(1 of) Old Ironsides | Constitution
+Ole Miss (or Mississippi),rewrite,(1 of) Ole Miss | Mississippi
+on tape (or recorded),rewrite,(1 of) on tape | recorded
 on the bus or off the bus,keep,
+once a year (annually accepted),rewrite,(1 of) once a year | annually
 one can never be too rich or too thin,keep,
 or,keep,
 or (in Ork),keep,
@@ -1440,24 +1640,32 @@ Ottawa or St. Lawrence,rewrite,(1 of) Ottawa | St. Lawrence
 outdraw him or her,rewrite,(1 of) outdraw him | outdraw her
 ox or ass,rewrite,(1 of) ox | ass
 P.D. James or Ruth Rendell,rewrite,(1 of) P.D. James | Ruth Rendell
+palm reading (or palmistry),rewrite,(1 of) palm reading | palmistry
 Palme d'Or,keep,
 palmistry or palm reading,rewrite,(1 of) palmistry | palm reading
 Paper or plastic?,keep,
+Papua New Guinea (or Indonesia),rewrite,(1 of) Papua New Guinea | Indonesia
+parallel universes (multiverse accepted),rewrite,(1 of) parallel universes | multiverse
 "Paris (or Washington, D.C.)",rewrite,"(1 of) Paris | Washington, D.C."
 part of the back or spinal column,rewrite,(1 of) part of the back | spinal column
 pause or paws,rewrite,(1 of) pause | paws
 peanuts or Cracker Jacks,rewrite,(1 of) peanuts | Cracker Jacks
 "pearly, mother of pearl or nacre",rewrite,(1 of) pearly | mother of pearl | nacre
+peep toe (peekaboo accepted),rewrite,(1 of) peep toe | peekaboo
 Percival (or Galahad or Bors),rewrite,(1 of) Percival | Galahad | Bors
 pesticides or insecticides,rewrite,(1 of) pesticides | insecticides
+"Philadelphia, New York, and Boston (or Newport and Charleston)",rewrite,(3 of) Philadelphia | New York | and Boston | Newport | Charleston
 "phone a friend, ask the audience, or 50/50",rewrite,(3 of) phone a friend | ask the audience | 50/50
 piece or peace,rewrite,(1 of) piece | peace
 pimentos or pimientos,rewrite,(1 of) pimentos | pimientos
 "pink & Pinky, red & Blinky, blue & Inky, gold or orange & Sue",rewrite,(1 of) pink & Pinky | red & Blinky | blue & Inky | gold & Sue | orange & Sue
 plant or grow trees,rewrite,(1 of) plant trees | grow trees
 "platoon, Hannah, lesser, room and/or mission",rewrite,(2 of) platoon | Hannah | lesser | room | mission
+please open your luggage (or your suitcase),rewrite,(1 of) please open your luggage | please open your suitcase
 plus or minus,keep,
 pod (or husk or skin),rewrite,(1 of) pod | husk | skin
+poison pill (cyanide accepted),rewrite,(1 of) poison pill | cyanide
+Pompidou Centre (or the Beaubourg),rewrite,(1 of) Pompidou Centre | the Beaubourg
 Pont Notre Dame or Pont Neuf,rewrite,(1 of) Pont Notre Dame | Pont Neuf
 pool (or billiards or snooker),rewrite,(1 of) pool | billiards | snooker
 porcelain (or pottery or ceramics),rewrite,(1 of) porcelain | pottery | ceramics
@@ -1466,12 +1674,18 @@ pot roast or pot au feu,rewrite,(1 of) pot roast | pot au feu
 potatoes or French fries,rewrite,(1 of) potatoes | French fries
 President (or General) Suharto,rewrite,(1 of) President Suharto | General Suharto
 "Prince Andrew (or Prince Edward, Princess Anne, or Fergie, the Duchess of York)",rewrite,"(1 of) Prince Andrew | Prince Edward | Princess Anne | Fergie, the Duchess of York"
+Prince Henry (or Harry),rewrite,(1 of) Prince Henry | Prince Harry
 Princess Diana or The Virgin Mary,rewrite,(1 of) Princess Diana | The Virgin Mary
+Princess Diaries 2 (The Princess Diaries accepted),rewrite,(1 of) Princess Diaries 2 | The Princess Diaries
+Procter & Gamble (or Oral B),rewrite,(1 of) Procter & Gamble | Oral B
+progressive lenses (or trifocals),rewrite,(1 of) progressive lenses | trifocals
 "Prohibition, or the Volstead Act",rewrite,(1 of) Prohibition | the Volstead Act
 Protestantism (or Anglicanism or Christianity),rewrite,(1 of) Protestantism | Anglicanism | Christianity
 Protista or protists,rewrite,(1 of) Protista | protists
 Puerto Rico or Guam,rewrite,(1 of) Puerto Rico | Guam
+pulmonary edema (hape accepted),rewrite,(1 of) pulmonary edema | hape
 puma or mountain lion,rewrite,(1 of) puma | mountain lion
+pumpkin pi (pi accepted),rewrite,(1 of) pumpkin pi | pi
 pylons or traffic cones,rewrite,(1 of) pylons | traffic cones
 pâté or pate,rewrite,(1 of) pâté | pate
 quaint or curious,rewrite,(1 of) quaint | curious
@@ -1483,16 +1697,22 @@ rabbit or hare,rewrite,(1 of) rabbit | hare
 race or color,keep,
 "Rain, rain, go away/Come again another day (Rain, rain, go away/Come again some other day accepted)",rewrite,"(1 of) Rain, rain, go away / Come again another day | Rain, rain, go away / Come again some other day"
 rainfall (or return or revenue),rewrite,(1 of) rainfall | return | revenue
+rated & rafted (rating & rafting accepted),rewrite,(1 of) rated & rafted | rating & rafting
 "rattlesnake (a rattle accepted, rattler also acceptable)",rewrite,(1 of) rattlesnake | a rattle | rattler
 RBI or run batted in,rewrite,(1 of) RBI | run batted in
+recommended daily amount (or allowance),rewrite,(1 of) recommended daily amount | recommended daily allowance
 red (or black) grape,rewrite,(1 of) red grape | black grape
+referred pain (referral accepted),rewrite,(1 of) referred pain | referral
 Reggie Bush or Bo Jackson,rewrite,(1 of) Reggie Bush | Bo Jackson
 register (or registration) marks,rewrite,(1 of) register marks | registration marks
 regret or regrets,rewrite,(1 of) regret | regrets
 reindeer or caribou,rewrite,(1 of) reindeer | caribou
 resent (RE-sent) or resent (re-SENT),rewrite,(1 of) resent (RE-sent) | resent (re-SENT)
 "rest & recreation (also would accept rehabilitation, recuperation)",rewrite,(1 of) rest & recreation | rest & rehabilitation | rest & recuperation
+rest & recreation (rest & relaxation accepted),rewrite,(1 of) rest & recreation | rest & relaxation
 restore (or replace or repair),rewrite,(1 of) restore | replace | repair
+revolving around (or orbiting),rewrite,(1 of) revolving around | orbiting
+Rhode Island (or Delaware),rewrite,(1 of) Rhode Island | Delaware
 Richard Nixon or George H.W. Bush,rewrite,(1 of) Richard Nixon | George H.W. Bush
 "Richard Nixon, Gerald Ford or Charles Evans Hughes",rewrite,(1 of) Richard Nixon | Gerald Ford | Charles Evans Hughes
 right or wrong,keep,
@@ -1504,18 +1724,21 @@ Ripley's Believe It or Not!,keep,
 "Robert E. Lee, Jefferson Davis or Stonewall Jackson",rewrite,(1 of) Robert E. Lee | Jefferson Davis | Stonewall Jackson
 Roberto Benigni (Life Is Beautiful) or Sir Laurence Olivier (Hamlet),rewrite,(1 of) Roberto Benigni (Life Is Beautiful) | Sir Laurence Olivier (Hamlet)
 roe or rho,rewrite,(1 of) roe | rho
+Roman Catholic (or Christianity),rewrite,(1 of) Roman Catholic | Christianity
 roof of your mouth or back of the throat,rewrite,(1 of) roof of your mouth | back of the throat
 "Roosevelt Grier, Deacon Jones, Lamar Lundy or Merlin Olsen",rewrite,(1 of) Roosevelt Grier | Deacon Jones | Lamar Lundy | Merlin Olsen
 rooster or cock,rewrite,(1 of) rooster | cock
 Rosemary Clooney or Vera-Ellen,rewrite,(1 of) Rosemary Clooney | Vera-Ellen
 "Rudy (or Knute Rockne, All American)",rewrite,"(1 of) Rudy | Knute Rockne, All American"
 Ruth Buzzi or Gary Owens,rewrite,(1 of) Ruth Buzzi | Gary Owens
+S.C. Johnson & Son (Samuel Johnson & Son accepted),rewrite,(1 of) S.C. Johnson & Son | Samuel Johnson & Son
 Sadomasochism or Sadism & Masochism,rewrite,(1 of) Sadomasochism | Sadism & Masochism
 Sal Mineo or Natalie Wood,rewrite,(1 of) Sal Mineo | Natalie Wood
 Sale of the Century or Scrabble,rewrite,(1 of) Sale of the Century | Scrabble
 Sam Dash and/or Sen. Sam Ervin,rewrite,(1 of) Sam Dash | Sen. Sam Ervin
 Sam Rayburn (or John Nance Garner or Jim Wright),rewrite,(1 of) Sam Rayburn | John Nance Garner | Jim Wright
 Samuel Adams or John Hancock,rewrite,(1 of) Samuel Adams | John Hancock
+San Francisco State University (or State College),rewrite,(1 of) San Francisco State University | San Francisco State College
 Santa Claus or Father Christmas,rewrite,(1 of) Santa Claus | Father Christmas
 "Saudi Arabia (or Iran, Oman, Yemen or Qatar)",rewrite,(1 of) Saudi Arabia | Iran | Oman | Yemen | Qatar
 Saul or Paul,rewrite,(1 of) Saul | Paul
@@ -1525,43 +1748,69 @@ scripts or screenplays,rewrite,(1 of) scripts | screenplays
 Seinfeld (or I Love Lucy or The Andy Griffith Show),rewrite,(1 of) Seinfeld | I Love Lucy | The Andy Griffith Show
 senior or elder care,rewrite,(1 of) senior care | elder care
 Shadrach (also Meshach or Abednego),rewrite,(1 of) Shadrach | Meshach | Abednego
+Shaquille O'Neal (Shaq accepted),rewrite,(1 of) Shaquille O'Neal | Shaq
 sheath or scabbard,rewrite,(1 of) sheath | scabbard
+shedding of the skin (or molting),rewrite,(1 of) shedding of the skin | molting
 shootout (or gunfight) at the O.K. Corral,rewrite,(1 of) shootout at the O.K. Corral | gunfight at the O.K. Corral
+show off (or showboat),rewrite,(1 of) show off | showboat
 show up for someone or to show them up,rewrite,(1 of) show up (for someone) | to show them up
 Siamese or conjoined twins,rewrite,(1 of) Siamese twins | conjoined twins
 Sierra Leone (or Guinea or Côte d'Ivoire),rewrite,(1 of) Sierra Leone | Guinea | Côte d'Ivoire
 signal (or signals) intelligence,rewrite,(1 of) signal intelligence | signals intelligence
+silicon dioxide (or quartz),rewrite,(1 of) silicon dioxide | quartz
+silicon dioxide (or silica),rewrite,(1 of) silicon dioxide | silica
 silver or blue (gray),rewrite,(1 of) silver | blue | gray
 "sing it, or dance to it",rewrite,(1 of) sing it | dance to it
 sink or swim,keep,
 skeet (or trap) shooting,rewrite,(1 of) skeet shooting | trap shooting
 skunk (or swamp) cabbage,rewrite,(1 of) skunk cabbage | swamp cabbage
 slander (or libel or defamation),rewrite,(1 of) slander | libel | defamation
+sleeping separately (or alone),rewrite,(1 of) sleeping separately | sleeping alone
 "slug-like, or sluggish",rewrite,(1 of) slug-like | sluggish
 smallpox or mall,rewrite,(1 of) smallpox | mall
+smokeless tobacco products (or chewing tobacco),rewrite,(1 of) smokeless tobacco products | chewing tobacco
 SNL or Saturday Night Live,rewrite,(1 of) SNL | Saturday Night Live
 snow (or rain or any kind of precipitation),rewrite,(1 of) snow | rain | precipitation
+snug as a bug in a rug (a snug rug bug accepted),rewrite,(1 of) snug as a bug in a rug | a snug rug bug
 socialization or how to live in society (how to get along with other people),rewrite,(1 of) socialization | how to live in society | how to get along with other people
+sodium chloride (or salt),rewrite,(1 of) sodium chloride | salt
 solid or liquid,rewrite,(2 of) solid | liquid
+Some Like It Hot (or Sunset Boulevard),rewrite,(1 of) Some Like It Hot | Sunset Boulevard
+South Africa (or Zimbabwe),rewrite,(1 of) South Africa | Zimbabwe
 South Africa and/or North Korea & South Korea,rewrite,(2 of) South Africa | North Korea | South Korea
 South or Southeast,rewrite,(1 of) South | Southeast
+specific gravity (or density),rewrite,(1 of) specific gravity | density
+Spenser: For Hire (or Vegas),rewrite,(1 of) Spenser: For Hire | Vegas
 "spin a web (spin silk, weave accepted)",rewrite,(1 of) spin a web | spin silk | weave
+sponsored prayer (or religion),rewrite,(1 of) sponsored prayer | religion
 springs or weights,rewrite,(1 of) springs | weights
 Square Deal or No Deal,keep,
 St. Jerome's or the Vulgate,rewrite,(1 of) St. Jerome's | the Vulgate
+St. Paul (or Saul),rewrite,(1 of) St. Paul | Saul
+St. Petersburg (or Leningrad),rewrite,(1 of) St. Petersburg | Leningrad
+stage direction (or blocking),rewrite,(1 of) stage direction | blocking
 standing or rearing,rewrite,(1 of) standing | rearing
+startup fee (or commission),rewrite,(1 of) startup fee | commission
 "steel wool (or SOS, or Brillo)",rewrite,(1 of) steel wool | SOS | Brillo
 Stephen Vincent Benet or William Rose Benet,rewrite,(1 of) Stephen Vincent Benet | William Rose Benet
+Strategic Arms Limitation Talks (or Treaty),rewrite,(1 of) Strategic Arms Limitation Talks | Strategic Arms Limitation Treaty
+string bean (or beanpole),rewrite,(1 of) string bean | beanpole
+strip joints (or nightclubs),rewrite,(1 of) strip joints | nightclubs
 stunt or daredevil flying,rewrite,(1 of) stunt flying | daredevil flying
+sugar and spice and everything nice (or all things nice),rewrite,(1 of) sugar and spice and everything nice | sugar and spice and all things nice
 suntan lotion or sunscreen,rewrite,(1 of) suntan lotion | sunscreen
+Super Mario Bros. (Super Mario accepted),rewrite,(1 of) Super Mario Bros. | Super Mario
 superglue or Krazy Glue,rewrite,(1 of) superglue | Krazy Glue
 symmetric or symmetrical,rewrite,(1 of) symmetric | symmetrical
+symphony orchestras (or bands),rewrite,(1 of) symphony orchestras | symphony bands
 T-R-A-V-E-R-S (or Y-A-R-R-O-W or S-T-O-O-K-E-Y),rewrite,(1 of) T-R-A-V-E-R-S | Y-A-R-R-O-W | S-T-O-O-K-E-Y
 T. Jefferson or G. Washington,rewrite,(1 of) T. Jefferson | G. Washington
 tab top or pull top cans,rewrite,(1 of) tab top cans | pull top cans
 Taiwan (also known as Nationalist China),rewrite,(1 of) Taiwan | Nationalist China
 Taiwan or Formosa,rewrite,(1 of) Taiwan | Formosa
+take a girl to a dance (or a party),rewrite,(1 of) take a girl to a dance | take a girl to a party
 Take It or Leave It,keep,
+takeoff & landing (or launch & arrival),rewrite,(1 of) takeoff & landing | launch & arrival
 Tamburlaine or Tamerlane,rewrite,(1 of) Tamburlaine | Tamerlane
 Tanzania (or Mozambique or Swaziland),rewrite,(1 of) Tanzania | Mozambique | Swaziland
 tap or pat,rewrite,(1 of) tap | pat
@@ -1570,103 +1819,210 @@ tattoes or painted designs,rewrite,(1 of) tattoes | painted designs
 "Tecumseh (or ""The Prophet"", referring to Tenskwatawa)",rewrite,"(1 of) Tecumseh | ""The Prophet"" | Tenskwatawa"
 Ted (or Edward) Kennedy,rewrite,(1 of) Ted Kennedy | Edward Kennedy
 Teddy Roosevelt or Woodrow Wilson,rewrite,(1 of) Teddy Roosevelt | Woodrow Wilson
+Terminator Salvation (Terminator accepted),rewrite,(1 of) Terminator Salvation | Terminator
 Thailand or Burma/Myanmar,rewrite,(1 of) Thailand | Burma | Myanmar
+that dog don't hunt (or won't hunt),rewrite,(1 of) that dog don't hunt | that dog won't hunt
 the $10 bill or the $50 bill,rewrite,(1 of) the $10 bill | the $50 bill
 "The $10,000 (or $20,000, or $100,000) Pyramid",rewrite,"(1 of) The $10,000 Pyramid | The $20,000 Pyramid | The $100,000 Pyramid"
+the 18th century (or the 1700s),rewrite,(1 of) the 18th century | the 1700s
+the 19th century (or the 1800s),rewrite,(1 of) the 19th century | the 1800s
+the 4 × 100 meter relay (the 400 meter relay accepted),rewrite,(1 of) the 4 × 100 meter relay | the 400 meter relay
+the abominable snowman (or the yeti),rewrite,(1 of) the abominable snowman | the yeti
+the African National Congress (or the ANC),rewrite,(1 of) the African National Congress | the ANC
+the Age of Copper (or Bronze Age),rewrite,(1 of) the Age of Copper | Bronze Age
+the Anglican Church (or Episcopalian),rewrite,(1 of) the Anglican Church | Episcopalian Church
 the Apologia or Apology,rewrite,(1 of) the Apologia | Apology
+the astrological chart (or horoscope),rewrite,(1 of) the astrological chart | horoscope
 "the Atlanta-Fulton County Stadium (or the Kingdome, Milwaukee County Stadium, or the Oakland-Alameda County Coliseum)",rewrite,"(1 of) the Atlanta-Fulton County Stadium | the Kingdome, Milwaukee County Stadium | the Oakland-Alameda County Coliseum"
 the Australian or secret ballot,rewrite,(1 of) the Australian ballot | secret ballot
 the back door (or back room or back channel),rewrite,(1 of) the back door | back room | back channel
+the Barbary Coast (Barbaria accepted),rewrite,(1 of) the Barbary Coast | Barbaria
+the Battle of Agincourt (or Azincourt),rewrite,(1 of) the Battle of Agincourt | the Battle of Azincourt
 the Battle of Breed's or Bunker Hill,rewrite,(1 of) the Battle of Breed's | Bunker Hill
 the Battle of Bunker Hill (also the Battle of Breed's Hill),rewrite,(1 of) the Battle of Bunker Hill | the Battle of Breed's Hill
+The Battle of Bunker Hill (or Breed's Hill),rewrite,(1 of) The Battle of Bunker Hill | The Battle of Breed's Hill
 the Big Bopper (or Buddy Holly or Ritchie Valens),rewrite,(1 of) the Big Bopper | Buddy Holly | Ritchie Valens
 the bile ducts (or the hepatic ducts or cystic ducts),rewrite,(1 of) the bile ducts | the hepatic ducts | cystic ducts
 the bill or the beak,rewrite,(1 of) the bill | the beak
+the birds and the bees (or sex),rewrite,(1 of) the birds and the bees | sex
+The Bob Newhart Show (or Good Times),rewrite,(1 of) The Bob Newhart Show | Good Times
+the boiling point (or vaporization),rewrite,(1 of) the boiling point | vaporization
 the Book of Ruth or Esther,rewrite,(1 of) the Book of Ruth | Book of Esther
 the bow or the prow,rewrite,(2 of) bow | prow
 the Bowery Boys (or the Dead End Kids or the East Side Kids),rewrite,(1 of) the Bowery Boys | the Dead End Kids | the East Side Kids
+the Boy Scouts of America (or the Girl Scouts),rewrite,(1 of) the Boy Scouts of America | the Girl Scouts of America
 the buffalo or Indian head nickel,rewrite,(1 of) the buffalo | Indian head nickel
+the Bureau of Printing and Engraving (or the Mint),rewrite,(1 of) the Bureau of Printing and Engraving | the Mint
+the Canadian Football League (or CFL),rewrite,(1 of) the Canadian Football League | CFL
+the Cathedral of St. Mark (or San Marco),rewrite,(1 of) the Cathedral of St. Mark | the Cathedral of San Marco
+the Celsius scale (or centigrade),rewrite,(1 of) the Celsius scale | centigrade
 "the Centaur (or Sagittarius, Pegasus, Unicorn, or Little Horse)",rewrite,(1 of) the Centaur | Sagittarius | Pegasus | Unicorn | Little Horse
+the Centers for Disease Control (or CDC),rewrite,(1 of) the Centers for Disease Control | CDC
 the Ch'ing (or Manchu) Dynasty,rewrite,(1 of) the Ch'ing Dynasty | the Manchu Dynasty
 the chicken or the egg,keep,
+the Church of England (or the Anglican Church),rewrite,(1 of) the Church of England | the Anglican Church
 "the Civil War, or the War between the States",rewrite,(1 of) the Civil War | the War between the States
+the Cleveland Plain Dealer (or the Columbus Dispatch),rewrite,(1 of) the Cleveland Plain Dealer | the Columbus Dispatch
+the cocoa bean (or cacao),rewrite,(1 of) the cocoa bean | cacao bean
+the code of chivalry (or the chivalric code),rewrite,(1 of) the code of chivalry | the chivalric code
+the coffee cherry (or berry),rewrite,(1 of) the coffee cherry | coffee berry
 the coins or the currency of the country,rewrite,(1 of) the coins | the currency of the country
 the common (or red) mangrove,rewrite,(1 of) the common mangrove | the red mangrove
+the count of Monte Cristo (or Edmond Dantès),rewrite,(1 of) the count of Monte Cristo | Edmond Dantès
+the Crab Constellation (Cancer accepted),rewrite,(1 of) the Crab Constellation | Cancer
 "the date that Delaware became part of the United States, or the First State",rewrite,(1 of) the date that Delaware became part of the United States | the date that Delaware became the First State
+the Daughters of the American Revolution (or DAR),rewrite,(1 of) the Daughters of the American Revolution | DAR
+the Department of Justice (the Justice Building accepted),rewrite,(1 of) the Department of Justice | the Justice Building
 the Department of the Interior (or Interior Department) (in made part mental),rewrite,(1 of) the Department of the Interior (in made part mental) | Interior Department (in made part mental)
+The Divine Comedy (The Inferno accepted),rewrite,(1 of) The Divine Comedy | The Inferno
+the door is ajar (a door ajar accepted),rewrite,(1 of) the door is ajar | a door ajar
 the drum family or percussion instruments,rewrite,(1 of) the drum family | percussion instruments
 the elderly or old people (aging),rewrite,(1 of) the elderly | old people | aging
 the electoral college or the electors,rewrite,(1 of) the electoral college | the electors
+the end of the world (the apocalypse accepted),rewrite,(1 of) the end of the world | the apocalypse
 the end of World War II or V-J Day,rewrite,(1 of) the end of World War II | V-J Day
 the federal district or the District of Columbia,rewrite,(1 of) the federal district | the District of Columbia
 the Fierce (or Fab) Five,rewrite,(1 of) the Fierce Five | the Fab Five
+the Five Civilized Nations (or Tribes),rewrite,(1 of) the Five Civilized Nations | the Five Civilized Tribes
+the Forbidden Palace (or City),rewrite,(1 of) the Forbidden Palace | the Forbidden City
 The Four Tops or The Four Seasons,rewrite,(1 of) The Four Tops | The Four Seasons
 the Franklin Stove (or Oven or Furnace),rewrite,(1 of) the Franklin Stove | the Franklin Oven | the Franklin Furnace
 The Front Page or His Girl Friday,rewrite,(1 of) The Front Page | His Girl Friday
+the Fugitive Slave Law (or Act),rewrite,(1 of) the Fugitive Slave Law | the Fugitive Slave Act
+the Ghost of Christmas Future (or Christmas to Come),rewrite,(1 of) the Ghost of Christmas Future | the Ghost of Christmas to Come
+The Great British Baking Show (or The Great British Bake-Off),rewrite,(1 of) The Great British Baking Show | The Great British Bake-Off
+the Great Fire of London (the Great London Fire accepted),rewrite,(1 of) the Great Fire of London | the Great London Fire
 the Great Lakes or Lake Champlain,rewrite,(1 of) the Great Lakes | Lake Champlain
 "the Grim Reaper, or Death",rewrite,(1 of) the Grim Reaper | Death
+the Gulf of Arabia (or the Persian Gulf),rewrite,(1 of) the Gulf of Arabia | the Persian Gulf
 the hardware or the software,rewrite,(2 of) hardware | software
 the head of or the source of the Nile,rewrite,(1 of) the head of the Nile | the source of the Nile
 The Heidi Chronicles or Driving Miss Daisy,rewrite,(1 of) The Heidi Chronicles | Driving Miss Daisy
+the hound of Hades (or Cerberus),rewrite,(1 of) the hound of Hades | Cerberus
 the Hulk or Bruce Banner,rewrite,(1 of) the Hulk | Bruce Banner
+The Hundred and One Dalmatians (One Hundred and One Dalmatians accepted),rewrite,(1 of) The Hundred and One Dalmatians | One Hundred and One Dalmatians
 "the iris (or lens, cone, rods, or uvea)",rewrite,(1 of) the iris | lens | cone | rods | uvea
+the James Webb Space Telescope (Webb Telescope accepted),rewrite,(1 of) the James Webb Space Telescope | Webb Telescope
+the Japanese earthquake (or tsunami),rewrite,(1 of) the Japanese earthquake | the Japanese tsunami
+the Jets and the Sharks (or San Jose and Winnipeg),rewrite,(1 of) the Jets and the Sharks | San Jose and Winnipeg
+the Jewish New Year (or Rosh Hashanah),rewrite,(1 of) the Jewish New Year | Rosh Hashanah
 the king or queen,rewrite,(1 of) the king | the queen
 the Knights Hospitaller or the Knights of Malta,rewrite,(1 of) the Knights Hospitaller | the Knights of Malta
 the Lady of the Lake (or Vivien or Nimue),rewrite,(1 of) the Lady of the Lake | Vivien | Nimue
 The Lady or the Tiger?,keep,
+the lamb following her to school (bringing the lamb to school accepted),rewrite,(1 of) the lamb following her to school | bringing the lamb to school
 the Laplanders (or Lapps or Sami),rewrite,(1 of) the Laplanders | Lapps | Sami
 the Lapps or Lapplanders,rewrite,(1 of) the Lapps | Lapplanders
 The Last Emperor (or Last Tango in Paris,rewrite,(1 of) The Last Emperor | Last Tango in Paris
 The Louvre or the National Gallery,rewrite,(1 of) The Louvre | the National Gallery
+the Love Bug (or Herbie),rewrite,(1 of) the Love Bug | Herbie
+the Magellanic clouds (Magellan accepted),rewrite,(1 of) the Magellanic clouds | Magellan clouds
+the Marshall Islands (or Micronesia),rewrite,(1 of) the Marshall Islands | Micronesia
 "the mountain lion (or cougar, or panther, or puma)",rewrite,(1 of) the mountain lion | cougar | panther | puma
+the Museum of American History (the American History Museum accepted),rewrite,(1 of) the Museum of American History | the American History Museum
+the Musée d'Orsay (the Orsay accepted),rewrite,(1 of) the Musée d'Orsay | the Orsay
+the National Air and Space Museum (the Air and Space Museum accepted),rewrite,(1 of) the National Air and Space Museum | the Air and Space Museum
 the National Football Conference West or the American Football Conference Central,rewrite,(1 of) the National Football Conference West | the American Football Conference Central
+the Native Americans (or the Indians),rewrite,(1 of) the Native Americans | the Indians
 The Neverhood or Skullmonkeys,rewrite,(1 of) The Neverhood | Skullmonkeys
 the nineteen-aughts or 1900s,rewrite,(1 of) the nineteen-aughts | 1900s
 the Nobel Prize in Physiology or Medicine,rewrite,(1 of) the Nobel Prize in Physiology | Medicine
+the Norman invasion of England (or Norman Conquest),rewrite,(1 of) the Norman invasion of England | Norman Conquest
+the North Sea (or the Baltic),rewrite,(1 of) the North Sea | the Baltic
+the North Star (or Polaris),rewrite,(1 of) the North Star | Polaris
 the nose or snout,rewrite,(1 of) the nose | snout
 "the OED, or the Oxford Dictionary",rewrite,(1 of) the OED | the Oxford Dictionary
 the oil or petroleum industry,rewrite,(1 of) the oil industry | petroleum industry
+the Olympic torch (or flame),rewrite,(1 of) the Olympic torch | the Olympic flame
 the origin (or source) of the Nile,rewrite,(1 of) the origin of the Nile | the source of the Nile
 the overhead compartment or under the seat,rewrite,(2 of) the overhead compartment | under the seat
 the Palme d'Or,keep,
+the peace symbol (or sign),rewrite,(1 of) the peace symbol | the peace sign
 the Perisphere or the Trylon,rewrite,(1 of) the Perisphere | the Trylon
+the Persian Gulf War (or Desert Storm),rewrite,(1 of) the Persian Gulf War | Desert Storm
 The Phantom Menace or Attack of the Clones,rewrite,(1 of) The Phantom Menace | Attack of the Clones
 the Populist (or People's) Party,rewrite,(1 of) the Populist Party | the People's Party
+the president of the United States (or presidential oath),rewrite,(1 of) the president of the United States | presidential oath
 The Producers or A Funny Thing Happened on the Way to the Forum,rewrite,(1 of) The Producers | A Funny Thing Happened on the Way to the Forum
 the Quakers or the Society of Friends,rewrite,(1 of) the Quakers | the Society of Friends
+the Queen's birthday (or King),rewrite,(1 of) the Queen's birthday | the King's birthday
+the reasonable person (or man),rewrite,(1 of) the reasonable person | the reasonable man
 the Republic of China or Taiwan,rewrite,(1 of) the Republic of China | Taiwan
+the Republican Party (or the GOP),rewrite,(1 of) the Republican Party | the GOP
 the Reserves or National Guard,rewrite,(1 of) the Reserves | National Guard
+The Return of the Jedi (Star Wars accepted),rewrite,(1 of) The Return of the Jedi | Star Wars
+the rhomboid muscles (trapezius accepted),rewrite,(1 of) the rhomboid muscles | trapezius
+The Ricky Ricardo Club (or The Babalu Club),rewrite,(1 of) The Ricky Ricardo Club | The Babalu Club
+the Royal Air Force (or RAF),rewrite,(1 of) the Royal Air Force | RAF
 the Sault Ste. Marie (or Soo) Locks,rewrite,(1 of) the Sault Ste. Marie Locks | the Soo Locks
 "the Scottish Play, or Macbeth",rewrite,(1 of) the Scottish Play | Macbeth
+the Screen Actors Guild (or SAG),rewrite,(1 of) the Screen Actors Guild | SAG
+the Sea of Solomon (or the Solomon Sea),rewrite,(1 of) the Sea of Solomon | the Solomon Sea
 "the Senate (or the House of Representatives, but only during a speech or a debate)",rewrite,(1 of) the Senate | the House of Representatives (but only during a speech or a debate)
 the serpent or Balaam's ass,rewrite,(1 of) the serpent | Balaam's ass
+the seven deadly sins (or vices),rewrite,(1 of) the seven deadly sins | the seven vices
+The Silence of the Lambs (or Red Dragon),rewrite,(1 of) The Silence of the Lambs | Red Dragon
 The Silence of the Lambs or As Good as It Gets,rewrite,(1 of) The Silence of the Lambs | As Good as It Gets
 The Silence of the Lambs or One Flew Over the Cuckoo's Nest,rewrite,(1 of) The Silence of the Lambs | One Flew Over the Cuckoo's Nest
+the Six Million Dollar Man (or the Bionic Man),rewrite,(1 of) the Six Million Dollar Man | the Bionic Man
+The Six Million Dollar Man (or The Bionic Woman),rewrite,(1 of) The Six Million Dollar Man | The Bionic Woman
+The Society of Friends (or Quakers),rewrite,(1 of) The Society of Friends | Quakers
 The Sound and the Fury (or Light in August or As I Lay Dying),rewrite,(1 of) The Sound and the Fury | Light in August | As I Lay Dying
+the Soviet Union (or Russia),rewrite,(1 of) the Soviet Union | Russia
 the Soviet Union (or the U.S.S.R. or Russia),rewrite,(1 of) the Soviet Union | the U.S.S.R. | Russia
 the starter or ignition,rewrite,(1 of) the starter | ignition
+the state mineral (or rock),rewrite,(1 of) the state mineral | the state rock
+the Strait of Formosa (or Taiwan Strait),rewrite,(1 of) the Strait of Formosa | Taiwan Strait
 the Straits of Gibraltar & the Straits of Bosporus (or the Dardanelles) (& the Suez Canal),rewrite,(2 of) the Straits of Gibraltar | the Straits of Bosporus | the Dardanelles | the Suez Canal
 the Surgeon General or (C. Everett) Coop,rewrite,(1 of) the Surgeon General | (C. Everett) Coop
+the Tampa Bay Devil Rays (Tampa Rays accepted),rewrite,(1 of) the Tampa Bay Devil Rays | Tampa Rays
 the Thai or Siamese alphabet,rewrite,(1 of) the Thai | Siamese alphabet
+the three wise men (or the Magi),rewrite,(1 of) the three wise men | the Magi
+the three wise men (or the three magi),rewrite,(1 of) the three wise men | the three magi
 the Thuggee or the thugs,rewrite,(1 of) the Thuggee | the thugs
+the Transcontinental Railroad (a railroad accepted),rewrite,(1 of) the Transcontinental Railroad | a railroad
+The Twilight of the Gods (or Gotterdammerung),rewrite,(1 of) The Twilight of the Gods | Gotterdammerung
+the U.S. Postal Service (post office accepted),rewrite,(1 of) the U.S. Postal Service | post office
 the underground (or the metro or subway system),rewrite,(1 of) the underground | the metro | subway system
+the Union Jack (the UK accepted),rewrite,(1 of) the Union Jack | the UK
+the United Kingdom (England accepted),rewrite,(1 of) the United Kingdom | England
+the United States (or Canada),rewrite,(1 of) the United States | Canada
+the Ural Mountains (or the Caucasus),rewrite,(1 of) the Ural Mountains | the Caucasus
+the Victoria and Albert Museum (Victoria & Albert accepted),rewrite,(1 of) the Victoria and Albert Museum | Victoria & Albert
+the War between the States (or the Civil War),rewrite,(1 of) the War between the States | the Civil War
+the wasting disease (or consumption),rewrite,(1 of) the wasting disease | consumption
+the Wilderness Trail (or Road),rewrite,(1 of) the Wilderness Trail | the Wilderness Road
 "the wire breaks (or melts) inside, the contact is broken",rewrite,"(1 of) the wire breaks inside, the contact is broken | the wire melts inside, the contact is broken"
 "the WPA, or the Works Progress Administration",rewrite,(1 of) the WPA | the Works Progress Administration
+the years of Jesus's life (the age of Jesus accepted),rewrite,(1 of) the years of Jesus's life | the age of Jesus
+the Yellow River (or Hwang-ho),rewrite,(1 of) the Yellow River | Hwang-ho
 the zloty or the zaire,rewrite,(1 of) the zloty | the zaire
+their horns (or antlers),rewrite,(1 of) their horns | antlers
+they cannot call (or sing),rewrite,(1 of) they cannot call | they cannot sing
 "things with beats, or things you can beat",rewrite,(1 of) things with beats | things you can beat
 "thunder, lightning or in rain",rewrite,(1 of) thunder | lightning | in rain
+ticker tape (confetti accepted),rewrite,(1 of) ticker tape | confetti
+Tierra del Fuego (or Patagonia),rewrite,(1 of) Tierra del Fuego | Patagonia
+timber industry (deforestation accepted),rewrite,(1 of) timber industry | deforestation
+time is fleeting (or time flies),rewrite,(1 of) time is fleeting | time flies
+Tiny Toon Adventures (Tiny Toons accepted),rewrite,(1 of) Tiny Toon Adventures | Tiny Toons
 to be or not to be,keep,
 To Be or Not to Be,keep,
 To be or not to be,keep,
 To Be Or Not To Be,keep,
+to be reborn (rebirth accepted),rewrite,(1 of) to be reborn | rebirth
 "To be, or not be",keep,
 "To be, or not to be",keep,
+to hit the nail on the head (or hit the hammer on the head),rewrite,(1 of) to hit the nail on the head | hit the hammer on the head
+to impair (or impede),rewrite,(1 of) to impair | impede
 to take back the sale or the buy himself,rewrite,(1 of) to take back the sale himself | take back the buy himself
+to thin (or cull),rewrite,(1 of) to thin | cull
 tomatoes or peppers,rewrite,(1 of) tomatoes | peppers
 Toni Morrison or Pearl Buck,rewrite,(1 of) Toni Morrison | Pearl Buck
 too long; didn't read (too long; don't read accepted),rewrite,(1 of) too long; didn't read | too long; don't read
 Toronto Raptors or Vancouver Grizzlies,rewrite,(1 of) Toronto Raptors | Vancouver Grizzlies
 tramps (or hobos or truck drivers),rewrite,(1 of) tramps | hobos | truck drivers
+transcontinental TV transmissions (or telephone calls),rewrite,(1 of) transcontinental TV transmissions | transcontinental telephone calls
 triage (or MASH) units,rewrite,(1 of) triage units | MASH units
 Trick or Treat,keep,
 trick or treat,keep,
@@ -1679,11 +2035,14 @@ Truth or Consequences (Hot Springs),keep,
 truth or dare,keep,
 Truth or Dare,keep,
 Truth or Daredevil,keep,
+"try, try again (try and try again accepted)",rewrite,"(1 of) try, try again | try and try again"
 Tudor or Lancaster,rewrite,(1 of) Tudor | Lancaster
 "turning it off, turning it on (or unplugging it, plugging it back in)",rewrite,(1 of) turning it off and turning it on | unplugging it and plugging it back in
 turning or cranking,rewrite,(1 of) turning | cranking
+turning the lights out (or a blackout),rewrite,(1 of) turning the lights out | a blackout
 "Twelfth Night, or What You Will",keep,
 U.S. Treasurer or U.S. Treasury Secretary,rewrite,(1 of) U.S. Treasurer | U.S. Treasury Secretary
+"U.S., Britain, and Russia (or U.S.S.R.)",rewrite,"(1 of) U.S., Britain, and Russia | U.S.S.R., Britain and U.S."
 Uganda (in Hug and accept),rewrite,Uganda
 un (or une) (in Dune),rewrite,(1 of) un | une
 Uncle (or Count) Olaf,rewrite,(1 of) Uncle Olaf | Count Olaf
@@ -1696,6 +2055,7 @@ verboden or verboten,rewrite,(1 of) verboden | verboten
 Victoria or the Victorian Age,rewrite,(1 of) Victoria | the Victorian Age
 Vienna (or Belgrade or Bratislava),rewrite,(1 of) Vienna | Belgrade | Bratislava
 "Virginia (or Massachusetts, Pennsylvania, or Kentucky)",rewrite,(1 of) Virginia | Massachusetts | Pennsylvania | Kentucky
+Vlad the Impaler (or Dracula),rewrite,(1 of) Vlad the Impaler | Dracula
 W or L (win or loss),rewrite,(1 of) W (win) | L (loss)
 waiter or waitress (carhop),rewrite,(1 of) waiter | waitress | carhop
 Wal-Mart or (Walmart),rewrite,(1 of) Wal-Mart | Walmart
@@ -1708,6 +2068,8 @@ Warren G. Harding or John F. Kennedy,rewrite,(1 of) Warren G. Harding | John F. 
 wasp or wisp,rewrite,(1 of) wasp | wisp
 water or rain,rewrite,(1 of) water | rain
 wear in (or break in) a (baseball) glove (or mitt),rewrite,(1 of) wear in a (baseball) glove | wear in a (baseball) mitt | break in a (baseball) glove | break in a (baseball) mitt
+wedge issues (a wedge accepted),rewrite,(1 of) wedge issues | a wedge
+weed killers (or herbicides),rewrite,(1 of) weed killers | herbicides
 Werewolf or  The Night Stalker,rewrite,(1 of) Werewolf | The Night Stalker
 West or East Germany,rewrite,(1 of) West Germany | East Germany | Germany
 West Virginia (or Kentucky or North Carolina),rewrite,(1 of) West Virginia | Kentucky | North Carolina
@@ -1728,16 +2090,24 @@ William Simon or Henry Kissinger,rewrite,(1 of) William Simon | Henry Kissinger
 "Winter, spring, summer or fall",keep,
 "winter, spring, summer, or fall",keep,
 women's suffrage (or women's right to vote or the 19th Amendment),rewrite,(1 of) women's suffrage | women's right to vote | the 19th Amendment
+wooden shoes (or clogs),rewrite,(1 of) wooden shoes | clogs
 Woodrow Wilson or John Tyler,rewrite,(1 of) Woodrow Wilson | John Tyler
+work a Slinky (a Slinky accepted),rewrite,(1 of) work a Slinky | a Slinky
+worked in an art gallery (or sold art),rewrite,(1 of) worked in an art gallery | sold art
+world outlook (or worldview),rewrite,(1 of) world outlook | worldview
+written records (or writing),rewrite,(1 of) written records | writing
 Wyoming (or Vermont or North Dakota),rewrite,(1 of) Wyoming | Vermont | North Dakota
 X's or O's,keep,
 X-ray topography (or treatment or therapy),rewrite,(1 of) X-ray topography | X-ray treatment | X-ray therapy
 ye (or thou or thee),rewrite,(1 of) ye | thou | thee
 yea or nay,keep,
 Yeshiva (or Yale or Youngstown State),rewrite,(1 of) Yeshiva | Yale | Youngstown State
+Yitzhak Rabin (or Shamir),rewrite,(1 of) Yitzhak Rabin | Shamir
 you or someone in your family will die,keep,
 You'll Never Get Rich or the Sergeant Bilko show (The Phil Silvers Show),rewrite,(1 of) You'll Never Get Rich | the Sergeant Bilko show | The Phil Silvers Show
+Young & Restless (or Bold & Beautiful),rewrite,(1 of) Young & Restless | Bold & Beautiful
 your address or your next of kin (to be notified in case of a problem),rewrite,(1 of) your address | your next of kin
+your base metabolic rate (metabolism accepted),rewrite,(1 of) your base metabolic rate | metabolism
 your little finger or your baby toe,rewrite,(1 of) your little finger | your baby toe
 Your money or your life?,keep,
 Yukon River or Columbia River,rewrite,(1 of) Yukon River | Columbia River

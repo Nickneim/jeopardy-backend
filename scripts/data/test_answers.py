@@ -42,12 +42,19 @@ class AutoRewriteTest(unittest.TestCase):
 
 class SuggestionTest(unittest.TestCase):
 
-    def test_suggests_replacing_the_last_words_with_a_shorter_alternative(self):
-        self.assertEqual("(1 of) a linen closet | a linen cupboard", suggestion("a linen closet (or cupboard)"))
-        self.assertEqual("(1 of) the Fugitive Slave Law | the Fugitive Slave Act", suggestion("the Fugitive Slave Law (or Act)"))
+    def test_suggests_a_shorter_alternative_as_a_different_whole_answer(self):
+        self.assertEqual("(1 of) a duck-billed platypus | echidna", suggestion("a duck-billed platypus (or echidna)"))
+        self.assertEqual("(1 of) a linen closet | cupboard", suggestion("a linen closet (or cupboard)"))
 
     def test_suggests_the_whole_answer_for_an_alternative_as_long_as_the_list(self):
         self.assertEqual("(1 of) hook and loop | hook and eye", suggestion("hook and loop (or hook and eye)"))
+
+    def test_treats_a_quoted_title_as_one_unit(self):
+        self.assertEqual('(1 of) "Beam us up, Scotty" | "Energize"', suggestion('"Beam us up, Scotty" (or "Energize")'))
+        self.assertEqual('(1 of) "Don\'t Cry For Me Argentina" | Evita', suggestion('"Don\'t Cry For Me Argentina" (or Evita)'))
+        # The quotes aren't words: one word for one word.
+        self.assertEqual('(1 of) "(I Can\'t Get No) Satisfaction" | "Satisfaction"',
+                         answers.auto_rewrite('"(I Can\'t Get No) Satisfaction" ("Satisfaction" accepted)'))
 
 
 if __name__ == "__main__":
