@@ -38,7 +38,7 @@ Run these in order. The answer rewrites are keyed by the answer text as the earl
 
 ## The rule
 
-`answers.py apply` only rewrites an alternative by itself when it clearly replaces the whole answer: `Myanmar (or Burma)`. When it may replace only part of it (after an `&`/`and` list or a comma, as in `coroner & coronet (or coronel)`, or when it has fewer words, as in `a linen closet (or cupboard)`), the answer goes to review instead. The tests (no database needed):
+`answers.py apply` only rewrites an alternative by itself when it clearly replaces the whole answer: `Myanmar (or Burma)`. When it may replace only part of it (after an `&`/`and` list or a comma, as in `coroner & coronet (or coronel)`, or when it has fewer words, as in `a linen closet (or cupboard)`), the answer goes to review instead, where the alternative is suggested as a different whole answer. The tests (no database needed):
 
 ```bash
 python -m unittest discover -s scripts/data
