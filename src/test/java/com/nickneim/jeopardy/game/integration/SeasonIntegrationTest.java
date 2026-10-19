@@ -1,9 +1,11 @@
 package com.nickneim.jeopardy.game.integration;
 
+import com.nickneim.jeopardy.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.json.JsonCompareMode;
@@ -12,6 +14,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
 @ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
 @Sql(
         scripts = "/testdata/season-integration-test-data.sql",
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD

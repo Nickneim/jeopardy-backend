@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.exception;
 
+import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -31,6 +33,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
 @ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
 @ContextConfiguration(initializers = ErrorResponseIntegrationTest.DevToolsErrorDefaults.class)
 class ErrorResponseIntegrationTest {
 
