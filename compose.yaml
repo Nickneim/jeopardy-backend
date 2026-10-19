@@ -1,0 +1,48 @@
+# Local development database: Postgres in a Docker container.
+#
+#   docker compose up -d      # start it (creates it the first time)
+#   docker compose stop       # stop it; the data stays
+#   docker compose down       # remove the container; the data stays (volume)
+#   docker compose down -v    # remove the container AND the data
+#
+# The credentials come from .env next to this file (Compose reads it by
+# itself), the same DATABASE_USERNAME / DATABASE_PASSWORD the app uses, so no
+# password is committed. They only apply when the volume is first created;
+# changing them later doesn't change the existing database's password.
+
+# A fixed project name, so running Compose from a git worktree
+# (.claude/worktrees/<name>) controls this same container and volume instead
+# of creating new ones named after the folder.
+name: jeopardy
+
+services:
+  db:
+    # postgres:17 (the same major version as the Postgres installed before,
+    # so pg_dump and pg_restore move data between them) plus the legacy time
+    # zone names; see docker/postgres/Dockerfile. Compose builds it on the
+    # first `up`; after editing the Dockerfile, run `docker compose up -d --build`.
+    build: docker/postgres
+    image: jeopardy-postgres:17
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:?set DATABASE_USERNAME in .env}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?set DATABASE_PASSWORD in .env}
+      POSTGRES_DB: jeopardy
+    ports:
+      # host:container. 5433 on the host so it doesn't clash with a locally
+      # installed Postgres on 5432. 127.0.0.1 keeps it off the network.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # The data lives in a named volume, so it survives the container being
+      # removed or the image being updated.
+      - pgdata:/var/lib/postgresql/data
+      # Scripts here run once, when the volume is empty (first start).
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d jeopardy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
