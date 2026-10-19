@@ -5,8 +5,10 @@ Scripts that check and fix the J-Archive data in the database. Each one matches 
 `psql.sh` connects with the `DATABASE_*` values from `.env` (or `ENV_FILE`). Its sessions are read-only unless `WRITE=1` is set, and every script is a dry run unless you also pass `-v commit=1` (or `--commit`). Back up first:
 
 ```bash
-pg_dump -h localhost -U postgres -d jeopardy -Fc -f jeopardy-YYYY-MM-DD.dump
+pg_dump -h localhost -p 5433 -U postgres -d jeopardy -Fc -f jeopardy-YYYY-MM-DD.dump
 ```
+
+Port 5433 is the Docker database (`compose.yaml`). Without a local `pg_dump`, run it inside the container and copy the file out: `docker exec jeopardy-db-1 pg_dump -U postgres -d jeopardy -Fc -f /tmp/backup.dump`, then `docker cp jeopardy-db-1:/tmp/backup.dump .`.
 
 ## After an import
 
