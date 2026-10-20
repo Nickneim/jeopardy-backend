@@ -56,7 +56,13 @@ kubectl apply -f k8s/
 kubectl get pods -n jeopardy -w
 ```
 
-When every pod is `1/1 READY`, the API is at `http://localhost/` (for example `http://localhost/api/games?size=1`). To use it from the frontend, start its dev server with the backend at port 80 (the frontend's README explains how).
+When every pod is `1/1 READY`, the API is at `http://localhost/` (for example `http://localhost/api/games?size=1`). To use it from the frontend, start its dev server with `BACKEND_URL` pointing at the Ingress:
+
+```bash
+BACKEND_URL=http://localhost npm run dev
+```
+
+In PowerShell: `$env:BACKEND_URL='http://localhost'; npm run dev`.
 
 After rebuilding the image under the same tag, restart the pods to pick it up:
 
