@@ -1,0 +1,20 @@
+# Settings for the backend, as environment variables (application.yaml reads
+# them). The password is in the backend-secret Secret, created by hand (see
+# README.md) so it's never committed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: jeopardy
+data:
+  # The Docker Compose database on your machine (compose.yaml).
+  # host.docker.internal is how a container reaches the host.
+  DATABASE_URL: jdbc:postgresql://host.docker.internal:5433/jeopardy
+  DATABASE_USERNAME: postgres
+  ALLOWED_ORIGINS: http://localhost:5173
+  # Actuator (health probes, and this pod's sessions for the others' lobby
+  # lists) on its own port, which no Service outside the cluster exposes.
+  MANAGEMENT_SERVER_PORT: "8081"
+  # Resolves to every ready pod (30-service.yaml), so the lobby list can ask
+  # all of them for their sessions.
+  SESSION_PEERS: backend-peers.jeopardy.svc.cluster.local

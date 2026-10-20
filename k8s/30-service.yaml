@@ -1,0 +1,48 @@
+# Three Services for the same pods. The first two let each Ingress in
+# 40-ingress.yaml balance its traffic its own way (ingress-nginx keeps one
+# load-balancing setting per Service); the third lets the pods find each
+# other.
+
+# Requests that any pod can answer: game browsing and the lobby list.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: jeopardy
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# Requests about one session, routed by session id.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-sessions
+  namespace: jeopardy
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# Headless (no cluster IP of its own): its DNS name resolves to the IP of
+# every ready pod, which is how each pod finds the others to build the lobby
+# list (SESSION_PEERS in 10-config.yaml). Only for traffic inside the
+# cluster; no Ingress points at it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-peers
+  namespace: jeopardy
+spec:
+  clusterIP: None
+  selector:
+    app: backend
+  ports:
+    - name: management
+      port: 8081
+      targetPort: management

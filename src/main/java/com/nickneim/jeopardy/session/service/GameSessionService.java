@@ -1,12 +1,12 @@
 package com.nickneim.jeopardy.session.service;
 
-import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,12 +61,25 @@ public class GameSessionService {
         this.clock = clock;
     }
 
-    /** A new session with the default timers; the host can change them in the lobby. */
+    /** A new session with a random id. */
     public GameSession createSession(GameBoard board) {
-        UUID id = UUID.randomUUID();
+        return createSession(UUID.randomUUID(), board);
+    }
+
+    /**
+     * A new session with the default timers; the host can change them in the
+     * lobby. The client chooses the id, so that a load balancer in front of
+     * several instances can route the create, like every later request about
+     * the session, to the instance that will hold it (docs/api.md §3.2).
+     *
+     * @throws GameSessionAlreadyExistsException if the id is taken
+     */
+    public GameSession createSession(UUID id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
-        sessions.put(session.getId(), session);
+        if (sessions.putIfAbsent(id, session) != null) {
+            throw new GameSessionAlreadyExistsException(id);
+        }
 
         // Nobody may ever join, so the idle lobby timeout starts now.
         synchronized (session) {
@@ -78,16 +90,12 @@ public class GameSessionService {
     }
 
     /**
-     * The open sessions for a lobby page, newest first (ties by id), without
-     * finished ones unless {@code includeFinished}. Each summary is built
-     * under its session's lock.
+     * A summary of every session this instance holds, finished ones included,
+     * in no particular order. Each is built under its session's lock. The
+     * lobby list (SessionLobby) merges these with the other instances'.
      */
-    public PageResponse<GameSessionSummaryResponse> listSessions(
-            boolean includeFinished,
-            int page,
-            int size
-    ) {
-        List<GameSessionSummaryResponse> matching = sessions.values()
+    public List<GameSessionSummaryResponse> localSummaries() {
+        return sessions.values()
                 .stream()
                 .map(session -> {
                     synchronized (session) {
@@ -95,22 +103,7 @@ public class GameSessionService {
                     }
                 })
                 .filter(summary -> summary.state() != GameSessionState.CLOSED)
-                .filter(summary -> includeFinished || summary.state() != GameSessionState.FINISHED_GAME)
-                .sorted(Comparator.comparing(GameSessionSummaryResponse::createdAt)
-                        .reversed()
-                        .thenComparing(GameSessionSummaryResponse::id))
                 .toList();
-
-        int from = (int) Math.min((long) page * size, matching.size());
-        int to = Math.min(from + size, matching.size());
-
-        return new PageResponse<>(
-                matching.subList(from, to),
-                page,
-                size,
-                matching.size(),
-                (matching.size() + size - 1) / size
-        );
     }
 
     public GameSession getSession(UUID sessionId) {

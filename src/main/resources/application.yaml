@@ -28,8 +28,25 @@ spring:
       include-message: never
       include-binding-errors: never
 
+management:
+  endpoints:
+    web:
+      exposure:
+        # gamesessions: this instance's sessions, which the other instances
+        # read for the lobby list (GameSessionsEndpoint). In Kubernetes the
+        # management server has its own port (MANAGEMENT_SERVER_PORT), which
+        # isn't exposed outside the cluster.
+        include: health,gamesessions
+
 app:
   cors:
     # Browser origins allowed to call the REST API and open /ws. Comma-separated
     # when set through ALLOWED_ORIGINS; defaults to the Vite dev server.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  # With several instances, how the lobby list finds the others' sessions
+  # (SessionLobbyProperties). Off unless SESSION_PEERS is set.
+  session-lobby:
+    peers: ${SESSION_PEERS:}
+    self-address: ${POD_IP:}
+    peer-port: ${management.server.port:${server.port:8080}}
+    timeout: 1s

@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.dto.ApiErrorResponse;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
@@ -67,6 +68,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(LateJoinNotAllowedException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiErrorResponse handleLateJoinNotAllowed(LateJoinNotAllowedException exception) {
+        return new ApiErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage()
+        );
+    }
+
+    // 409: a create with a session id that's already in use.
+    @ExceptionHandler(GameSessionAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiErrorResponse handleGameSessionAlreadyExists(GameSessionAlreadyExistsException exception) {
         return new ApiErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 exception.getMessage()

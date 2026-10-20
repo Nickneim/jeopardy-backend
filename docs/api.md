@@ -19,14 +19,16 @@ The contract between this backend and the React frontend. It covers the REST API
 
 ```
 0. GET  /api/game-sessions                                     → open sessions      (lobby list)
-1. POST /api/game-sessions                    { gameId }       → { id }               (create)
-2. POST /api/game-sessions/{id}/players       { playerName }   → { playerId, token }  (join; the first player is the host)
-3. STOMP CONNECT ws://localhost:8080/ws       header  player-token: <token>
+1. PUT  /api/game-sessions/{id}?session={id}            { gameId }       → { id }               (create; you pick the id)
+2. POST /api/game-sessions/{id}/players?session={id}    { playerName }   → { playerId, token }  (join; the first player is the host)
+3. STOMP CONNECT ws://localhost:8080/ws?session={id}    header  player-token: <token>
 4. SUBSCRIBE /topic/sessions/{id}             ← full game state after every change
    SUBSCRIBE /user/queue/errors               ← errors caused by your own actions
-5. GET  /api/game-sessions/{id}                                → current state      (catch up)
+5. GET  /api/game-sessions/{id}?session={id}                     → current state      (catch up)
 6. SEND /app/sessions/{id}/start | choose-clue | buzz | answer | ... | leave
 ```
+
+The `?session={id}` on every request about a session is for routing when several backend instances run (§3.2). A single instance ignores it, but always send it.
 
 Key ideas:
 
@@ -99,6 +101,14 @@ One clue. Response: `ClueResponse`, whose `gameId` is the game it belongs to (fo
 
 ### 3.2 Game sessions
 
+#### Routing: the `session` parameter
+
+A session lives in the memory of one backend instance. When several instances run behind a load balancer (for example in Kubernetes, see the backend's `k8s/README.md`), the load balancer picks the instance for each request from the **`session` query parameter**, so that everything about one session reaches the instance that holds it. A path segment can't be used, because load balancers can't read part of a path, and neither can a header, because browsers can't add headers to a WebSocket connection.
+
+**Every request about one session must carry `?session=<its id>`:** creating it (`PUT /api/game-sessions/{id}`), fetching it, joining it, and the `/ws` connection used to play or watch it (§4.1). The value is the session id, the same as in the path. A request without it may reach an instance that doesn't have the session and get a 404 (or, on the WebSocket, a rejected token), so add it even when running a single instance, where it's simply ignored.
+
+Requests that aren't about one session (the lobby list and §3.1) need no parameter and can reach any instance. The lobby list still covers every instance: the one that answers collects the others' sessions. If an instance doesn't answer it within a second, that instance's sessions are missing from that response.
+
 #### `GET /api/game-sessions`
 
 The sessions in memory, for a lobby page where players pick a game to join or watch. No token is needed: entries never contain tokens or anything else secret.
@@ -131,22 +141,25 @@ The list is a snapshot: a session can start, fill up or close right after. Use `
 
 Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
 
-#### `POST /api/game-sessions`
+#### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 
-Creates a live session from a stored game. Nobody is in it yet: the creator should join next, which makes them the host.
+Creates a live session from a stored game, **under an id the client chooses**. Nobody is in it yet: the creator should join next, which makes them the host. The client picks the id so that this request can already be routed by it (see "Routing" above).
 
+- `sessionId`: a new random UUID (version 4), for example from `crypto.randomUUID()`. That function only exists on secure pages (HTTPS or `localhost`); on a plain-HTTP address such as a LAN IP, build one from `crypto.getRandomValues()`. Never reuse an id.
 - Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
-- `201 { "id": "8f6c…-uuid" }`
+- `201 { "id": "8f6c…-uuid" }`: the same id.
+- Id already in use: `409 { "status": 409, "message": "Game session already exists: <id>" }`. With random UUIDs this only happens when the same create is sent twice (for example a retry after a lost response): the session from the first one exists, so treat it as created.
+- An id that isn't a UUID: `400` with Spring's default body (see the start of §3).
 - Unknown game: 404.
 - Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
 - A session nobody joins is removed after 30 minutes (§6.5).
 
-#### `GET /api/game-sessions/{sessionId}`
+#### `GET /api/game-sessions/{sessionId}?session={sessionId}`
 
 The session's current state: the same `GameSessionResponse` as the latest broadcast, including its `version`. Use it to catch up after connecting, refreshing or reconnecting (§2). No token is needed, because the state never contains secrets. Unknown session: 404. That includes a session that has been removed (§6.5): treat a 404 as "this session no longer exists".
 
-#### `POST /api/game-sessions/{sessionId}/players`
+#### `POST /api/game-sessions/{sessionId}/players?session={sessionId}`
 
 Joins a session.
 
@@ -168,7 +181,8 @@ Every new player starts with the session's current `joinScore` (0 until someone'
 
 ### 4.1 Connecting
 
-- URL: `ws://localhost:8080/ws`. It's a **plain WebSocket, not SockJS**, so use a client such as [`@stomp/stompjs`](https://github.com/stomp-js/stompjs).
+- URL: `ws://localhost:8080/ws?session=<sessionId>`. It's a **plain WebSocket, not SockJS**, so use a client such as [`@stomp/stompjs`](https://github.com/stomp-js/stompjs).
+- **One connection per session.** The `session` parameter routes the connection to the instance holding that session (§3.2), so use the connection only for that session: subscribe to its topic and send its actions. To play or watch another session, open another connection with that session's id.
 - To play, send the token in the CONNECT frame header `player-token`.
 - With no token you get an anonymous connection that can only watch.
 - An unknown or invalid token **rejects the connection** with a STOMP ERROR frame (message `"Unknown player token"`) before CONNECT completes. A token stops working when its player leaves or is kicked (§6.4) and when its session is removed (§6.5). In every case, treat the rejection as "this token is gone": forget it and show the join form.
@@ -180,7 +194,7 @@ Every new player starts with the session's current `joinScore` (0 until someone'
 import { Client } from "@stomp/stompjs";
 
 const client = new Client({
-  brokerURL: "ws://localhost:8080/ws",
+  brokerURL: `ws://localhost:8080/ws?session=${encodeURIComponent(sessionId)}`,
   connectHeaders: { "player-token": token },   // omit to watch anonymously
   onConnect: () => {
     client.subscribe(`/topic/sessions/${sessionId}`, (frame) => {
@@ -658,6 +672,7 @@ interface SessionTimers {
   finalJeopardyRevealMs: number;
 }
 
+// PUT /api/game-sessions/{id}?session={id}, with an id the client generated (§3.2)
 interface CreateGameSessionRequest { gameId: number; }  // timers and settings are set in the lobby
 interface CreateGameSessionResponse { id: string; }
 
@@ -797,6 +812,7 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Answer checking doesn't know synonyms** (§6.7): abbreviations aren't expanded ("Avenue" isn't `Ave.`), and number words aren't numbers.
-- **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast.
+- **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast. With several instances, only the sessions on the instance that stopped are lost.
+- **Changing the number of instances moves some sessions' routing.** When an instance is added or removed, the load balancer sends some session ids to a different instance than before. Open connections stay where they are and keep working, but new requests for those sessions (a refresh, a join, a reconnect) reach an instance without them and get a 404. Keep the number of instances fixed while games are running.
 - **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4); the timers keep the game moving around an absent player.
 - **No limits** on the number of players, duplicate names or name length.

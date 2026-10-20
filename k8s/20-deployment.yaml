@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: jeopardy
+spec:
+  # Any number works: the Ingress sends each session to one pod (40-ingress.yaml).
+  # Changing it while games run moves some sessions' routing (README.md).
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          # Built locally with ./gradlew bootBuildImage --imageName=jeopardy-backend:dev
+          image: jeopardy-backend:dev
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secret
+          env:
+            # The pod's own IP (the downward API), so the lobby doesn't ask
+            # this pod for its own sessions over the network.
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          resources:
+            requests:
+              memory: 768Mi
+              cpu: 250m
+            # No CPU limit: Spring needs a burst of CPU to start, and a low
+            # limit makes startup slow enough for the probes to give up.
+            limits:
+              memory: 1Gi
+          # Spring Boot turns on these health groups by itself in Kubernetes.
+          # They're on the management port, with the rest of Actuator.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            periodSeconds: 2
+            failureThreshold: 60   # up to 2 minutes to start
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            periodSeconds: 10
