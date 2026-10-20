@@ -1,0 +1,29 @@
+# Two Services for the same pods, so that each Ingress in 40-ingress.yaml
+# can balance its traffic its own way: ingress-nginx keeps one load-balancing
+# setting per Service.
+
+# Requests that any pod can answer: game browsing and the lobby list.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: jeopardy
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# Requests about one session, routed by session id.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-sessions
+  namespace: jeopardy
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 80
+      targetPort: 8080

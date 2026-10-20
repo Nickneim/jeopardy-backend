@@ -48,13 +48,20 @@ public class GameSessionController {
         return gameSessionService.listSessions(includeFinished, page, size);
     }
 
-    @PostMapping
+    /**
+     * Creates a session under an id the client chose (a fresh random UUID).
+     * With the id known up front, a load balancer in front of several
+     * instances can send this request, like every later one about the
+     * session, to the instance that will hold it (docs/api.md §3.2).
+     */
+    @PutMapping("/{sessionId}")
     @ResponseStatus(HttpStatus.CREATED)
     public CreateGameSessionResponse createSession(
+            @PathVariable UUID sessionId,
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
         GameBoard board = gameBoardService.loadBoard(request.gameId());
-        GameSession session = gameSessionService.createSession(board);
+        GameSession session = gameSessionService.createSession(sessionId, board);
 
         return new CreateGameSessionResponse(session.getId());
     }

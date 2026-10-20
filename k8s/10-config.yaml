@@ -1,0 +1,14 @@
+# Settings for the backend, as environment variables (application.yaml reads
+# them). The password is in the backend-secret Secret, created by hand (see
+# README.md) so it's never committed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: jeopardy
+data:
+  # The Docker Compose database on your machine (compose.yaml).
+  # host.docker.internal is how a container reaches the host.
+  DATABASE_URL: jdbc:postgresql://host.docker.internal:5433/jeopardy
+  DATABASE_USERNAME: postgres
+  ALLOWED_ORIGINS: http://localhost:5173

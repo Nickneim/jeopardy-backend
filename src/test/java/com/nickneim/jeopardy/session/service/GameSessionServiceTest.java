@@ -13,6 +13,7 @@ import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -96,6 +97,33 @@ class GameSessionServiceTest {
                 session,
                 gameSessionService.getSession(session.getId())
         );
+    }
+
+    @Test
+    void createSession_usesTheGivenId() {
+        UUID id = UUID.randomUUID();
+
+        GameSession session = gameSessionService.createSession(id, createBoard());
+
+        assertEquals(id, session.getId());
+        assertEquals(session, gameSessionService.getSession(id));
+    }
+
+    // The client chooses the id, so a repeated create mustn't replace the
+    // session (and its players) that's already there.
+    @Test
+    void createSession_rejectsAnIdInUseAndKeepsTheExistingSession() {
+        UUID id = UUID.randomUUID();
+        GameSession existing = gameSessionService.createSession(id, createBoard());
+        clearInvocations(timer);
+
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.createSession(id, createBoard())
+        );
+
+        assertSame(existing, gameSessionService.getSession(id));
+        verifyNoInteractions(timer);
     }
 
     @Test

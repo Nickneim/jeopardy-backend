@@ -1,0 +1,63 @@
+# For the ingress-nginx controller (README.md). A session lives in one pod's
+# memory, so everything about a session must reach that pod: clients send the
+# session id as ?session=<id> on every such request (docs/api.md §3.2), and
+# this Ingress picks the pod by hashing it. The hash is consistent, so the
+# same id keeps reaching the same pod as long as the pods don't change.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-sessions
+  namespace: jeopardy
+  annotations:
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$arg_session"
+    # NGINX closes connections that are quiet for 60 seconds, and a lobby's
+    # WebSocket can easily be quiet that long.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # /api/game-sessions/{id} and everything under it. The lobby list,
+          # /api/game-sessions itself, goes to the other Ingress (Exact wins).
+          - path: /api/game-sessions/
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-sessions
+                port:
+                  number: 80
+          - path: /ws
+            pathType: Exact
+            backend:
+              service:
+                name: backend-sessions
+                port:
+                  number: 80
+---
+# Everything else, spread evenly over the pods.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend
+  namespace: jeopardy
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api/game-sessions
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 80

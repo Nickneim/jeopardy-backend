@@ -1,0 +1,93 @@
+# Running the backend on Kubernetes
+
+Manifests for running the backend on a local cluster, such as the one built into Docker Desktop, with any number of replicas. The database stays outside the cluster: the Docker Compose Postgres on your machine (`compose.yaml`).
+
+## How sessions stay on one pod
+
+A game session lives in the memory of the pod that created it. Every request about a session must therefore reach that pod, whichever of the replicas the load balancer would otherwise pick.
+
+- **Clients send the session id as `?session=<id>`** on every request about a session: creating it (`PUT /api/game-sessions/{id}`, with an id the client chose), fetching and joining it, and the `/ws` connection (`docs/api.md` §3.2). A query parameter is used because a load balancer can't read part of a path, and browsers can't add headers to a WebSocket connection.
+- **The `backend-sessions` Ingress hashes that parameter to pick the pod** (`upstream-hash-by: "$arg_session"`), so the same id always reaches the same pod. It handles `/api/game-sessions/...` and `/ws`.
+- **The `backend` Ingress spreads everything else evenly**: browsing games and the lobby list (`GET /api/game-sessions`).
+
+Each Ingress has its own Service (`30-service.yaml`) because ingress-nginx keeps one load-balancing setting per Service.
+
+What this doesn't cover yet:
+
+- **A pod that stops takes its sessions with it.** That includes a deploy (`kubectl rollout restart` or a new image) and scaling down.
+- **The lobby shows one pod's sessions.** Each request goes to one pod, and each pod lists only its own sessions, so the list changes between refreshes. Joining by id works for every session.
+- **Changing the number of pods moves some sessions' routing.** The hash is consistent, so only about 1 in N sessions move, but those sessions' new requests (a refresh, a join, a reconnect) reach a pod without them and get a 404, even though their pod is still running. Open WebSocket connections aren't affected. Change `replicas` only when no games are running.
+
+## Prerequisites
+
+- **A local cluster.** In Docker Desktop: Settings → Kubernetes → Enable (choose kubeadm, which shares images with Docker). `kubectl config use-context docker-desktop`.
+- **The database:** `docker compose up -d` in the backend folder.
+- **The ingress-nginx controller.** It was retired in March 2026 and no longer gets fixes, so use it only on a local cluster. Real clusters are moving to the Gateway API, whose implementations (such as Envoy Gateway) can also hash on a query parameter.
+
+  ```bash
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/deploy/static/provider/cloud/deploy.yaml
+  ```
+
+  On Docker Desktop it listens on `localhost` ports 80 and 443. If something else uses port 80, it can't.
+
+## Deploying
+
+From the backend folder:
+
+```bash
+./gradlew bootBuildImage --imageName=jeopardy-backend:dev
+```
+
+```bash
+kubectl apply -f k8s/00-namespace.yaml
+```
+
+The password comes from your `.env` (`DATABASE_PASSWORD`). Create the Secret once:
+
+```bash
+kubectl create secret generic backend-secret -n jeopardy --from-literal=DATABASE_PASSWORD=<your password>
+```
+
+```bash
+kubectl apply -f k8s/
+```
+
+```bash
+kubectl get pods -n jeopardy -w
+```
+
+When every pod is `1/1 READY`, the API is at `http://localhost/` (for example `http://localhost/api/games?size=1`). To use it from the frontend, start its dev server with the backend at port 80 (the frontend's README explains how).
+
+After rebuilding the image under the same tag, restart the pods to pick it up:
+
+```bash
+kubectl rollout restart -n jeopardy deployment/backend
+```
+
+## Checking the routing
+
+Create a game from the frontend and copy its id. Asking for it without the parameter reaches either pod, so you get a mix of `200` and `404`:
+
+```bash
+for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w "%{http_code} " "http://localhost/api/game-sessions/<id>"; done
+```
+
+With the parameter, every request reaches the pod holding it, so you get only `200`:
+
+```bash
+for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w "%{http_code} " "http://localhost/api/game-sessions/<id>?session=<id>"; done
+```
+
+To see which pod handles what, follow both pods' logs:
+
+```bash
+kubectl logs -n jeopardy -l app=backend -f --prefix
+```
+
+## Removing it
+
+```bash
+kubectl delete namespace jeopardy
+```
+
+That removes everything above except the ingress-nginx controller. To remove that too, run its install command with `delete` instead of `apply`.

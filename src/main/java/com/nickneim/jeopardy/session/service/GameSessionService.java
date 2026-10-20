@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
@@ -62,12 +63,25 @@ public class GameSessionService {
         this.clock = clock;
     }
 
-    /** A new session with the default timers; the host can change them in the lobby. */
+    /** A new session with a random id. */
     public GameSession createSession(GameBoard board) {
-        UUID id = UUID.randomUUID();
+        return createSession(UUID.randomUUID(), board);
+    }
+
+    /**
+     * A new session with the default timers; the host can change them in the
+     * lobby. The client chooses the id, so that a load balancer in front of
+     * several instances can route the create, like every later request about
+     * the session, to the instance that will hold it (docs/api.md §3.2).
+     *
+     * @throws GameSessionAlreadyExistsException if the id is taken
+     */
+    public GameSession createSession(UUID id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
-        sessions.put(session.getId(), session);
+        if (sessions.putIfAbsent(id, session) != null) {
+            throw new GameSessionAlreadyExistsException(id);
+        }
 
         // Nobody may ever join, so the idle lobby timeout starts now.
         synchronized (session) {

@@ -9,6 +9,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
@@ -34,6 +35,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,10 +72,10 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(gameId))
                 .thenReturn(board);
 
-        when(gameSessionService.createSession(board))
+        when(gameSessionService.createSession(sessionId, board))
                 .thenReturn(session);
 
-        mockMvc.perform(post("/api/game-sessions")
+        mockMvc.perform(put("/api/game-sessions/{id}", sessionId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -84,7 +86,30 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.id").value(sessionId.toString()));
 
         verify(gameBoardService).loadBoard(gameId);
-        verify(gameSessionService).createSession(board);
+        verify(gameSessionService).createSession(sessionId, board);
+    }
+
+    @Test
+    void createSession_returnsConflictWhenTheIdIsTaken() throws Exception {
+        UUID sessionId = UUID.randomUUID();
+        GameBoard board = oneClueBoard();
+
+        when(gameBoardService.loadBoard(123L)).thenReturn(board);
+        when(gameSessionService.createSession(sessionId, board))
+                .thenThrow(new GameSessionAlreadyExistsException(sessionId));
+
+        mockMvc.perform(put("/api/game-sessions/{id}", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "gameId": 123 }
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(content().json("""
+                        {
+                            "status": 409,
+                            "message": "Game session already exists: %s"
+                        }
+                        """.formatted(sessionId), JsonCompareMode.STRICT));
     }
 
     @Test
@@ -96,7 +121,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(gameId))
                 .thenThrow(new GameNotFoundException(gameId));
 
-        mockMvc.perform(post("/api/game-sessions")
+        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -116,7 +141,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(725L))
                 .thenThrow(new UnplayableGameException(725L));
 
-        mockMvc.perform(post("/api/game-sessions")
+        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -212,7 +237,7 @@ class GameSessionControllerTest {
 
     @Test
     void createSession_rejectsMissingGameId() throws Exception {
-        mockMvc.perform(post("/api/game-sessions")
+        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -344,9 +369,9 @@ class GameSessionControllerTest {
         GameSession session = new GameSession(UUID.randomUUID(), board);
 
         when(gameBoardService.loadBoard(123L)).thenReturn(board);
-        when(gameSessionService.createSession(board)).thenReturn(session);
+        when(gameSessionService.createSession(session.getId(), board)).thenReturn(session);
 
-        mockMvc.perform(post("/api/game-sessions")
+        mockMvc.perform(put("/api/game-sessions/{id}", session.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -357,7 +382,7 @@ class GameSessionControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(session.getId().toString()));
 
-        verify(gameSessionService).createSession(board);
+        verify(gameSessionService).createSession(session.getId(), board);
     }
 
     // -------------------------------------------------------------------------

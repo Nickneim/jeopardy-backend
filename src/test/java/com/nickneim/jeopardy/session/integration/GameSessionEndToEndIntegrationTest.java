@@ -100,8 +100,8 @@ class GameSessionEndToEndIntegrationTest {
                 GAME_TITLE + " Without Clues"
         );
 
-        restTestClient.post()
-                .uri("/api/game-sessions")
+        restTestClient.put()
+                .uri("/api/game-sessions/{id}", UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateGameSessionRequest(gameId))
                 .exchange()
@@ -123,16 +123,7 @@ class GameSessionEndToEndIntegrationTest {
                 GAME_TITLE
         );
 
-        UUID sessionId = restTestClient.post()
-                .uri("/api/game-sessions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new CreateGameSessionRequest(gameId))
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(CreateGameSessionResponse.class)
-                .returnResult()
-                .getResponseBody()
-                .id();
+        UUID sessionId = createSession(gameId);
 
         restTestClient.post()
                 .uri("/api/game-sessions/" + sessionId + "/players")
@@ -165,16 +156,7 @@ class GameSessionEndToEndIntegrationTest {
                 gameId
         );
 
-        UUID sessionId = restTestClient.post()
-                .uri("/api/game-sessions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new CreateGameSessionRequest(gameId))
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(CreateGameSessionResponse.class)
-                .returnResult()
-                .getResponseBody()
-                .id();
+        UUID sessionId = createSession(gameId);
 
         // Joining returns the player's id and their secret token...
         JoinSessionResponse joined = restTestClient.post()
@@ -266,6 +248,23 @@ class GameSessionEndToEndIntegrationTest {
                 300,
                 answered.players().getFirst().score()
         );
+    }
+
+    // Like a client: it chooses the id, and sends it as the session routing
+    // parameter too, which a single instance ignores.
+    private UUID createSession(Long gameId) {
+        UUID sessionId = UUID.randomUUID();
+
+        return restTestClient.put()
+                .uri("/api/game-sessions/{id}?session={id}", sessionId, sessionId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new CreateGameSessionRequest(gameId))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(CreateGameSessionResponse.class)
+                .returnResult()
+                .getResponseBody()
+                .id();
     }
 
     private StompSession connect(String playerToken)
