@@ -1,5 +1,7 @@
 package com.nickneim.jeopardy.session.security;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -12,7 +14,6 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor.TOKEN_HEADER;
@@ -30,7 +31,7 @@ class PlayerAuthenticationInterceptorTest {
     private PlayerAuthenticationInterceptor interceptor;
 
     private final PlayerPrincipal player =
-            new PlayerPrincipal(UUID.randomUUID(), 42L);
+            new PlayerPrincipal(SessionCode.random(), 42L);
 
     @BeforeEach
     void setUp() {

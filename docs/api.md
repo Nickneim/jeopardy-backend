@@ -19,7 +19,7 @@ The contract between this backend and the React frontend. It covers the REST API
 
 ```
 0. GET  /api/game-sessions                                     → open sessions      (lobby list)
-1. PUT  /api/game-sessions/{id}?session={id}            { gameId }       → { id }               (create; you pick the id)
+1. PUT  /api/game-sessions/{id}?session={id}            { gameId }       → { id }               (create; you pick the 5-character code)
 2. POST /api/game-sessions/{id}/players?session={id}    { playerName }   → { playerId, token }  (join; the first player is the host)
 3. STOMP CONNECT ws://localhost:8080/ws?session={id}    header  player-token: <token>
 4. SUBSCRIBE /topic/sessions/{id}             ← full game state after every change
@@ -49,7 +49,7 @@ Key ideas:
 
 All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language`.
 
-Any other error (an unexpected server error, or a malformed path such as a session id that isn't a UUID) uses Spring's default body instead: `{ "timestamp", "status", "error", "path" }`. It has no stack trace and no exception message, so show a generic error for it.
+Any other error (an unexpected server error, or a malformed path such as a game id that isn't a number) uses Spring's default body instead: `{ "timestamp", "status", "error", "path" }`. It has no stack trace and no exception message, so show a generic error for it.
 
 ### 3.1 Browsing games
 
@@ -101,6 +101,10 @@ One clue. Response: `ClueResponse`, whose `gameId` is the game it belongs to (fo
 
 ### 3.2 Game sessions
 
+#### Session codes
+
+A session's id is a 5-character **session code**, such as `7KQ2M`, everywhere: in paths, in `session` parameters, in STOMP destinations and in every response's `id`. Responses always give it in uppercase. When reading a code from the path or a destination, the backend is lenient about how someone typed it: lowercase is accepted, and `O`, `I` and `L` are read as `0`, `1` and `1`, so `7kq2m` and `7KQ2M` are the same session. Anything else that isn't 5 characters of the alphabet (see the create below) gets `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }` over REST, and `INVALID_REQUEST` with the same message over STOMP (§7). Normalize a typed code the same way before using it as the `session` parameter, so that it's routed like the server's own.
+
 #### Routing: the `session` parameter
 
 A session lives in the memory of one backend instance. When several instances run behind a load balancer (for example in Kubernetes, see the backend's `k8s/README.md`), the load balancer picks the instance for each request from the **`session` query parameter**, so that everything about one session reaches the instance that holds it. A path segment can't be used, because load balancers can't read part of a path, and neither can a header, because browsers can't add headers to a WebSocket connection.
@@ -143,13 +147,13 @@ Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"In
 
 #### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 
-Creates a live session from a stored game, **under an id the client chooses**. Nobody is in it yet: the creator should join next, which makes them the host. The client picks the id so that this request can already be routed by it (see "Routing" above).
+Creates a live session from a stored game, **under a code the client chooses**. Nobody is in it yet: the creator should join next, which makes them the host. The client picks the code so that this request can already be routed by it (see "Routing" above).
 
-- `sessionId`: a new random UUID (version 4), for example from `crypto.randomUUID()`. That function only exists on secure pages (HTTPS or `localhost`); on a plain-HTTP address such as a LAN IP, build one from `crypto.getRandomValues()`. Never reuse an id.
+- `sessionId`: a new **session code**, 5 random characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (Crockford's base32: digits and uppercase letters without I, L, O and U), for example `7KQ2M`. Pick each character with `crypto.getRandomValues()`. Codes are short so that people can read them out and type them; they aren't secret (the lobby lists every session, and only a player's token proves who they are).
 - Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
-- `201 { "id": "8f6c…-uuid" }`: the same id.
-- Id already in use: `409 { "status": 409, "message": "Game session already exists: <id>" }`. With random UUIDs this only happens when the same create is sent twice (for example a retry after a lost response): the session from the first one exists, so treat it as created.
-- An id that isn't a UUID: `400` with Spring's default body (see the start of §3).
+- `201 { "id": "7KQ2M" }`: the same code.
+- Code already in use: `409 { "status": 409, "message": "Game session already exists: <code>" }`. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
+- A code that isn't valid (see below): `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }`.
 - Unknown game: 404.
 - Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
@@ -259,7 +263,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 
 | Field | Meaning |
 |---|---|
-| `id` | Session id (UUID string) |
+| `id` | Session code, 5 uppercase characters such as `"7KQ2M"` (§3.2) |
 | `version` | Goes up by one with every change (0 for a new session). Keep the response with the highest version (§2). |
 | `round` | `JEOPARDY` \| `DOUBLE_JEOPARDY` \| `FINAL_JEOPARDY`, the round being played (or about to be, before the start) |
 | `state` | See §6 |
@@ -536,7 +540,7 @@ To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` 
 | `CLUE_NOT_FOUND` | That clue isn't on this round's board |
 | `CLUE_ALREADY_PLAYED` | That clue was already chosen |
 | `INVALID_WAGER` | The wager is outside the allowed range (§6.2) |
-| `INVALID_REQUEST` | The payload is missing a field or malformed, or a timer is out of bounds (the message names the field, §6.3); also kicking yourself |
+| `INVALID_REQUEST` | The payload is missing a field or malformed, or a timer is out of bounds (the message names the field, §6.3); also kicking yourself, and a destination whose session code isn't valid (§3.2) |
 
 Timing races are normal: two players buzzing at the same moment means one wins and the other gets `INVALID_STATE`. Treat these errors as non-fatal.
 
@@ -672,9 +676,13 @@ interface SessionTimers {
   finalJeopardyRevealMs: number;
 }
 
-// PUT /api/game-sessions/{id}?session={id}, with an id the client generated (§3.2)
+// A session's id: 5 characters of "0123456789ABCDEFGHJKMNPQRSTVWXYZ", e.g. "7KQ2M" (§3.2)
+type SessionCode = string;
+
+// PUT /api/game-sessions/{code}?session={code}, with a code the client picked at random;
+// on 409, pick another and try again (§3.2)
 interface CreateGameSessionRequest { gameId: number; }  // timers and settings are set in the lobby
-interface CreateGameSessionResponse { id: string; }
+interface CreateGameSessionResponse { id: SessionCode; }
 
 // Query params of GET /api/game-sessions (all optional)
 interface GameSessionListParams {
@@ -685,7 +693,7 @@ interface GameSessionListParams {
 
 // GET /api/game-sessions returns PageResponse<GameSessionSummaryResponse>
 interface GameSessionSummaryResponse {
-  id: string;
+  id: SessionCode;
   gameId: number | null;
   gameTitle: string | null;
   state: GameSessionState;
@@ -777,7 +785,7 @@ interface FinalJeopardyResponse {
 }
 
 interface GameSessionResponse {
-  id: string;
+  id: SessionCode;
   version: number;       // keep the highest one seen
   round: GameRound;
   state: GameSessionState;

@@ -19,6 +19,7 @@ import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,7 +32,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -59,7 +59,7 @@ class GameSessionControllerTest {
     @Test
     void createSession_returnsCreatedSession() throws Exception {
         Long gameId = 123L;
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         GameBoard board = new GameBoard(List.of(
                 new BoardRound(
@@ -95,7 +95,7 @@ class GameSessionControllerTest {
 
     @Test
     void createSession_returnsConflictWhenTheIdIsTaken() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameBoard board = oneClueBoard();
 
         when(gameBoardService.loadBoard(123L)).thenReturn(board);
@@ -125,7 +125,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(gameId))
                 .thenThrow(new GameNotFoundException(gameId));
 
-        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -145,7 +145,7 @@ class GameSessionControllerTest {
         when(gameBoardService.loadBoard(725L))
                 .thenThrow(new UnplayableGameException(725L));
 
-        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -165,7 +165,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_returnsPlayerIdAndToken() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSessionPlayer player = new GameSessionPlayer(42L, "Nico");
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
@@ -187,7 +187,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_rejectsBlankName() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -209,7 +209,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_rejectsMissingName() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -227,7 +227,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_validationMessageIsNotLocalized() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -241,7 +241,7 @@ class GameSessionControllerTest {
 
     @Test
     void createSession_rejectsMissingGameId() throws Exception {
-        mockMvc.perform(put("/api/game-sessions/{id}", UUID.randomUUID())
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -257,7 +257,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_returnsNotFoundWhenSessionDoesNotExist() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
                 .thenThrow(new GameSessionNotFoundException(sessionId));
@@ -276,7 +276,7 @@ class GameSessionControllerTest {
 
     @Test
     void getSession_returnsTheCurrentState() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(sessionId, new GameBoard(List.of(
                 new BoardRound(
                         GameRound.JEOPARDY,
@@ -302,9 +302,38 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.board[0].name").value("HISTORY"));
     }
 
+    // Typed from a link: lowercase, and O read as 0, find the same session.
+    @Test
+    void getSession_acceptsALowercaseCodeWithAnOForAZero() throws Exception {
+        SessionCode sessionId = SessionCode.of("7KQ20");
+        when(gameSessionService.getSessionState(sessionId))
+                .thenThrow(new GameSessionNotFoundException(sessionId));
+
+        mockMvc.perform(get("/api/game-sessions/7kq2o"))
+                .andExpect(status().isNotFound());
+
+        verify(gameSessionService).getSessionState(sessionId);
+    }
+
+    @Test
+    void getSession_rejectsAMalformedCode() throws Exception {
+        for (String code : List.of("ABC", "ABCDEF", "ABCU1", "AB-12")) {
+            mockMvc.perform(get("/api/game-sessions/" + code))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().json("""
+                            {
+                                "status": 400,
+                                "message": "Invalid session code: expected 5 letters and digits"
+                            }
+                            """, JsonCompareMode.STRICT));
+        }
+
+        verifyNoInteractions(gameSessionService);
+    }
+
     @Test
     void getSession_includesTheHostTimersAndLeavingFlags() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(sessionId, oneClueBoard());
         session.addPlayer("Nico");
         session.addPlayer("John");
@@ -330,7 +359,7 @@ class GameSessionControllerTest {
 
     @Test
     void joinSession_returnsConflictWhenLateJoiningIsBlocked() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
                 .thenThrow(new LateJoinNotAllowedException());
@@ -351,7 +380,7 @@ class GameSessionControllerTest {
 
     @Test
     void getSession_includesTheJoinSettings() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(sessionId, oneClueBoard());
         session.addPlayer("Nico");
         session.updateLateJoin(1L, false);
@@ -370,7 +399,7 @@ class GameSessionControllerTest {
     @Test
     void createSession_ignoresTimersInTheRequest() throws Exception {
         GameBoard board = oneClueBoard();
-        GameSession session = new GameSession(UUID.randomUUID(), board);
+        GameSession session = new GameSession(SessionCode.random(), board);
 
         when(gameBoardService.loadBoard(123L)).thenReturn(board);
         when(gameSessionService.createSession(session.getId(), board)).thenReturn(session);
@@ -395,7 +424,7 @@ class GameSessionControllerTest {
 
     @Test
     void listSessions_returnsAPageOfSummaries() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(
                 sessionId,
                 new GameBoard(7L, "Show #7", oneClueBoard().getRounds()),
@@ -477,7 +506,7 @@ class GameSessionControllerTest {
 
     @Test
     void getSession_returnsNotFoundWhenSessionDoesNotExist() throws Exception {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.getSessionState(sessionId))
                 .thenThrow(new GameSessionNotFoundException(sessionId));

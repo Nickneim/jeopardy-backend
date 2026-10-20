@@ -8,12 +8,12 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,7 +41,7 @@ class FinalJeopardyResponseTest {
 
     @BeforeEach
     void setUp() {
-        session = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        session = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("HISTORY", List.of(jeopardyClue))
                 )),
@@ -65,7 +65,7 @@ class FinalJeopardyResponseTest {
 
     @Test
     void finalJeopardy_isNullWhenAGameWithoutFinalJeopardyFinishes() {
-        GameSession noFinal = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        GameSession noFinal = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("HISTORY", List.of(jeopardyClue))
                 ))

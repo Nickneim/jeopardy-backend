@@ -9,6 +9,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -16,7 +17,6 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -48,7 +48,7 @@ class GameSessionResponseTest {
                 ))
         ));
 
-        session = new GameSession(UUID.randomUUID(), board);
+        session = new GameSession(SessionCode.random(), board);
         player = new GameSessionPlayer(1L, "Nico");
         session.addPlayer(player);
     }
@@ -259,7 +259,7 @@ class GameSessionResponseTest {
     @Test
     void currentClue_saysWhenOnlyAnExactNumberIsAccepted() {
         BoardClue numberClue = new BoardClue(401L, 1, "Feet in a mile", "5,280", 200, false);
-        GameSession numberSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        GameSession numberSession = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory("NUMBERS", List.of(numberClue))))
         )));
         numberSession.addPlayer(player);
@@ -295,7 +295,7 @@ class GameSessionResponseTest {
                 401L, 1, "This painting hangs in the Louvre.", "Mona Lisa", 1000, true,
                 ClueType.IMAGE, "https://media.example/secret-painting.jpg"
         );
-        GameSession mediaSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        GameSession mediaSession = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("ART", List.of(imageDailyDouble))
                 ))
@@ -326,7 +326,7 @@ class GameSessionResponseTest {
                 402L, 1, "Name this tune.", "Happy Birthday", 200, false,
                 ClueType.SOUND, "https://media.example/tune.mp3"
         );
-        GameSession mediaSession = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        GameSession mediaSession = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("MUSIC", List.of(soundClue))
                 ))

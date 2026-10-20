@@ -16,7 +16,7 @@ import java.util.*;
 
 public class GameSession {
 
-    private final UUID id;
+    private final SessionCode id;
     private final GameBoard board;
     private final Instant createdAt;
     // Every player still in the session, in join order. A player who left
@@ -58,11 +58,11 @@ public class GameSession {
     private final Map<Long, Integer> finalJeopardyWagers = new HashMap<>();
     private final Map<Long, String> finalJeopardyAnswers = new HashMap<>();
 
-    public GameSession(UUID id, GameBoard board) {
+    public GameSession(SessionCode id, GameBoard board) {
         this(id, board, GameSessionTimeouts.defaults(), Instant.now());
     }
 
-    public GameSession(UUID id, GameBoard board, GameSessionTimeouts timeouts, Instant createdAt) {
+    public GameSession(SessionCode id, GameBoard board, GameSessionTimeouts timeouts, Instant createdAt) {
         this.id = id;
         this.board = board;
         this.timeouts = timeouts;
@@ -71,7 +71,7 @@ public class GameSession {
         this.state = GameSessionState.WAITING_FOR_START;
     }
 
-    public UUID getId() {
+    public SessionCode getId() {
         return id;
     }
 

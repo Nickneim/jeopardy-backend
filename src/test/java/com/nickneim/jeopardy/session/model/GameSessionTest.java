@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,7 +34,7 @@ class GameSessionTest {
 
     @Test
     void addPlayer_addsPlayerToSession() {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         GameSession session =
                 new GameSession(sessionId, this.session.getBoard());
 
@@ -1162,7 +1161,7 @@ class GameSessionTest {
     @Test
     void startGame_withNoPlayers_rejectsPlayer() {
         GameSession emptySession = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 session.getBoard()
         );
 
@@ -1314,7 +1313,7 @@ class GameSessionTest {
         BoardClue dailyDouble = new BoardClue(2L, 3, "DD question", "DD answer", 300, true);
 
         GameSession smallSession = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 new GameBoard(List.of(new BoardRound(
                         GameRound.JEOPARDY,
                         List.of(new BoardCategory("SMALL", List.of(lowClue, dailyDouble)))
@@ -1338,7 +1337,7 @@ class GameSessionTest {
     @Test
     void finishRevealingAnswer_skipsRoundsWithoutClues() {
         GameSession noDoubleJeopardy = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 new GameBoard(List.of(
                         new BoardRound(GameRound.JEOPARDY, List.of(
                                 new BoardCategory("HISTORY", List.of(jeopardyClue1))
@@ -1530,7 +1529,7 @@ class GameSessionTest {
         BoardClue right = new BoardClue(2L, 2, "Right?", "Right", 400, false);
         BoardClue lower = new BoardClue(3L, 3, "Lower?", "Lower", 600, false);
 
-        GameSession session = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        GameSession session = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("LEFT", List.of(lower, left)),
                         new BoardCategory("RIGHT", List.of(right))
@@ -1692,7 +1691,7 @@ class GameSessionTest {
     @Test
     void finalJeopardy_startsAtOnceWhenItIsTheFirstRound() {
         GameSession onlyFinal = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 new GameBoard(List.of(new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
                         new BoardCategory("FINAL HISTORY", List.of(finalJeopardyClue))
                 ))))
@@ -1707,7 +1706,7 @@ class GameSessionTest {
     @Test
     void finishRevealingAnswer_finishesGameWhenThereIsNoFinalJeopardy() {
         GameSession noFinal = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 new GameBoard(List.of(new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("HISTORY", List.of(jeopardyClue1))
                 ))))
@@ -1939,7 +1938,7 @@ class GameSessionTest {
     @Test
     void addPlayerByName_startsAtOneInAnEmptySession() {
         GameSession emptySession = new GameSession(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 session.getBoard()
         );
 
@@ -2045,7 +2044,7 @@ class GameSessionTest {
                 ))
         ));
 
-        session = new GameSession(UUID.randomUUID(), board);
+        session = new GameSession(SessionCode.random(), board);
         session.addPlayer(player1);
         session.addPlayer(player2);
     }

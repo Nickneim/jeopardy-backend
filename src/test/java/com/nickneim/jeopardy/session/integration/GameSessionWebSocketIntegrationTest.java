@@ -25,6 +25,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,6 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -298,6 +298,26 @@ class GameSessionWebSocketIntegrationTest {
                 "SESSION_NOT_FOUND",
                 error.code()
         );
+    }
+
+    @Test
+    void actingWithAMalformedSessionCode_returnsError()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send("/app/sessions/not-a-code/start", Map.of());
+
+        GameSessionErrorResponse error =
+                awaitError(errors);
+
+        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals("Invalid session code: expected 5 letters and digits", error.message());
     }
 
     @Test
@@ -1642,7 +1662,7 @@ class GameSessionWebSocketIntegrationTest {
 
     // SUBSCRIBE has no reply, so wait until the server has registered the
     // topic subscription: a broadcast must reach this connection.
-    private void awaitSubscriptions(StompSession stompSession, UUID sessionId)
+    private void awaitSubscriptions(StompSession stompSession, SessionCode sessionId)
             throws Exception {
 
         BlockingQueue<GameSessionResponse> probe =
@@ -1847,7 +1867,7 @@ class GameSessionWebSocketIntegrationTest {
     private BlockingQueue<GameSessionResponse>
     subscribeToSession(
             StompSession stompSession,
-            UUID sessionId
+            SessionCode sessionId
     ) {
         BlockingQueue<GameSessionResponse> messages =
                 new LinkedBlockingQueue<>();
@@ -1944,7 +1964,7 @@ class GameSessionWebSocketIntegrationTest {
     // Start and buzz need no body: who is acting comes from the connection.
     private void startGame(
             StompSession stompSession,
-            UUID sessionId
+            SessionCode sessionId
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/start",
@@ -1954,7 +1974,7 @@ class GameSessionWebSocketIntegrationTest {
 
     private void chooseClue(
             StompSession stompSession,
-            UUID sessionId,
+            SessionCode sessionId,
             ChooseClueRequest request
     ) {
         stompSession.send(
@@ -1965,7 +1985,7 @@ class GameSessionWebSocketIntegrationTest {
 
     private void buzz(
             StompSession stompSession,
-            UUID sessionId
+            SessionCode sessionId
     ) {
         stompSession.send(
                 "/app/sessions/" + sessionId + "/buzz",
@@ -1975,7 +1995,7 @@ class GameSessionWebSocketIntegrationTest {
 
     private void answer(
             StompSession stompSession,
-            UUID sessionId,
+            SessionCode sessionId,
             AnswerClueRequest request
     ) {
         stompSession.send(
@@ -1986,7 +2006,7 @@ class GameSessionWebSocketIntegrationTest {
 
     private void placeWager(
             StompSession stompSession,
-            UUID sessionId,
+            SessionCode sessionId,
             PlaceDailyDoubleWagerRequest request
     ) {
         stompSession.send(

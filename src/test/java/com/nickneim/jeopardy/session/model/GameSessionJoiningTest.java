@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,7 +29,7 @@ class GameSessionJoiningTest {
 
     @BeforeEach
     void setUp() {
-        session = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        session = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("HISTORY", HISTORY),
                         new BoardCategory("SCIENCE", SCIENCE)
@@ -150,7 +149,7 @@ class GameSessionJoiningTest {
     @Test
     void dailyDoubleLoss_canLowerTheJoinScore() {
         BoardClue dailyDouble = new BoardClue(301L, 5, "DD question", "DD answer", 1000, true);
-        session = new GameSession(UUID.randomUUID(), new GameBoard(List.of(
+        session = new GameSession(SessionCode.random(), new GameBoard(List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(
                         new BoardCategory("HISTORY", List.of(HISTORY.get(0), dailyDouble))
                 ))

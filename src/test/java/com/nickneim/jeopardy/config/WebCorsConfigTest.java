@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.controller.GameSessionController;
 import com.nickneim.jeopardy.session.lobby.SessionLobby;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -14,7 +15,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -69,7 +69,7 @@ class WebCorsConfigTest {
 
     @Test
     void joinPreflightFromTheFrontend_isAllowed() throws Exception {
-        mockMvc.perform(options("/api/game-sessions/" + UUID.randomUUID() + "/players")
+        mockMvc.perform(options("/api/game-sessions/" + SessionCode.random() + "/players")
                         .header("Origin", FRONTEND)
                         .header("Access-Control-Request-Method", "POST")
                         .header("Access-Control-Request-Headers", "content-type"))

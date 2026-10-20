@@ -1,5 +1,7 @@
 package com.nickneim.jeopardy.session.security;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -12,7 +14,6 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
 
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -28,7 +29,7 @@ class PlayerConnectionsTest {
 
     private static final String CONNECTION = "ws-1";
 
-    private final PlayerPrincipal player = new PlayerPrincipal(UUID.randomUUID(), 1L);
+    private final PlayerPrincipal player = new PlayerPrincipal(SessionCode.random(), 1L);
 
     private MessageChannel clientOutboundChannel;
     private PlayerConnections connections;

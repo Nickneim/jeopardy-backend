@@ -1,10 +1,11 @@
 package com.nickneim.jeopardy.session.security;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,7 +34,7 @@ class PlayerTokensTest {
 
     @Test
     void principalName_identifiesSessionAndPlayer() {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         assertEquals(
                 sessionId + ":42",

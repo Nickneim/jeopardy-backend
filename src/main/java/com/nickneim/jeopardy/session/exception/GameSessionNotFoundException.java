@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.session.exception;
 
-import java.util.UUID;
+import com.nickneim.jeopardy.session.model.SessionCode;
 
 public class GameSessionNotFoundException extends RuntimeException {
 
@@ -8,7 +8,7 @@ public class GameSessionNotFoundException extends RuntimeException {
         return GameErrorCode.SESSION_NOT_FOUND;
     }
 
-    public GameSessionNotFoundException(UUID id) {
+    public GameSessionNotFoundException(SessionCode id) {
         super("Game session not found: " + id);
     }
 }

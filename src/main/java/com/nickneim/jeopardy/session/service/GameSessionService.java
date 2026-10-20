@@ -16,6 +16,7 @@ import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -23,7 +24,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -38,7 +38,7 @@ public class GameSessionService {
     static final String LEFT_MESSAGE = "You left the session";
     static final String KICKED_MESSAGE = "You were removed from the session by the host";
 
-    private final Map<UUID, GameSession> sessions =
+    private final Map<SessionCode, GameSession> sessions =
             new ConcurrentHashMap<>();
 
     private final GameSessionTimer timer;
@@ -63,7 +63,7 @@ public class GameSessionService {
 
     /** A new session with a random id. */
     public GameSession createSession(GameBoard board) {
-        return createSession(UUID.randomUUID(), board);
+        return createSession(SessionCode.random(), board);
     }
 
     /**
@@ -74,7 +74,7 @@ public class GameSessionService {
      *
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
-    public GameSession createSession(UUID id, GameBoard board) {
+    public GameSession createSession(SessionCode id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
         if (sessions.putIfAbsent(id, session) != null) {
@@ -106,7 +106,7 @@ public class GameSessionService {
                 .toList();
     }
 
-    public GameSession getSession(UUID sessionId) {
+    public GameSession getSession(SessionCode sessionId) {
         GameSession session = sessions.get(sessionId);
 
         if (session == null) {
@@ -120,7 +120,7 @@ public class GameSessionService {
      * The current state, exactly as a broadcast would show it. Built under
      * the session's lock so it is never a half-applied change.
      */
-    public GameSessionResponse getSessionState(UUID sessionId) {
+    public GameSessionResponse getSessionState(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -129,7 +129,7 @@ public class GameSessionService {
     }
 
     /** Forgets a session at once, without a broadcast. */
-    public void removeSession(UUID sessionId) {
+    public void removeSession(SessionCode sessionId) {
         timer.cancel(sessionId);
         timer.cancelCleanup(sessionId);
 
@@ -145,7 +145,7 @@ public class GameSessionService {
      * caller must hand the token only to the joining player.
      */
     public GameSessionPlayer joinSession(
-            UUID sessionId,
+            SessionCode sessionId,
             String playerName
     ) {
         GameSession session = getSession(sessionId);
@@ -179,7 +179,7 @@ public class GameSessionService {
      * timer to re-arm, since the lobby has none.
      */
     public void updateTimers(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             SessionTimersRequest request
     ) {
@@ -194,7 +194,7 @@ public class GameSessionService {
 
     /** The host's lobby settings. Like the timers, they have no timer to re-arm. */
     public void updateSettings(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             SessionSettingsRequest request
     ) {
@@ -208,7 +208,7 @@ public class GameSessionService {
     }
 
     public void leave(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId
     ) {
         GameSession session = getSession(sessionId);
@@ -222,7 +222,7 @@ public class GameSessionService {
     }
 
     public void kick(
-            UUID sessionId,
+            SessionCode sessionId,
             Long hostId,
             Long playerId
     ) {
@@ -266,7 +266,7 @@ public class GameSessionService {
     }
 
     public void startGame(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId
     ) {
         GameSession session = getSession(sessionId);
@@ -280,7 +280,7 @@ public class GameSessionService {
     }
 
     public void chooseClue(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             Long clueId
     ) {
@@ -295,7 +295,7 @@ public class GameSessionService {
     }
 
     public void placeDailyDoubleWager(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             int wager
     ) {
@@ -312,7 +312,7 @@ public class GameSessionService {
     // Final Jeopardy submissions don't change the state, so they deliberately
     // skip scheduleTimeout: re-arming the timer would restart the phase.
     public void placeFinalJeopardyWager(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             int wager
     ) {
@@ -326,7 +326,7 @@ public class GameSessionService {
     }
 
     public void answerFinalJeopardy(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             String answer
     ) {
@@ -339,7 +339,7 @@ public class GameSessionService {
         }
     }
 
-    public void finishRevealingClue(UUID sessionId) {
+    public void finishRevealingClue(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
         synchronized (session) {
             if (session.getState() != GameSessionState.REVEALING_CLUE) {
@@ -353,7 +353,7 @@ public class GameSessionService {
     }
 
     public void buzz(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId
     ) {
         GameSession session = getSession(sessionId);
@@ -367,7 +367,7 @@ public class GameSessionService {
     }
 
     public void answerClue(
-            UUID sessionId,
+            SessionCode sessionId,
             Long playerId,
             String answer
     ) {
@@ -381,7 +381,7 @@ public class GameSessionService {
         }
     }
 
-    public void finishRevealingAnswer(UUID sessionId) {
+    public void finishRevealingAnswer(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -396,7 +396,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutChoosingClue(UUID sessionId) {
+    private void timeoutChoosingClue(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -411,7 +411,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutBuzzer(UUID sessionId) {
+    private void timeoutBuzzer(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -426,7 +426,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutAnswer(UUID sessionId) {
+    private void timeoutAnswer(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -441,7 +441,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutDailyDoubleWager(UUID sessionId) {
+    private void timeoutDailyDoubleWager(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -456,7 +456,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutFinalJeopardyWagering(UUID sessionId) {
+    private void timeoutFinalJeopardyWagering(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -471,7 +471,7 @@ public class GameSessionService {
         }
     }
 
-    private void timeoutFinalJeopardyAnswering(UUID sessionId) {
+    private void timeoutFinalJeopardyAnswering(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -486,7 +486,7 @@ public class GameSessionService {
         }
     }
 
-    private void finishFinalJeopardyReveal(UUID sessionId) {
+    private void finishFinalJeopardyReveal(SessionCode sessionId) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
@@ -516,7 +516,7 @@ public class GameSessionService {
      * Called with the session's lock held.
      */
     private void scheduleCleanup(GameSession session) {
-        UUID sessionId = session.getId();
+        SessionCode sessionId = session.getId();
 
         Duration timeout = switch (session.getState()) {
             case WAITING_FOR_START -> IDLE_LOBBY_TIMEOUT;
@@ -534,7 +534,7 @@ public class GameSessionService {
     }
 
     // A stale cleanup (the session changed since it was armed) is a no-op.
-    private void expireSession(UUID sessionId, long version) {
+    private void expireSession(SessionCode sessionId, long version) {
         GameSession session = sessions.get(sessionId);
 
         if (session == null) {
@@ -562,7 +562,7 @@ public class GameSessionService {
      * GET /api/game-sessions/{id} returns 404. Called with the lock held.
      */
     private void closeSession(GameSession session, SessionCloseReason reason) {
-        UUID sessionId = session.getId();
+        SessionCode sessionId = session.getId();
 
         timer.cancel(sessionId);
         session.close(reason);
@@ -573,7 +573,7 @@ public class GameSessionService {
     }
 
     private void scheduleTimeout(GameSession session) {
-        UUID sessionId = session.getId();
+        SessionCode sessionId = session.getId();
         GameSessionTimeouts timeouts = session.getTimeouts();
 
         timer.cancel(sessionId);

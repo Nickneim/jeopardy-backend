@@ -1,15 +1,16 @@
 package com.nickneim.jeopardy.session.security;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
+
 import java.security.Principal;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Who a player is: the session they joined and their player id. It is looked
  * up from the player's secret token, never taken from a client's message.
  */
 public record PlayerPrincipal(
-        UUID sessionId,
+        SessionCode sessionId,
         Long playerId
 ) implements Principal {
 

@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +12,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
@@ -43,7 +43,7 @@ public class SessionLobby {
         // A session is only ever on one instance, but if this instance's
         // address isn't configured, it answers for itself too: keep the
         // summary read directly.
-        Map<UUID, GameSessionSummaryResponse> byId = new LinkedHashMap<>();
+        Map<SessionCode, GameSessionSummaryResponse> byId = new LinkedHashMap<>();
         Stream.concat(gameSessionService.localSummaries().stream(), peerSessions.fetch().stream())
                 .forEach(summary -> byId.putIfAbsent(summary.id(), summary));
 

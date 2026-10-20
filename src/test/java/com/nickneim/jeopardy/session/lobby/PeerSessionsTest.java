@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.lobby;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
@@ -129,7 +129,7 @@ class PeerSessionsTest {
 
     private static GameSessionSummaryResponse summary() {
         return new GameSessionSummaryResponse(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 735L,
                 "Show #735",
                 GameSessionState.WAITING_FOR_START,

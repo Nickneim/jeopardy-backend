@@ -6,7 +6,9 @@ import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.Valid;
+import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,7 +18,6 @@ import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -38,7 +39,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/start")
     public void startGame(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.startGame(
@@ -49,7 +50,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/choose-clue")
     public void chooseClue(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid ChooseClueRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -62,7 +63,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/buzz")
     public void buzz(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.buzz(
@@ -73,7 +74,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/answer")
     public void answerClue(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid AnswerClueRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -86,7 +87,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/place-daily-double-wager")
     public void placeDailyDoubleWager(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid PlaceDailyDoubleWagerRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -99,7 +100,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/place-final-jeopardy-wager")
     public void placeFinalJeopardyWager(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid PlaceFinalJeopardyWagerRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -112,7 +113,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/answer-final-jeopardy")
     public void answerFinalJeopardy(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid AnswerFinalJeopardyRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -125,7 +126,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/update-timers")
     public void updateTimers(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid SessionTimersRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -138,7 +139,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/update-settings")
     public void updateSettings(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid SessionSettingsRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -151,7 +152,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/leave")
     public void leave(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.leave(
@@ -162,7 +163,7 @@ public class GameSessionWebSocketController {
 
     @MessageMapping("/sessions/{sessionId}/kick")
     public void kick(
-            @DestinationVariable UUID sessionId,
+            @DestinationVariable SessionCode sessionId,
             @Valid KickPlayerRequest request,
             SimpMessageHeaderAccessor headers
     ) {
@@ -177,7 +178,7 @@ public class GameSessionWebSocketController {
      * The id of the player on this connection, checked against the session
      * the action is for. An anonymous connection (no token) can only watch.
      */
-    private Long playerId(UUID sessionId, SimpMessageHeaderAccessor headers) {
+    private Long playerId(SessionCode sessionId, SimpMessageHeaderAccessor headers) {
         if (!(headers.getUser() instanceof PlayerPrincipal player)) {
             throw new InvalidGameActionException(
                     GameErrorCode.UNAUTHENTICATED,
@@ -215,6 +216,23 @@ public class GameSessionWebSocketController {
         return new GameSessionErrorResponse(
                 exception.getCode().name(),
                 exception.getMessage()
+        );
+    }
+
+    // A destination with a malformed session code, such as /app/sessions/abc/buzz:
+    // converting a destination variable fails with this, unwrapped.
+    @MessageExceptionHandler(ConversionFailedException.class)
+    @SendToUser(value = "/queue/errors", broadcast = false)
+    public GameSessionErrorResponse handleInvalidSessionCode(
+            ConversionFailedException exception
+    ) {
+        if (exception.getTargetType().getType() != SessionCode.class) {
+            throw exception;
+        }
+
+        return new GameSessionErrorResponse(
+                GameErrorCode.INVALID_REQUEST.name(),
+                "Invalid session code: expected " + SessionCode.LENGTH + " letters and digits"
         );
     }
 

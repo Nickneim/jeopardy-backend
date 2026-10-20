@@ -14,7 +14,6 @@ import org.junit.jupiter.api.function.Executable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -61,7 +60,7 @@ class GameSessionHostAndLeavingTest {
 
     @Test
     void newSession_hasNoHost() {
-        GameSession empty = new GameSession(UUID.randomUUID(), session.getBoard());
+        GameSession empty = new GameSession(SessionCode.random(), session.getBoard());
 
         assertNull(empty.getHostPlayerId());
     }
@@ -499,7 +498,7 @@ class GameSessionHostAndLeavingTest {
     // -------------------------------------------------------------------------
 
     private void useBoard(GameBoard board) {
-        session = new GameSession(UUID.randomUUID(), board);
+        session = new GameSession(SessionCode.random(), board);
         ana = session.addPlayer("Ana");
         ben = session.addPlayer("Ben");
         cy = session.addPlayer("Cy");

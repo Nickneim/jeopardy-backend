@@ -13,6 +13,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -20,7 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/game-sessions")
@@ -57,15 +57,15 @@ public class GameSessionController {
     }
 
     /**
-     * Creates a session under an id the client chose (a fresh random UUID).
-     * With the id known up front, a load balancer in front of several
+     * Creates a session under a code the client chose at random (409 if it's
+     * taken, and the client tries another). With the id known up front, a load balancer in front of several
      * instances can send this request, like every later one about the
      * session, to the instance that will hold it (docs/api.md §3.2).
      */
     @PutMapping("/{sessionId}")
     @ResponseStatus(HttpStatus.CREATED)
     public CreateGameSessionResponse createSession(
-            @PathVariable UUID sessionId,
+            @PathVariable SessionCode sessionId,
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
         GameBoard board = gameBoardService.loadBoard(request.gameId());
@@ -81,7 +81,7 @@ public class GameSessionController {
      */
     @GetMapping("/{sessionId}")
     public GameSessionResponse getSession(
-            @PathVariable UUID sessionId
+            @PathVariable SessionCode sessionId
     ) {
         return gameSessionService.getSessionState(sessionId);
     }
@@ -94,7 +94,7 @@ public class GameSessionController {
     @PostMapping("/{sessionId}/players")
     @ResponseStatus(HttpStatus.CREATED)
     public JoinSessionResponse joinSession(
-            @PathVariable UUID sessionId,
+            @PathVariable SessionCode sessionId,
             @Valid @RequestBody JoinSessionRequest request
     ) {
         GameSessionPlayer player =

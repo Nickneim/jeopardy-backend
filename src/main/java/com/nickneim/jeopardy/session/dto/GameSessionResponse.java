@@ -4,14 +4,14 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
+import com.nickneim.jeopardy.session.model.SessionCode;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 public record GameSessionResponse(
-        UUID id,
+        SessionCode id,
         long version,
         GameRound round,
         GameSessionState state,
