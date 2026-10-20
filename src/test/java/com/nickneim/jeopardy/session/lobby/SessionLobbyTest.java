@@ -5,12 +5,12 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -94,7 +94,7 @@ class SessionLobbyTest {
 
     private static GameSessionSummaryResponse summary(String time, GameSessionState state) {
         return new GameSessionSummaryResponse(
-                UUID.randomUUID(),
+                SessionCode.random(),
                 735L,
                 "Show #735",
                 state,

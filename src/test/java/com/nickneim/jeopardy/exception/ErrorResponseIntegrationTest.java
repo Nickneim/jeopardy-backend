@@ -61,10 +61,11 @@ class ErrorResponseIntegrationTest {
         assertThat(body).doesNotContain("secret_table");
     }
 
+    // A game id that isn't a number is left to Spring's default 400 body.
     @Test
     void malformedPathVariable_returnsNoStackTraceOrExceptionMessage() {
         String body = restTestClient.get()
-                .uri("/api/game-sessions/not-a-uuid")
+                .uri("/api/games/not-a-number")
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody(String.class)
@@ -74,8 +75,8 @@ class ErrorResponseIntegrationTest {
         assertThat(body).contains("\"status\":400");
         assertNoInternals(body);
         // "path" echoes the client's own URL, which is fine; the conversion
-        // error ("Invalid UUID string: ...", "Failed to convert ...") isn't.
-        assertThat(body).doesNotContain("Invalid UUID").doesNotContain("convert");
+        // error ("For input string: ...", "Failed to convert ...") isn't.
+        assertThat(body).doesNotContain("input string").doesNotContain("convert");
     }
 
     private void assertNoInternals(String body) {

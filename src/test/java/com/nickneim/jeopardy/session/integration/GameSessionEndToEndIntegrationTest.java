@@ -11,6 +11,7 @@ import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,6 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -101,7 +101,7 @@ class GameSessionEndToEndIntegrationTest {
         );
 
         restTestClient.put()
-                .uri("/api/game-sessions/{id}", UUID.randomUUID())
+                .uri("/api/game-sessions/{id}", SessionCode.random())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new CreateGameSessionRequest(gameId))
                 .exchange()
@@ -123,7 +123,7 @@ class GameSessionEndToEndIntegrationTest {
                 GAME_TITLE
         );
 
-        UUID sessionId = createSession(gameId);
+        SessionCode sessionId = createSession(gameId);
 
         restTestClient.post()
                 .uri("/api/game-sessions/" + sessionId + "/players")
@@ -156,7 +156,7 @@ class GameSessionEndToEndIntegrationTest {
                 gameId
         );
 
-        UUID sessionId = createSession(gameId);
+        SessionCode sessionId = createSession(gameId);
 
         // Joining returns the player's id and their secret token...
         JoinSessionResponse joined = restTestClient.post()
@@ -252,8 +252,8 @@ class GameSessionEndToEndIntegrationTest {
 
     // Like a client: it chooses the id, and sends it as the session routing
     // parameter too, which a single instance ignores.
-    private UUID createSession(Long gameId) {
-        UUID sessionId = UUID.randomUUID();
+    private SessionCode createSession(Long gameId) {
+        SessionCode sessionId = SessionCode.random();
 
         return restTestClient.put()
                 .uri("/api/game-sessions/{id}?session={id}", sessionId, sessionId)
@@ -291,7 +291,7 @@ class GameSessionEndToEndIntegrationTest {
 
     private BlockingQueue<GameSessionResponse> subscribeToSession(
             StompSession stompSession,
-            UUID sessionId
+            SessionCode sessionId
     ) {
         BlockingQueue<GameSessionResponse> messages =
                 new LinkedBlockingQueue<>();
@@ -339,7 +339,7 @@ class GameSessionEndToEndIntegrationTest {
 
     private void send(
             StompSession stompSession,
-            UUID sessionId,
+            SessionCode sessionId,
             String action,
             Object request
     ) {

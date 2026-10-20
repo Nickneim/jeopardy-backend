@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -127,9 +128,10 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Only date and boolean filter parameters get an ApiErrorResponse.
-     * Rethrowing any other mismatch (such as a non-numeric page or id) leaves
-     * it to Spring's default 400 handling, as before these filters existed.
+     * Only date and boolean filter parameters and session codes get an
+     * ApiErrorResponse. Rethrowing any other mismatch (such as a non-numeric
+     * page or id) leaves it to Spring's default 400 handling, as before these
+     * existed.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -143,6 +145,8 @@ public class ApiExceptionHandler {
             message = "Invalid date for " + parameter + ": expected YYYY-MM-DD";
         } else if (exception.getRequiredType() == Boolean.class) {
             message = "Invalid value for " + parameter + ": expected true or false";
+        } else if (exception.getRequiredType() == SessionCode.class) {
+            message = "Invalid session code: expected " + SessionCode.LENGTH + " letters and digits";
         } else {
             throw exception;
         }

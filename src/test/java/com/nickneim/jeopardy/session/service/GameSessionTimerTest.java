@@ -1,11 +1,12 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +28,7 @@ class GameSessionTimerTest {
 
     @Test
     void schedule_executesActionAfterDelay() throws InterruptedException {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         CountDownLatch latch = new CountDownLatch(1);
 
         timer.schedule(
@@ -43,7 +44,7 @@ class GameSessionTimerTest {
 
     @Test
     void schedule_replacesExistingTimerForSameSession() throws InterruptedException {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch secondLatch = new CountDownLatch(1);
@@ -72,7 +73,7 @@ class GameSessionTimerTest {
     @Test
     void cancel_preventsScheduledActionFromRunning()
             throws InterruptedException {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         CountDownLatch latch = new CountDownLatch(1);
 
         timer.schedule(
@@ -90,7 +91,7 @@ class GameSessionTimerTest {
 
     @Test
     void cancel_doesNothingWhenSessionHasNoTimer() {
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
 
         timer.cancel(sessionId);
     }
@@ -98,8 +99,8 @@ class GameSessionTimerTest {
     @Test
     void cancel_onlyCancelsTimerForSpecifiedSession()
             throws InterruptedException {
-        UUID session1 = UUID.randomUUID();
-        UUID session2 = UUID.randomUUID();
+        SessionCode session1 = SessionCode.random();
+        SessionCode session2 = SessionCode.random();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch secondLatch = new CountDownLatch(1);
@@ -131,7 +132,7 @@ class GameSessionTimerTest {
     void shutdown_stopsScheduler() throws InterruptedException {
         timer.shutdown();
 
-        UUID sessionId = UUID.randomUUID();
+        SessionCode sessionId = SessionCode.random();
         CountDownLatch latch = new CountDownLatch(1);
 
         // Scheduling after shutdown should fail because the executor

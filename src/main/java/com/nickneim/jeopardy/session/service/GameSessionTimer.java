@@ -1,10 +1,10 @@
 package com.nickneim.jeopardy.session.service;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,38 +19,38 @@ public class GameSessionTimer {
 
     // Each session has one phase timer and, separately, one cleanup timer
     // that removes the session once it has been idle for too long.
-    private final Map<UUID, ScheduledFuture<?>> timers =
+    private final Map<SessionCode, ScheduledFuture<?>> timers =
             new ConcurrentHashMap<>();
-    private final Map<UUID, ScheduledFuture<?>> cleanupTimers =
+    private final Map<SessionCode, ScheduledFuture<?>> cleanupTimers =
             new ConcurrentHashMap<>();
 
     public void schedule(
-            UUID sessionId,
+            SessionCode sessionId,
             Duration delay,
             Runnable action
     ) {
         schedule(timers, sessionId, delay, action);
     }
 
-    public void cancel(UUID sessionId) {
+    public void cancel(SessionCode sessionId) {
         cancel(timers, sessionId);
     }
 
     public void scheduleCleanup(
-            UUID sessionId,
+            SessionCode sessionId,
             Duration delay,
             Runnable action
     ) {
         schedule(cleanupTimers, sessionId, delay, action);
     }
 
-    public void cancelCleanup(UUID sessionId) {
+    public void cancelCleanup(SessionCode sessionId) {
         cancel(cleanupTimers, sessionId);
     }
 
     private void schedule(
-            Map<UUID, ScheduledFuture<?>> timers,
-            UUID sessionId,
+            Map<SessionCode, ScheduledFuture<?>> timers,
+            SessionCode sessionId,
             Duration delay,
             Runnable action
     ) {
@@ -65,7 +65,7 @@ public class GameSessionTimer {
         timers.put(sessionId, future);
     }
 
-    private void cancel(Map<UUID, ScheduledFuture<?>> timers, UUID sessionId) {
+    private void cancel(Map<SessionCode, ScheduledFuture<?>> timers, SessionCode sessionId) {
         ScheduledFuture<?> future = timers.remove(sessionId);
 
         if (future != null) {

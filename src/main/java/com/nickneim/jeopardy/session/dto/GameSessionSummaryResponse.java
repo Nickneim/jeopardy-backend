@@ -4,16 +4,16 @@ import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.SessionCode;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * One session in the lobby list. Like every other session response it is
  * public, so it must never contain tokens.
  */
 public record GameSessionSummaryResponse(
-        UUID id,
+        SessionCode id,
         Long gameId,
         String gameTitle,
         GameSessionState state,

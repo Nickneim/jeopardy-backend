@@ -21,6 +21,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,7 +32,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -102,7 +102,7 @@ class GameSessionServiceTest {
 
     @Test
     void createSession_usesTheGivenId() {
-        UUID id = UUID.randomUUID();
+        SessionCode id = SessionCode.random();
 
         GameSession session = gameSessionService.createSession(id, createBoard());
 
@@ -114,7 +114,7 @@ class GameSessionServiceTest {
     // session (and its players) that's already there.
     @Test
     void createSession_rejectsAnIdInUseAndKeepsTheExistingSession() {
-        UUID id = UUID.randomUUID();
+        SessionCode id = SessionCode.random();
         GameSession existing = gameSessionService.createSession(id, createBoard());
         clearInvocations(timer);
 
@@ -139,7 +139,7 @@ class GameSessionServiceTest {
 
     @Test
     void getSession_throwsWhenSessionDoesNotExist() {
-        UUID id = UUID.randomUUID();
+        SessionCode id = SessionCode.random();
 
         assertThrows(
                 GameSessionNotFoundException.class,
@@ -1450,7 +1450,7 @@ class GameSessionServiceTest {
     void getSessionState_throwsWhenSessionDoesNotExist() {
         assertThrows(
                 GameSessionNotFoundException.class,
-                () -> gameSessionService.getSessionState(UUID.randomUUID())
+                () -> gameSessionService.getSessionState(SessionCode.random())
         );
     }
 
