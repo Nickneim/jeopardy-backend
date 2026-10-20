@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.session.service;
 
-import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -92,16 +90,12 @@ public class GameSessionService {
     }
 
     /**
-     * The open sessions for a lobby page, newest first (ties by id), without
-     * finished ones unless {@code includeFinished}. Each summary is built
-     * under its session's lock.
+     * A summary of every session this instance holds, finished ones included,
+     * in no particular order. Each is built under its session's lock. The
+     * lobby list (SessionLobby) merges these with the other instances'.
      */
-    public PageResponse<GameSessionSummaryResponse> listSessions(
-            boolean includeFinished,
-            int page,
-            int size
-    ) {
-        List<GameSessionSummaryResponse> matching = sessions.values()
+    public List<GameSessionSummaryResponse> localSummaries() {
+        return sessions.values()
                 .stream()
                 .map(session -> {
                     synchronized (session) {
@@ -109,22 +103,7 @@ public class GameSessionService {
                     }
                 })
                 .filter(summary -> summary.state() != GameSessionState.CLOSED)
-                .filter(summary -> includeFinished || summary.state() != GameSessionState.FINISHED_GAME)
-                .sorted(Comparator.comparing(GameSessionSummaryResponse::createdAt)
-                        .reversed()
-                        .thenComparing(GameSessionSummaryResponse::id))
                 .toList();
-
-        int from = (int) Math.min((long) page * size, matching.size());
-        int to = Math.min(from + size, matching.size());
-
-        return new PageResponse<>(
-                matching.subList(from, to),
-                page,
-                size,
-                matching.size(),
-                (matching.size() + size - 1) / size
-        );
     }
 
     public GameSession getSession(UUID sessionId) {

@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.controller.GameController;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.controller.GameSessionController;
+import com.nickneim.jeopardy.session.lobby.SessionLobby;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class WebCorsConfigTest {
 
     @MockitoBean
     private GameBoardService gameBoardService;
+
+    @MockitoBean
+    private SessionLobby sessionLobby;
 
     @Test
     void getFromTheFrontend_isAllowed() throws Exception {

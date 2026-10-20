@@ -107,7 +107,7 @@ A session lives in the memory of one backend instance. When several instances ru
 
 **Every request about one session must carry `?session=<its id>`:** creating it (`PUT /api/game-sessions/{id}`), fetching it, joining it, and the `/ws` connection used to play or watch it (§4.1). The value is the session id, the same as in the path. A request without it may reach an instance that doesn't have the session and get a 404 (or, on the WebSocket, a rejected token), so add it even when running a single instance, where it's simply ignored.
 
-Requests that aren't about one session (the lobby list and §3.1) need no parameter and can reach any instance.
+Requests that aren't about one session (the lobby list and §3.1) need no parameter and can reach any instance. The lobby list still covers every instance: the one that answers collects the others' sessions. If an instance doesn't answer it within a second, that instance's sessions are missing from that response.
 
 #### `GET /api/game-sessions`
 
@@ -813,7 +813,6 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Answer checking doesn't know synonyms** (§6.7): abbreviations aren't expanded ("Avenue" isn't `Ave.`), and number words aren't numbers.
 - **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast. With several instances, only the sessions on the instance that stopped are lost.
-- **With several instances, the lobby list shows only one instance's sessions** (`GET /api/game-sessions` can reach any instance, and each lists the sessions it holds), so it changes between refreshes. Joining by id still works for every session.
 - **Changing the number of instances moves some sessions' routing.** When an instance is added or removed, the load balancer sends some session ids to a different instance than before. Open connections stay where they are and keep working, but new requests for those sessions (a refresh, a join, a reconnect) reach an instance without them and get a 404. Keep the number of instances fixed while games are running.
 - **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4); the timers keep the game moving around an absent player.
 - **No limits** on the number of players, duplicate names or name length.

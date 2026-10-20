@@ -13,6 +13,7 @@ import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
+import com.nickneim.jeopardy.session.lobby.SessionLobby;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
@@ -51,6 +52,9 @@ class GameSessionControllerTest {
 
     @MockitoBean
     private GameBoardService gameBoardService;
+
+    @MockitoBean
+    private SessionLobby sessionLobby;
 
     @Test
     void createSession_returnsCreatedSession() throws Exception {
@@ -400,7 +404,7 @@ class GameSessionControllerTest {
         );
         session.addPlayer("Nico");
 
-        when(gameSessionService.listSessions(false, 0, 20)).thenReturn(new PageResponse<>(
+        when(sessionLobby.listSessions(false, 0, 20)).thenReturn(new PageResponse<>(
                 List.of(GameSessionSummaryResponse.from(session)), 0, 20, 1, 1
         ));
 
@@ -431,13 +435,13 @@ class GameSessionControllerTest {
 
     @Test
     void listSessions_passesThePagingAndFilter() throws Exception {
-        when(gameSessionService.listSessions(true, 2, 5))
+        when(sessionLobby.listSessions(true, 2, 5))
                 .thenReturn(new PageResponse<>(List.of(), 2, 5, 0, 0));
 
         mockMvc.perform(get("/api/game-sessions?page=2&size=5&includeFinished=true"))
                 .andExpect(status().isOk());
 
-        verify(gameSessionService).listSessions(true, 2, 5);
+        verify(sessionLobby).listSessions(true, 2, 5);
     }
 
     @Test
@@ -449,7 +453,7 @@ class GameSessionControllerTest {
         mockMvc.perform(get("/api/game-sessions?page=-1"))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(gameSessionService);
+        verifyNoInteractions(sessionLobby);
     }
 
     @Test

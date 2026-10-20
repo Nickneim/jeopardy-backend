@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
+import com.nickneim.jeopardy.session.lobby.SessionLobby;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameBoardService;
@@ -28,15 +29,22 @@ public class GameSessionController {
 
     private final GameSessionService gameSessionService;
     private final GameBoardService gameBoardService;
+    private final SessionLobby sessionLobby;
 
-    public GameSessionController(GameSessionService gameSessionService, GameBoardService gameBoardService) {
+    public GameSessionController(
+            GameSessionService gameSessionService,
+            GameBoardService gameBoardService,
+            SessionLobby sessionLobby
+    ) {
         this.gameSessionService = gameSessionService;
         this.gameBoardService = gameBoardService;
+        this.sessionLobby = sessionLobby;
     }
 
     /**
-     * Sessions to join or watch, for a lobby page. Finished sessions are left
-     * out unless {@code includeFinished}. Summaries hold no secrets.
+     * Sessions to join or watch, for a lobby page, from every instance.
+     * Finished sessions are left out unless {@code includeFinished}.
+     * Summaries hold no secrets.
      */
     @GetMapping
     public PageResponse<GameSessionSummaryResponse> listSessions(
@@ -45,7 +53,7 @@ public class GameSessionController {
             // Boolean, not boolean, so a bad value gets ApiExceptionHandler's message.
             @RequestParam(defaultValue = "false") Boolean includeFinished
     ) {
-        return gameSessionService.listSessions(includeFinished, page, size);
+        return sessionLobby.listSessions(includeFinished, page, size);
     }
 
     /**

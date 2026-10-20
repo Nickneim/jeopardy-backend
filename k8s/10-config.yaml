@@ -12,3 +12,9 @@ data:
   DATABASE_URL: jdbc:postgresql://host.docker.internal:5433/jeopardy
   DATABASE_USERNAME: postgres
   ALLOWED_ORIGINS: http://localhost:5173
+  # Actuator (health probes, and this pod's sessions for the others' lobby
+  # lists) on its own port, which no Service outside the cluster exposes.
+  MANAGEMENT_SERVER_PORT: "8081"
+  # Resolves to every ready pod (30-service.yaml), so the lobby list can ask
+  # all of them for their sessions.
+  SESSION_PEERS: backend-peers.jeopardy.svc.cluster.local

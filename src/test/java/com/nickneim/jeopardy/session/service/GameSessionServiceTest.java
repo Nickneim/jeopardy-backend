@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.session.service;
 
-import com.nickneim.jeopardy.game.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -31,9 +30,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -1759,16 +1760,11 @@ class GameSessionServiceTest {
     // Listing
     // -------------------------------------------------------------------------
 
+    // Filtering, ordering and paging are SessionLobby's (SessionLobbyTest).
     @Test
-    void listSessions_newestFirst_withoutFinishedOnesByDefault() {
-        when(clock.instant()).thenReturn(
-                Instant.parse("2026-10-09T10:00:00Z"),
-                Instant.parse("2026-10-09T11:00:00Z"),
-                Instant.parse("2026-10-09T12:00:00Z")
-        );
-        GameSession older = createSession();
+    void localSummaries_listsEverySessionIncludingFinishedOnes() {
+        GameSession waiting = createSession();
         GameSession finished = createSession();
-        GameSession newer = createSession();
         finished.addPlayer("Nico");
         finished.startGame(1L);
         finished.timeoutChoosingClue();
@@ -1782,40 +1778,15 @@ class GameSessionServiceTest {
         assertEquals(GameSessionState.FINISHED_GAME, finished.getState());
 
         assertEquals(
-                List.of(newer.getId(), older.getId()),
-                gameSessionService.listSessions(false, 0, 20).content()
-                        .stream().map(GameSessionSummaryResponse::id).toList()
-        );
-        assertEquals(
-                List.of(newer.getId(), finished.getId(), older.getId()),
-                gameSessionService.listSessions(true, 0, 20).content()
-                        .stream().map(GameSessionSummaryResponse::id).toList()
+                Set.of(waiting.getId(), finished.getId()),
+                gameSessionService.localSummaries().stream()
+                        .map(GameSessionSummaryResponse::id)
+                        .collect(Collectors.toSet())
         );
     }
 
     @Test
-    void listSessions_isPaged() {
-        when(clock.instant()).thenReturn(
-                Instant.parse("2026-10-09T10:00:00Z"),
-                Instant.parse("2026-10-09T11:00:00Z"),
-                Instant.parse("2026-10-09T12:00:00Z")
-        );
-        GameSession oldest = createSession();
-        createSession();
-        createSession();
-
-        PageResponse<GameSessionSummaryResponse> page = gameSessionService.listSessions(false, 1, 2);
-
-        assertEquals(List.of(oldest.getId()), page.content().stream().map(GameSessionSummaryResponse::id).toList());
-        assertEquals(1, page.page());
-        assertEquals(2, page.size());
-        assertEquals(3, page.totalElements());
-        assertEquals(2, page.totalPages());
-        assertEquals(List.of(), gameSessionService.listSessions(false, 5, 2).content());
-    }
-
-    @Test
-    void listSessions_summarizesTheHostAndActivePlayers() {
+    void localSummaries_summarizeTheHostAndActivePlayers() {
         GameBoard board = new GameBoard(42L, "Show #42", createBoard().getRounds());
         GameSession session = gameSessionService.createSession(board);
         GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
@@ -1826,7 +1797,7 @@ class GameSessionServiceTest {
         gameSessionService.leave(session.getId(), host.getId());
 
         GameSessionSummaryResponse summary =
-                gameSessionService.listSessions(false, 0, 20).content().getFirst();
+                gameSessionService.localSummaries().getFirst();
 
         assertEquals(session.getId(), summary.id());
         assertEquals(42L, summary.gameId());
