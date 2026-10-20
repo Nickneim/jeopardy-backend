@@ -67,13 +67,7 @@ kubectl apply -f k8s/
 kubectl get pods -n jeopardy -w
 ```
 
-When every pod is `1/1 READY`, the API is at `http://localhost/` (for example `http://localhost/api/games?size=1`). To use it from the frontend, start its dev server with `BACKEND_URL` pointing at the Ingress:
-
-```bash
-BACKEND_URL=http://localhost npm run dev
-```
-
-In PowerShell: `$env:BACKEND_URL='http://localhost'; npm run dev`.
+When every pod is `1/1 READY`, the API and the `/ws` WebSocket are at `http://localhost/` (for example `http://localhost/api/games?size=1`), on port 80 instead of 8080. A client must send the `session` parameter on every request about a session (`docs/api.md` §3.2), or those requests can reach the wrong pod.
 
 After rebuilding the image under the same tag, restart the pods to pick it up:
 
