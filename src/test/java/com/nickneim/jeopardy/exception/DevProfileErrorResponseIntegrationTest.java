@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 /** The "dev" profile is the explicit switch that brings error details back. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
-@ActiveProfiles({"test", "dev"})
+@ActiveProfiles("dev")
 @Import(TestcontainersConfiguration.class)
 class DevProfileErrorResponseIntegrationTest {
 
