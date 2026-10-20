@@ -1,11 +1,13 @@
 package com.nickneim.jeopardy.exception;
 
+import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -18,7 +20,8 @@ import static org.mockito.Mockito.when;
 /** The "dev" profile is the explicit switch that brings error details back. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
-@ActiveProfiles({"test", "dev"})
+@ActiveProfiles("dev")
+@Import(TestcontainersConfiguration.class)
 class DevProfileErrorResponseIntegrationTest {
 
     @Autowired

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Runs the tests with the variables from .env loaded and prints a short
-# summary: the totals, then each failing test with its first message line and
-# where in our code it failed (or the compiler errors). Gradle's full output
-# goes to build/test-output.log.
+# Runs the tests and prints a short summary: the totals, then each failing
+# test with its first message line and where in our code it failed (or the
+# compiler errors). Gradle's full output goes to build/test-output.log. The
+# Spring tests start their own Postgres in Docker (TestcontainersConfiguration),
+# so Docker must be running; .env isn't needed.
 #
 # Usage:
 #   scripts/test.sh                                  # all tests
@@ -12,25 +13,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-# The nearest .env in the project root or a folder above it, so it's also
-# found from a git worktree (.claude/worktrees/<name>) of the project.
-env_file=""
-dir="$(pwd)"
-while true; do
-    if [ -f "$dir/.env" ]; then
-        env_file="$dir/.env"
-        break
-    fi
-    parent="$(dirname "$dir")"
-    [ "$parent" = "$dir" ] && break
-    dir="$parent"
-done
-
-if [ -n "$env_file" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . <(tr -d '\r' < "$env_file")
-    set +a
+# Without Docker every Spring test fails with a long Testcontainers error, so
+# say why up front. Plain unit tests still run, so this doesn't stop.
+if ! docker info >/dev/null 2>&1; then
+    echo "WARNING: Docker isn't running, so the Spring tests (which start Postgres in Docker) will fail. Start Docker Desktop."
 fi
 
 mkdir -p build

@@ -35,8 +35,6 @@ services:
       # The data lives in a named volume, so it survives the container being
       # removed or the image being updated.
       - pgdata:/var/lib/postgresql/data
-      # Scripts here run once, when the volume is empty (first start).
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d jeopardy"]
       interval: 5s
