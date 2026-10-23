@@ -1,6 +1,7 @@
 # The backend and its Postgres on the EC2 instance, started by jeopardy.service
-# through start.sh. Variables come from app.env; the database password comes
-# from Parameter Store, which start.sh writes to /run/jeopardy/ (memory only).
+# through start.sh. Variables come from app.env, and BACKEND_TAG and the
+# database password from Parameter Store, which start.sh writes to
+# /run/jeopardy/ (memory only).
 name: jeopardy
 
 services:
@@ -28,7 +29,7 @@ services:
         awslogs-stream: db
 
   backend:
-    image: 241200392621.dkr.ecr.us-east-2.amazonaws.com/jeopardy-backend:${BACKEND_TAG:?set BACKEND_TAG in app.env}
+    image: 241200392621.dkr.ecr.us-east-2.amazonaws.com/jeopardy-backend:${BACKEND_TAG:?set /jeopardy/backend-tag in Parameter Store}
     depends_on:
       db:
         condition: service_healthy

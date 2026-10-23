@@ -2,19 +2,9 @@
 # the game answers through CloudFront.
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\settings.ps1"
+. "$PSScriptRoot\common.ps1"
 
-# Runs the AWS CLI and stops the script if it fails.
-function Invoke-Aws {
-    $output = aws @args
-    if ($LASTEXITCODE -ne 0) { throw "aws $($args -join ' ') failed" }
-    $output
-}
-
-aws sts get-caller-identity --output text *> $null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Signing in to AWS..."
-    Invoke-Aws sso login | Out-Null
-}
+Connect-Aws
 
 Write-Host "Starting the instance..."
 Invoke-Aws ec2 start-instances --instance-ids $InstanceId --output text | Out-Null
@@ -22,20 +12,8 @@ Invoke-Aws ec2 wait instance-running --instance-ids $InstanceId
 $dns = Invoke-Aws ec2 describe-instances --instance-ids $InstanceId `
     --query "Reservations[0].Instances[0].PublicDnsName" --output text
 
-# Every start gives the instance a new public address, and CloudFront's
-# backend origin has to follow it.
-$etag = Invoke-Aws cloudfront get-distribution-config --id $DistributionId --query ETag --output text
-$oldDns = Invoke-Aws cloudfront get-distribution-config --id $DistributionId `
-    --query "DistributionConfig.Origins.Items[?Id=='backend'].DomainName | [0]" --output text
-if ($oldDns -ne $dns) {
-    Write-Host "Pointing CloudFront at $dns..."
-    $config = (Invoke-Aws cloudfront get-distribution-config --id $DistributionId `
-        --query DistributionConfig --output json) -join "`n"
-    $file = Join-Path $env:TEMP "jeopardy-distribution-update.json"
-    $config.Replace("""$oldDns""", """$dns""") | Set-Content $file
-    Invoke-Aws cloudfront update-distribution --id $DistributionId --if-match $etag `
-        --distribution-config "file://$file" --query Distribution.Status --output text | Out-Null
-}
+# Every start gives the instance a new public address.
+Set-BackendOrigin $dns
 
 # The backend needs a minute to start, and a CloudFront change a few minutes
 # to reach every edge location.
@@ -51,4 +29,5 @@ while ($true) {
 }
 
 Write-Host "Ready: https://$Domain"
-Write-Host "It stops itself 20 minutes after the last game ends (stop.ps1 stops it now)."
+Write-Host "It stops itself 20 minutes after the last game ends; run stop.ps1 afterwards"
+Write-Host "to take its old address out of CloudFront (or to stop it right away)."

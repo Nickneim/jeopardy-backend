@@ -18,6 +18,8 @@
       {
         "Id": "backend",
         "DomainName": "__BACKEND_DNS__",
+        "ConnectionAttempts": 1,
+        "ConnectionTimeout": 3,
         "CustomOriginConfig": {
           "HTTPPort": 8080,
           "HTTPSPort": 443,
