@@ -8,8 +8,9 @@ $Domain = "d14x3ygmehrd5x.cloudfront.net"
 $Registry = "241200392621.dkr.ecr.us-east-2.amazonaws.com"
 $FrontendBucket = "jeopardy-frontend-241200392621"
 # Where stop.ps1 points CloudFront's backend origin while the instance is
-# stopped: an address of ours that never answers on port 8080, instead of the
-# instance's old public address, which AWS may give to someone else.
-$OfflineOrigin = "jeopardy-deploy-241200392621.s3.us-east-2.amazonaws.com"
+# stopped, instead of the instance's old public address, which AWS may give to
+# someone else. Names under .invalid never exist (RFC 6761), so CloudFront
+# answers 502 at once, which the frontend shows as "offline".
+$OfflineOrigin = "jeopardy-backend-offline.invalid"
 # The frontend repository, built and uploaded by deploy-frontend.ps1.
 $FrontendDir = "C:\Users\Nico\Documents\programming\java\jeopardy\frontend"
