@@ -1,0 +1,6 @@
+[Unit]
+Description=Stop the instance when no Jeopardy game is running
+
+[Service]
+Type=oneshot
+ExecStart=/opt/jeopardy/idle-stop.sh
