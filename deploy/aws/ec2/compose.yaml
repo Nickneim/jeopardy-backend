@@ -1,0 +1,57 @@
+# The backend and its Postgres on the EC2 instance, started by jeopardy.service
+# through start.sh. Variables come from app.env; the database password comes
+# from Parameter Store, which start.sh writes to /run/jeopardy/ (memory only).
+name: jeopardy
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: jeopardy
+      POSTGRES_USER: jeopardy
+    env_file:
+      - path: /run/jeopardy/postgres.env
+        required: false
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "jeopardy", "-d", "jeopardy"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-2
+        awslogs-group: /jeopardy/backend
+        awslogs-stream: db
+
+  backend:
+    image: 241200392621.dkr.ecr.us-east-2.amazonaws.com/jeopardy-backend:${BACKEND_TAG:?set BACKEND_TAG in app.env}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/jeopardy
+      DATABASE_USERNAME: jeopardy
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in app.env}
+      # The image's memory calculator sizes the heap from the container limit;
+      # fewer reserved thread stacks leave more of it for the heap.
+      BPL_JVM_THREAD_COUNT: "50"
+    env_file:
+      - path: /run/jeopardy/backend.env
+        required: false
+    mem_limit: 1g
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-2
+        awslogs-group: /jeopardy/backend
+        awslogs-stream: backend
+
+volumes:
+  pgdata:
