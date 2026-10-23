@@ -1,0 +1,53 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EcrLogin",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "PushBackendImage",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:DescribeImages",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:PutImage"
+      ],
+      "Resource": "arn:aws:ecr:us-east-2:241200392621:repository/jeopardy-backend"
+    },
+    {
+      "Sid": "ChooseTheImageToRun",
+      "Effect": "Allow",
+      "Action": "ssm:PutParameter",
+      "Resource": "arn:aws:ssm:us-east-2:241200392621:parameter/jeopardy/backend-tag"
+    },
+    {
+      "Sid": "SeeWhetherTheInstanceRuns",
+      "Effect": "Allow",
+      "Action": "ec2:DescribeInstances",
+      "Resource": "*"
+    },
+    {
+      "Sid": "RestartTheBackendOnly",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ec2:us-east-2:241200392621:instance/i-0bb3a26a2c97e3c2c",
+        "arn:aws:ssm:us-east-2:241200392621:document/Jeopardy-RestartBackend"
+      ]
+    },
+    {
+      "Sid": "ReadTheRestartResult",
+      "Effect": "Allow",
+      "Action": "ssm:GetCommandInvocation",
+      "Resource": "*"
+    }
+  ]
+}

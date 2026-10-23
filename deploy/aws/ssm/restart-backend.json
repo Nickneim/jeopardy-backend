@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Restart the Jeopardy backend, which then runs the image tag in /jeopardy/backend-tag. Ends the games in progress.",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "restartBackend",
+      "inputs": {
+        "runCommand": ["systemctl restart jeopardy"]
+      }
+    }
+  ]
+}

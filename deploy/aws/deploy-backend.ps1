@@ -67,12 +67,11 @@ if ($sessions.totalElements -gt 0) {
     }
 }
 
-# Run Command: runs a command on the instance through the Systems Manager agent,
-# without a session.
+# Run Command: runs the Jeopardy-RestartBackend document (deploy/aws/ssm/) on
+# the instance through the Systems Manager agent, without a session.
 Write-Host "Restarting the backend on the instance..."
-$commandId = Invoke-Aws ssm send-command --instance-ids $InstanceId --document-name AWS-RunShellScript `
-    --comment "Deploy backend $Tag" --parameters 'commands=["systemctl restart jeopardy"]' `
-    --query Command.CommandId --output text
+$commandId = Invoke-Aws ssm send-command --instance-ids $InstanceId --document-name Jeopardy-RestartBackend `
+    --comment "Deploy backend $Tag" --query Command.CommandId --output text
 aws ssm wait command-executed --command-id $commandId --instance-id $InstanceId
 if ($LASTEXITCODE -ne 0) {
     Invoke-Aws ssm get-command-invocation --command-id $commandId --instance-id $InstanceId `
