@@ -1,30 +1,32 @@
 """Rewrites J-Archive answers so alternatives and lists have one form.
 
-Alternatives and lists are written "(N of) A | B | C", where a correct
-response names N of the options: "(1 of) Santa Claus | Father Christmas"
-means either one. Answers contain commas, "&" and "or", but never "|", so the
-separator can't be mistaken for part of an option. A parenthesized part that
-isn't an alternative stays an optional part: "(Abraham) Lincoln".
+Two notations (docs/api.md §6.7):
+- "(N of) A | B | C": different answers, of which a correct response names
+  N: "(1 of) Chile | Uruguay | Argentina", "(2 of) gold | frankincense | myrrh".
+- "[A | B]", anywhere: one thing worded differently: "[Myanmar | Burma]",
+  "a linen [closet | cupboard]", "(2 of) coroner | [coronet | coronel]".
+Answers contain commas, "&" and "or", but never "|" otherwise. A
+parenthesized part that isn't an alternative stays an optional part:
+"(Abraham) Lincoln".
 
-J-Archive writes these many ways: "Santa Claus or Father Christmas",
+J-Archive writes alternatives many ways: "Santa Claus or Father Christmas",
 "Myanmar (or Burma)", "Pagliacci (I Pagliacci accepted)", "(2 of) A, B & C",
-"(one of) A or B", "A, B &/or C" with "2 of the 3" in the clue.
+"(one of) A or B", "A, B &/or C" with "2 of the 3" in the clue. Telling one
+thing worded differently from different answers, and which words an
+alternative replaces, needs judgment, so every such answer is decided by a
+person: "review" opens a page in the browser to decide them one at a time,
+optionally starting from proposals (--proposals). Each decision is saved to
+answer-rewrites.csv right away, keyed by the answer text.
 
-- Simple cases are rewritten by a rule: one alternative at the end, as in
-  "Myanmar (or Burma)" or "Pagliacci (I Pagliacci accepted)".
-- The rest need a person: a bare "or" is often part of the answer ("To Be Or
-  Not To Be"), and a comma may be part of a title. "review" opens a page in
-  the browser to decide them one at a time. Each decision is saved to
-  answer-rewrites.csv right away, keyed by the answer text.
-
-"apply" runs the rule and then the reviewed rewrites, so after a re-import the
-same command brings the answers back to where they were. Run it after
-brackets-to-parentheses.sql (see README.md).
+"apply" applies the decisions, so after a re-import the same command brings
+the answers back to where they were. Run it after brackets-to-parentheses.sql
+(see README.md).
 
 Usage (from the project root):
-    python scripts/data/answers.py review             # review in the browser
-    python scripts/data/answers.py apply              # dry run: show what would change
-    python scripts/data/answers.py apply --commit     # update the database
+    python scripts/data/answers.py review                         # review in the browser
+    python scripts/data/answers.py review --proposals FILE.json   # starting from proposals
+    python scripts/data/answers.py apply                          # dry run: show what would change
+    python scripts/data/answers.py apply --commit                 # update the database
 
 Reads DATABASE_URL, DATABASE_USERNAME and DATABASE_PASSWORD from .env (or
 --env PATH). Every session is read-only except "apply --commit".
@@ -226,8 +228,23 @@ def list_items(answer):
     marker = MARKER.match(answer)
     body = answer[marker.end():] if marker else answer
     if "|" in body:
-        return [item.strip() for item in body.split("|") if item.strip()]
+        return [item.strip() for item in split_outside_brackets(body) if item.strip()]
     return split_options(body, split_last_and=bool(marker))
+
+
+def split_outside_brackets(text):
+    """Splits at "|", except inside "[...]": "coroner | [coronet | coronel]"."""
+    parts, depth, start = [], 0, 0
+    for i, char in enumerate(text):
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth = max(0, depth - 1)
+        elif char == "|" and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
 
 
 def split_options(text, split_last_and):
@@ -259,49 +276,8 @@ def format_n_of(n, items):
     return f"({n} of) " + " | ".join(items)
 
 
-# --- The automatic rule ---------------------------------------------------------
-
 # One alternative at the very end: "Myanmar (or Burma)", "Pagliacci (I Pagliacci accepted)".
 ALTERNATIVE_AT_END = re.compile(r"\s*\(\s*(?:or\s+(?P<or>[^()]+?)|(?P<accepted>[^()]+?)\s+accepted)\s*\)\s*$", re.I)
-
-
-def auto_rewrite(answer):
-    """The rewrite of an answer simple enough not to need a person, or None.
-
-    "A (or X)" and "A (X accepted)" become "(1 of) A | X" when A is plain text
-    (optional parts like "(Abraham)" are fine) and X is a single option: no
-    comma, "or", "?" or parentheses, any of which could be a list or part of a
-    title ("Rudy (or Knute Rockne, All American)").
-
-    X must also clearly replace all of A, so A can't be a list ("coroner &
-    coronet (or coronel)", where coronel replaces only one item) or have a
-    comma, and X can't have fewer words than A ("a linen closet (or
-    cupboard)", which means "a linen cupboard"). Those go to review.
-    """
-    if MARKER.match(answer):
-        return None
-    match = ALTERNATIVE_AT_END.search(answer)
-    if not match:
-        return None
-    first = answer[:match.start()].strip()
-    other = (match["or"] or match["accepted"]).strip()
-    if not first:
-        return None
-
-    outside_groups = re.sub(r"\([^()]*\)", "", first)
-    if "(" in outside_groups or ")" in outside_groups:
-        return None  # nested or unbalanced
-    if ALTERNATIVE_GROUP.search(first):
-        return None
-    if BARE_OR.search(PARENS.sub("", first)) or AND_OR.search(first):
-        return None
-    if re.search(r"[,;?()]|\bor\b", other, re.I):
-        return None
-    if "," in first or LIST_AND.search(first) or len(content_words(other)) < len(content_words(first)):
-        return None  # X may replace only part of A
-    return format_n_of(1, [first, other])
-
-
 LIST_AND = re.compile(r"\s(?:&|and)\s", re.I)
 ARTICLES = {"a", "an", "the"}
 
@@ -316,12 +292,10 @@ def content_words(text):
 
 def needs_review(answer):
     """True if a person should decide: a bare "or", a list not in the standard
-    form, or an alternative in parentheses the automatic rule can't handle."""
+    form, or an alternative in parentheses."""
     n = marker_n(answer)
     if n is not None:
         return format_n_of(n, list_items(answer)) != answer
-    if auto_rewrite(answer):
-        return False
     return bool(BARE_OR.search(PARENS.sub("", answer)) or ALTERNATIVE_START.search(answer))
 
 
@@ -434,6 +408,27 @@ def hint(candidate):
     return 5, "Looks like two alternatives.", suggestion
 
 
+PROPOSAL_GROUP_UNSURE = 100
+PROPOSAL_GROUPS = {
+    PROPOSAL_GROUP_UNSURE: "Proposed, unsure",
+    PROPOSAL_GROUP_UNSURE + 1: "Proposed rewrites",
+    PROPOSAL_GROUP_UNSURE + 2: "Proposed: keep as it is",
+}
+
+
+def proposal_hint(proposal):
+    """(group, label, suggestion) for an answer with a proposal."""
+    unsure = proposal.get("confidence") == "low"
+    rewrite = proposal.get("decision") == "rewrite"
+    group = PROPOSAL_GROUP_UNSURE if unsure else PROPOSAL_GROUP_UNSURE + (1 if rewrite else 2)
+    label = "Proposed, unsure." if unsure else "Proposed."
+    if proposal.get("note"):
+        label += " " + proposal["note"].rstrip(".") + "."
+    if proposal.get("oldDecision"):
+        label += " Your old decision: " + proposal["oldDecision"]
+    return group, label, proposal["new_answer"] if rewrite else None
+
+
 GROUP_NAMES = {
     0: "Lists (N of)",
     1: "and/or lists",
@@ -473,9 +468,17 @@ def review(args):
     with connect(args.env) as conn:
         candidates = load_candidates(conn)
 
+    # Proposals (e.g. a first pass) replace the built-in suggestions:
+    # {answer: {"decision", "new_answer", "confidence", "note", "oldDecision"}}.
+    proposals = json.loads(Path(args.proposals).read_text(encoding="utf-8")) if args.proposals else {}
+    groups = {**PROPOSAL_GROUPS, **GROUP_NAMES} if proposals else GROUP_NAMES
+
     items = []
     for candidate in candidates:
         group, label, suggestion = hint(candidate)
+        proposal = proposals.get(candidate["answer"])
+        if proposal:
+            group, label, suggestion = proposal_hint(proposal)
         n_of = n_of_in_clue(candidate["question"])
         items.append({
             "answer": candidate["answer"],
@@ -486,7 +489,8 @@ def review(args):
             "suggestion": suggestion,
             "clueN": marker_n(candidate["answer"]) or (n_of[0] if n_of else None),
         })
-    payload = json.dumps({"items": items, "groups": GROUP_NAMES}).encode("utf-8")
+    items.sort(key=lambda item: (item["group"] < PROPOSAL_GROUP_UNSURE, item["group"]))
+    payload = json.dumps({"items": items, "groups": groups}).encode("utf-8")
 
     decisions = load_decisions()
     lock = threading.Lock()
@@ -567,29 +571,21 @@ def apply(args):
                 )
             return counts
 
-        answers = conn.execute(r"select distinct answer from clue where answer ~* '\(\s*or\s|accepted' order by 1")
-        automatic = [(old, new) for (old,) in answers if (new := auto_rewrite(old))]
-        auto_total = sum(rewrite(automatic).values())
-        print(f"Rule:     {auto_total} clues ({len(automatic)} answers), e.g.")
-        for old, new in automatic[:5]:
-            print(f"            {old}  →  {new}")
-
-        reviewed = [(d["answer"], d["new_answer"]) for d in load_decisions().values()
-                    if d["decision"] == "rewrite" and not args.rule_only]
+        reviewed = [(d["answer"], d["new_answer"]) for d in load_decisions().values() if d["decision"] == "rewrite"]
         counts = rewrite(reviewed)
-        reviewed_total = sum(counts.values())
+        total = sum(counts.values())
         if args.verbose:
             for old, new in reviewed:
                 if old in counts:
                     print(f"{counts[old]:4}  {old}\n   →  {new}")
-        print(f"Reviewed: {reviewed_total} clues ({len(counts)} of the {len(reviewed)} rewrites"
-              f" in {DECISIONS_FILE.name} found in the database)")
+        print(f"{total} clues: {len(counts)} of the {len(reviewed)} rewrites in {DECISIONS_FILE.name}"
+              f" found in the database")
 
         if args.commit:
             conn.commit()
-            print(f"\nUpdated {auto_total + reviewed_total} clues.")
+            print(f"\nUpdated {total} clues.")
         else:
-            print(f"\nDry run: {auto_total + reviewed_total} clues would change. Run with --commit to update them.")
+            print(f"\nDry run: {total} clues would change. Run with --commit to update them.")
 
 
 def main():
@@ -601,10 +597,10 @@ def main():
     review_parser = commands.add_parser("review", help="review answers in the browser")
     review_parser.add_argument("--port", type=int, default=8765)
     review_parser.add_argument("--no-browser", action="store_true", help="don't open the browser")
-    apply_parser = commands.add_parser("apply", help="run the rule and the reviewed rewrites")
+    review_parser.add_argument("--proposals", type=Path, help="JSON proposals to start from (see review())")
+    apply_parser = commands.add_parser("apply", help="apply the reviewed rewrites")
     apply_parser.add_argument("--commit", action="store_true", help="update the database")
     apply_parser.add_argument("--verbose", action="store_true", help="list every reviewed rewrite")
-    apply_parser.add_argument("--rule-only", action="store_true", help="skip the reviewed rewrites")
     args = parser.parse_args()
 
     DECISIONS_FILE = args.decisions.resolve()

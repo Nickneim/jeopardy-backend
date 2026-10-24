@@ -43,24 +43,24 @@ Run these in order. The answer rewrites are keyed by the answer text as the earl
    scripts/data/psql.sh -f scripts/data/brackets-to-parentheses.sql
    WRITE=1 scripts/data/psql.sh -v commit=1 -f scripts/data/brackets-to-parentheses.sql
    ```
-3. **Alternatives and lists.** `answers.py apply` rewrites simple alternatives by a rule (`Myanmar (or Burma)` → `(1 of) Myanmar | Burma`), then applies the reviewed rewrites in `answer-rewrites.csv` (`Santa Claus or Father Christmas` → `(1 of) Santa Claus | Father Christmas`):
+3. **Alternatives and lists.** `answers.py apply` applies the reviewed rewrites in `answer-rewrites.csv` (`Santa Claus or Father Christmas` → `[Santa Claus | Father Christmas]`, `Ecuador (or Chile)` → `(1 of) Ecuador | Chile`):
    ```bash
    python scripts/data/answers.py apply
    python scripts/data/answers.py apply --commit
    ```
-   Answers that still need a decision, such as new ones from an import, show up in the review page, which opens in the browser and saves each decision to `answer-rewrites.csv` right away:
+   Answers that still need a decision, such as new ones from an import, show up in the review page, which opens in the browser and saves each decision to `answer-rewrites.csv` right away. `--proposals FILE.json` starts each one from a proposal, such as a first pass made by Claude:
    ```bash
    python scripts/data/answers.py review
    ```
 
 ## Answer format
 
-- `(N of) A | B | C`: a correct response names N of the options; `(1 of)` means any one. No answer contains `|`.
+- `(N of) A | B | C`: **different answers**; a correct response names N of them, and `(1 of)` means any one.
+- `[A | B]`, anywhere in an answer: **one thing worded differently** (`[Myanmar | Burma]`, `a linen [closet | cupboard]`, `(2 of) coroner | [coronet | coronel]`). Brackets don't nest.
 - `(X)`: an optional part, e.g. `(Abraham) Lincoln`.
+- `|` appears nowhere else. `docs/api.md` §6.7 has the full rules.
 
-## The rule
-
-`answers.py apply` only rewrites an alternative by itself when it clearly replaces the whole answer: `Myanmar (or Burma)`. When it may replace only part of it (after an `&`/`and` list or a comma, as in `coroner & coronet (or coronel)`, or when it has fewer words, as in `a linen closet (or cupboard)`), the answer goes to review instead, where the alternative is suggested as a different whole answer. The tests (no database needed):
+Telling one thing worded differently from different answers, and which words an alternative replaces, takes judgment, so there's no automatic rule: every alternative is a reviewed decision. The tests (no database needed):
 
 ```bash
 python -m unittest discover -s scripts/data
