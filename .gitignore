@@ -39,3 +39,6 @@ out/
 .env
 **/.env
 .run
+
+# J-Archive's pages, saved by scripts/data/jarchive.py
+/jarchive-pages/
