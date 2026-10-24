@@ -157,6 +157,12 @@ class GameSessionWebSocketIntegrationTest {
                         session.getId()
                 );
 
+        // The join below doesn't go through this connection, so its broadcast
+        // can beat the SUBSCRIBE. Probing another session on the same
+        // connection proves the subscription is registered without adding
+        // players to this one.
+        awaitSubscriptions(stompSession, createSession().getId());
+
         gameSessionService.joinSession(
                 session.getId(),
                 "Nico"
