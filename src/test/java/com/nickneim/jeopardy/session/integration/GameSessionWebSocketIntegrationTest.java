@@ -1524,8 +1524,12 @@ class GameSessionWebSocketIntegrationTest {
                 gameSessionService.joinSession(session.getId(), "John");
 
         StompSession host = connect(tokenOf(session));
+        StompSession watcher = connect();
         BlockingQueue<GameSessionResponse> messages =
-                subscribeToSession(connect(), session.getId());
+                subscribeToSession(watcher, session.getId());
+        // The leave goes through another connection, so it could beat the
+        // watcher's SUBSCRIBE (see playerJoiningSession_broadcastsUpdatedSession).
+        awaitSubscriptions(watcher, createSession().getId());
 
         host.send("/app/sessions/" + session.getId() + "/leave", Map.of());
 
@@ -1571,8 +1575,12 @@ class GameSessionWebSocketIntegrationTest {
         String token = tokenOf(session);
 
         StompSession player = connect(token);
+        StompSession watcher = connect();
         BlockingQueue<GameSessionResponse> messages =
-                subscribeToSession(connect(), session.getId());
+                subscribeToSession(watcher, session.getId());
+        // The leave goes through another connection, so it could beat the
+        // watcher's SUBSCRIBE (see playerJoiningSession_broadcastsUpdatedSession).
+        awaitSubscriptions(watcher, createSession().getId());
 
         player.send("/app/sessions/" + session.getId() + "/leave", Map.of());
 
