@@ -99,6 +99,50 @@ class AnswerMatcherTest {
     }
 
     @Test
+    void matches_bracketsAreOneThingWordedDifferently_anywhereInAnAnswer() {
+        assertTrue(AnswerMatcher.matches("a linen [closet | cupboard]", "a linen cupboard", false));
+        assertTrue(AnswerMatcher.matches("a linen [closet | cupboard]", "linen closet", false));
+        assertFalse(AnswerMatcher.matches("a linen [closet | cupboard]", "cupboard", false));
+        assertFalse(AnswerMatcher.matches("a linen [closet | cupboard]", "a linen closet cupboard", false));
+
+        assertTrue(AnswerMatcher.matches("[Greek | Eastern] Orthodox", "Eastern Orthodox", false));
+        assertFalse(AnswerMatcher.matches("[Greek | Eastern] Orthodox", "Orthodox", false));
+    }
+
+    @Test
+    void matches_wordingsOfOneOptionCountOnce() {
+        String answer = "(2 of) Ohio | [Myanmar | Burma]";
+
+        assertTrue(AnswerMatcher.matches(answer, "Ohio & Myanmar", false));
+        assertTrue(AnswerMatcher.matches(answer, "Burma and Ohio", false));
+        assertFalse(AnswerMatcher.matches(answer, "Myanmar & Burma", false), "two wordings of one option");
+        assertFalse(AnswerMatcher.matches(answer, "Ohio", false));
+    }
+
+    @Test
+    void matches_pipesInsideBracketsDoNotMakeAList() {
+        assertTrue(AnswerMatcher.matches("[Myanmar | Burma]", "Burma", false));
+        // Naming both wordings names the same thing twice, which is fine.
+        assertTrue(AnswerMatcher.matches("[Myanmar | Burma]", "Myanmar or Burma", false));
+        assertFalse(AnswerMatcher.matches("[Myanmar | Burma]", "Thailand", false));
+    }
+
+    @Test
+    void matches_bracketWordingsCanHaveOptionalParts() {
+        String answer = "[(Abraham) Lincoln | Honest Abe]";
+
+        assertTrue(AnswerMatcher.matches(answer, "Lincoln", false));
+        assertTrue(AnswerMatcher.matches(answer, "Abraham Lincoln", false));
+        assertTrue(AnswerMatcher.matches(answer, "Honest Abe", false));
+        assertFalse(AnswerMatcher.matches(answer, "Abraham", false));
+    }
+
+    @Test
+    void matches_aBracketWordingThatIsAQuestion_canBeSaidBare() {
+        assertTrue(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "Who's the Boss", true));
+    }
+
+    @Test
     void matches_unclosedParenthesesRunToTheEnd() {
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Lincoln", false));
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Abraham Lincoln", false));

@@ -12,10 +12,13 @@ import java.util.regex.Pattern;
 /**
  * A stored answer, parsed for matching.
  *
- * <p>"(N of) A | B | C" is a list: a correct response names at least
- * {@code required} of the options, and nothing that isn't one. Any other
- * answer is a single option. An option with a slash outside parentheses
- * ("bear/bare") can be given either way. Words in parentheses are optional,
+ * <p>"(N of) A | B | C" is a list of different answers: a correct response
+ * names at least {@code required} of the options, and nothing that isn't one.
+ * Any other answer is a single option. "[A | B]" anywhere is one thing worded
+ * differently ("a linen [closet | cupboard]", "(2 of) coroner | [coronet |
+ * coronel]"): any wording counts, and they all count as the same option. An
+ * option with a slash outside parentheses ("bear/bare") can also be given
+ * either way. Words in parentheses are optional,
  * one by one, but an option always needs its words outside them:
  * "(Abraham) Lincoln" accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
  *
@@ -35,7 +38,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         Matcher list = LIST.matcher(answer);
         if (list.matches()) {
             required = Math.max(1, Integer.parseInt(list.group(1)));
-            texts = List.of(list.group(2).split("\\|"));
+            texts = splitOutsideBrackets(list.group(2));
         }
 
         List<Option> options = texts.stream()
@@ -46,8 +49,58 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         return new ExpectedAnswer(
                 Math.min(required, Math.max(1, options.size())),
                 options,
-                texts.stream().anyMatch(QuestionForm::isQuestion)
+                texts.stream()
+                        .flatMap(text -> expandBrackets(text).stream())
+                        .anyMatch(QuestionForm::isQuestion)
         );
+    }
+
+    /** Splits a list at "|", except inside "[...]": "coroner | [coronet | coronel]". */
+    private static List<String> splitOutsideBrackets(String text) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '[') {
+                depth++;
+            } else if (c == ']') {
+                depth = Math.max(0, depth - 1);
+            } else if (c == '|' && depth == 0) {
+                parts.add(text.substring(start, i));
+                start = i + 1;
+            }
+        }
+        parts.add(text.substring(start));
+        return parts;
+    }
+
+    // An option with more ways to be worded than this keeps only the first ones.
+    private static final int MAX_WORDINGS = 64;
+
+    /**
+     * Every way to word a text with "[A | B]" groups, which mean the same
+     * thing said differently: "a linen [closet | cupboard]" is "a linen
+     * closet" or "a linen cupboard". Groups don't nest; an unclosed "[" is
+     * just text.
+     */
+    static List<String> expandBrackets(String text) {
+        int open = text.indexOf('[');
+        int close = open < 0 ? -1 : text.indexOf(']', open);
+        if (open < 0 || close < 0) {
+            return List.of(text);
+        }
+        String before = text.substring(0, open);
+        List<String> rest = expandBrackets(text.substring(close + 1));
+        List<String> wordings = new ArrayList<>();
+        for (String choice : text.substring(open + 1, close).split("\\|")) {
+            for (String after : rest) {
+                if (wordings.size() < MAX_WORDINGS) {
+                    wordings.add(before + choice.strip() + after);
+                }
+            }
+        }
+        return wordings;
     }
 
     /** True if every option is a number on its own, so only an exact number will do. */
@@ -124,11 +177,12 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         return matched;
     }
 
-    /** One option of an answer, with its spellings ("bear/bare" has two). */
+    /** One option of an answer, with its wordings ("a linen [closet | cupboard]" and "bear/bare" have two). */
     record Option(List<Variant> variants) {
 
         static Option parse(String text) {
-            return new Option(splitAtSlashes(text).stream()
+            return new Option(expandBrackets(text).stream()
+                    .flatMap(wording -> splitAtSlashes(wording).stream())
                     .map(Variant::parse)
                     .filter(variant -> !variant.words().isEmpty())
                     .toList());

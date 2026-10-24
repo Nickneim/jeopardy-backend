@@ -39,7 +39,7 @@ Key ideas:
 - **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set in the lobby (`timers`, §6.3).
 - **The host runs the lobby.** The first player to join is the host (`hostPlayerId`). Only the host can start the game, change the timers and kick players. If the host leaves, the next player takes over (§6.4).
 - **Anyone can join at any time**, unless the host blocked joining after the start (`allowLateJoin`). Everyone who joins, including someone who left and comes back, starts with the session's `joinScore`, which is never better than the lowest score of anyone who stayed (§6.6).
-- **Answers are checked leniently.** Spelling mistakes, word order and punctuation are forgiven, numbers aren't, and Double and Final Jeopardy answers must be phrased as a question ("What is ...?"). Correct responses use `(N of) A | B` for alternatives and lists (§6.7).
+- **Answers are checked leniently.** Spelling mistakes, word order and punctuation are forgiven, numbers aren't, and Double and Final Jeopardy answers must be phrased as a question ("What is ...?"). Correct responses use `(N of) A | B` for lists of different answers and `[A | B]` for one answer worded differently (§6.7).
 - **Leaving is explicit.** Closing the tab or losing the connection is *not* leaving: the player stays in the game and can reconnect with their token. Only the `leave` action (or being kicked) removes a player, and it makes their token stop working (§6.4).
 - **Sessions don't live forever.** Idle lobbies, finished games and sessions everyone has left are removed from memory (§6.5).
 
@@ -507,11 +507,12 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 
 | Form | Meaning | Example |
 |---|---|---|
-| `(N of) A \| B \| C` | A correct response names at least N of the options. `(1 of)` means any one; N equal to the number of options means all of them. `\|` appears nowhere else. | `(1 of) Myanmar \| Burma`, `(2 of) gold \| frankincense \| myrrh` |
+| `(N of) A \| B \| C` | **Different answers.** A correct response names at least N of the options. `(1 of)` means any one; N equal to the number of options means all of them. | `(1 of) Chile \| Uruguay \| Argentina`, `(2 of) gold \| frankincense \| myrrh` |
+| `[A \| B]` | **One thing worded differently** (another spelling, name or synonym). Any wording counts, and they all count as the same option. It can appear anywhere: as a whole answer, inside an option, or around a few words. Brackets don't nest, but can hold optional parts. | `[Myanmar \| Burma]`, `a linen [closet \| cupboard]`, `(2 of) coroner \| [coronet \| coronel]` |
 | `(...)` | An optional part. Parentheses can nest. | `(Abraham) Lincoln`, `(duck-bill(ed)) platypus` |
 | `A/B` | Either side, except in a fraction like `2/3` | `bear/bare` |
 
-To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` as something like "Any 2 of: A, B, C".
+`|` appears nowhere else. To show the answer to players, show a single wording: the first in each `[A | B]` ("a linen closet"). For a list, the options are different answers, so show them: `(1 of) A | B` as "A or B", and `(2 of) A | B | C` as something like "Any 2 of: A, B, C".
 
 **What counts as correct:**
 
@@ -519,7 +520,7 @@ To show it to players, render `(1 of) A | B` as "A or B" and `(2 of) A | B | C` 
 - **Numbers must be exact.** `1,001` and `1001` are the same, and `$` and `%` are optional, but number words aren't numbers (`nine` isn't `9`). Decades accept the short form: `the 1980s` accepts `1980s`, `80s` and `'80s`. When the response is just a number (`1970`, `$25,000`, `2/3`, `50th`), `numberExpected` is `true` on `currentClue` and `finalJeopardy`, so the player can be told it must be exact. Decades don't set it.
 - **Optional parts** can be said or left out, word by word. Everything outside them is needed, so the optional part alone isn't enough: `(Abraham) Lincoln` accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
 - **Nothing extra:** words that aren't in the answer make a response wrong, even true ones ("the Wright brothers" for `(Orville) Wright`).
-- **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
+- **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. Two wordings of one option (`[A | B]`) count as one. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
 - **The question form** is optional in the Jeopardy round and required in Double Jeopardy and Final Jeopardy. It's any of what, who, where, when, which, why or how, followed by is, are, was, were, 's or 're ("What is", "Who's", "whats", "Where were"), whatever kind of answer it is. A few typos of the question word count too ("waht is", "hwo is"). A response without it is wrong there, unless the correct response is itself a question ("Who's the Boss?"), which can then be said as it is. Every answer reports `phrasedAsQuestion` (in `clueAnswers` and, from the reveal, in `finalJeopardy.players`), in every round: `true` when it has the question form, or is a correct response that is itself a question said as it is. In the Jeopardy round, use it to warn a player who left it out that this would be wrong from Double Jeopardy on; in Double and Final Jeopardy, `false` explains a wrong answer. It doesn't say the rest was right: an answer can be wrong both ways.
 
 ---
@@ -755,7 +756,7 @@ interface CurrentClueResponse {
   clueType: ClueType | null;   // null while the question is hidden
   mediaUrl: string | null;     // null while hidden, and always for TEXT
   numberExpected: boolean | null;  // only an exact number is accepted; null while hidden
-  answer: string | null;       // "(N of) A | B" for alternatives (§6.7)
+  answer: string | null;       // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
 }
 
 interface ClueAnswerResponse {
@@ -780,7 +781,7 @@ interface FinalJeopardyResponse {
   categoryComments: string | null;
   question: string | null;
   numberExpected: boolean | null;  // only an exact number is accepted; null while wagering
-  answer: string | null;           // "(N of) A | B" for alternatives (§6.7)
+  answer: string | null;           // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
   players: FinalJeopardyPlayerResponse[];
 }
 

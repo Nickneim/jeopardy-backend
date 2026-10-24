@@ -1,5 +1,5 @@
 {
-  "description": "Real answers from the J-Archive database (after the scripts/data cleanup), with responses the answer matcher must accept or reject. 'round' defaults to JEOPARDY, where the question form is optional; DOUBLE_JEOPARDY and FINAL_JEOPARDY require it. 'numberExpected' (default false) is the flag that tells the front end only an exact number will do. Notes starting with 'Decision:' record a rule the user chose.",
+  "description": "Real answers from the J-Archive database, in the answer format of docs/api.md §6.7 ((N of) lists of different answers, [A | B] for one thing worded differently) (after the scripts/data cleanup), with responses the answer matcher must accept or reject. 'round' defaults to JEOPARDY, where the question form is optional; DOUBLE_JEOPARDY and FINAL_JEOPARDY require it. 'numberExpected' (default false) is the flag that tells the front end only an exact number will do. Notes starting with 'Decision:' record a rule the user chose.",
   "cases": [
     {
       "answer": "(Orville) Wright",
@@ -37,7 +37,7 @@
       "reject": ["House Un-American Activities Committee"]
     },
     {
-      "answer": "(1 of) Henry Schliemann | Heinrich Schliemann",
+      "answer": "[Henry | Heinrich] Schliemann",
       "note": "Decision: rewritten from 'Henry (Heinrich) Schliemann', whose parentheses held another first name.",
       "accept": ["Henry Schliemann", "Heinrich Schliemann", "Heinrich Schlieman"],
       "reject": ["Schliemann", "Henry Heinrich"]
@@ -64,21 +64,21 @@
       "reject": ["Cs", "sodium"]
     },
     {
-      "answer": "(1 of) Myanmar | Burma",
+      "answer": "[Myanmar | Burma]",
       "note": "Decision: naming more options than needed is fine while every one is on the list.",
       "accept": ["Myanmar", "Burma", "Myanmar or Burma", "Burma Myanmar", "Myanmer"],
       "reject": ["Thailand", "Burma Thailand"]
     },
     {
-      "answer": "(1 of) Santa Claus | Father Christmas",
+      "answer": "[Santa Claus | Father Christmas]",
       "accept": ["Santa Claus", "Father Christmas", "santa clause"],
       "reject": ["Santa", "Father", "Saint Nicholas"]
     },
     {
-      "answer": "(1 of) coroner & coronet | coronel & coronet",
-      "note": "Decision: rewritten by hand from 'coroner & coronet (or coronel)', where coronel replaces only one item of the pair.",
-      "accept": ["coroner & coronet", "coronel and coronet", "coronet & coroner"],
-      "reject": ["coronel", "coroner", "coronet"]
+      "answer": "(2 of) coroner | [coronet | coronel]",
+      "note": "Decision: two different answers, and the second can be worded two ways (J-Archive: 'coroner & coronet (or coronel)'). 'coronet & coronel' is accepted too: coronel is also one letter from coroner, within the typos allowed.",
+      "accept": ["coroner & coronet", "coroner and coronel", "coronet & coroner", "coroner coronel"],
+      "reject": ["coroner", "coronet", "coronel", "coroner & crown"]
     },
     {
       "answer": "(1 of) Shorty | Stumpy",
@@ -86,22 +86,22 @@
       "reject": ["Grumpy", "Shorty Grumpy"]
     },
     {
-      "answer": "(1 of) the Fierce Five | the Fab Five",
+      "answer": "the [Fierce | Fab] Five",
       "accept": ["the Fab Five", "Fierce Five", "fab five"],
       "reject": ["the Five", "Fab"]
     },
     {
-      "answer": "(1 of) barometric pressure | atmospheric pressure",
+      "answer": "[barometric | atmospheric] pressure",
       "accept": ["barometric pressure", "atmospheric pressure", "atmospheric presure"],
       "reject": ["barometric", "air pressure"]
     },
     {
-      "answer": "(1 of) the Australian ballot | secret ballot",
+      "answer": "[the Australian | secret] ballot",
       "accept": ["the Australian ballot", "a secret ballot"],
       "reject": ["Australian", "ballot"]
     },
     {
-      "answer": "(1 of) head of the I.O.C. | president of the I.O.C.",
+      "answer": "[head | president] of the I.O.C.",
       "accept": ["head of the IOC", "president of the I.O.C.", "President of the IOC"],
       "reject": ["head of the UN", "president"]
     },
@@ -112,12 +112,12 @@
       "reject": ["comet"]
     },
     {
-      "answer": "(1 of) wear in a (baseball) glove | wear in a (baseball) mitt | break in a (baseball) glove | break in a (baseball) mitt",
+      "answer": "[wear | break] in a (baseball) [glove | mitt]",
       "accept": ["break in a glove", "wear in a baseball mitt", "break in a baseball glove"],
       "reject": ["break a glove", "wear a mitt"]
     },
     {
-      "answer": "(1 of) the Ch'ing Dynasty | the Manchu Dynasty",
+      "answer": "the [Ch'ing | Manchu] Dynasty",
       "note": "Only what the data says: 'Qing' is 2 edits from 'Ching', more than a 5-letter word allows.",
       "accept": ["Ching Dynasty", "the Ch'ing dynasty", "Manchu Dynasty"],
       "reject": ["Qing Dynasty", "Ming Dynasty"]
@@ -257,7 +257,7 @@
       "reject": ["1/4", "8"]
     },
     {
-      "answer": "(1 of) 8/12 | 2/3",
+      "answer": "[8/12 | 2/3]",
       "numberExpected": true,
       "accept": ["2/3", "8/12"],
       "reject": ["2", "8", "3/4"]
