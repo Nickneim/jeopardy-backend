@@ -50,3 +50,15 @@ tasks.named('test') {
 	useJUnitPlatform()
 	jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }
+
+// Credentials for bootBuildImage --publishImage, which pushes the image
+// straight to the registry instead of through Docker (used by the GitHub
+// Actions deploy). Unset unless both environment variables are.
+tasks.named('bootBuildImage') {
+	docker {
+		publishRegistry {
+			username.set(providers.environmentVariable('REGISTRY_USERNAME'))
+			password.set(providers.environmentVariable('REGISTRY_PASSWORD'))
+		}
+	}
+}

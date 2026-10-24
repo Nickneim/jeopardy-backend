@@ -1,0 +1,125 @@
+# Tests the backend, pushes its image to ECR and makes the EC2 instance run it.
+# Signs in to AWS with OIDC: GitHub vouches for this workflow and AWS hands it
+# the jeopardy-github-deploy role for an hour, so no AWS keys are stored here.
+# Never restarts the backend while a game is running (that would end it); then
+# the new version starts with the instance's next start.
+name: Deploy backend
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
+      - "gradlew"
+      - "docker/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # ask GitHub for the OIDC token that AWS checks
+  contents: read
+
+# One deploy at a time; a newer push waits for the running one.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  ROLE_ARN: arn:aws:iam::241200392621:role/jeopardy-github-deploy
+  REGISTRY: 241200392621.dkr.ecr.us-east-2.amazonaws.com
+  INSTANCE_ID: i-0bb3a26a2c97e3c2c
+  DOMAIN: d14x3ygmehrd5x.cloudfront.net
+
+jobs:
+  deploy:
+    # ARM, like the instance, so the image is built natively.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew build
+
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests
+
+      - name: Sign in to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build and push the image
+        run: |
+          tag=$(git rev-parse --short HEAD)
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          if aws ecr describe-images --repository-name jeopardy-backend --image-ids imageTag="$tag" > /dev/null 2>&1; then
+            echo "$tag is already in ECR"
+            exit 0
+          fi
+          # --publishImage pushes straight from the build to ECR, with the
+          # credentials build.gradle reads from these variables.
+          export REGISTRY_USERNAME=AWS
+          REGISTRY_PASSWORD=$(aws ecr get-login-password)
+          echo "::add-mask::$REGISTRY_PASSWORD"
+          export REGISTRY_PASSWORD
+          ./gradlew bootBuildImage --imagePlatform=linux/arm64 \
+            --imageName="$REGISTRY/jeopardy-backend:$tag" --publishImage
+
+      - name: Choose the image to run
+        run: |
+          aws ssm put-parameter --name /jeopardy/backend-tag --type String \
+            --value "$TAG" --overwrite > /dev/null
+          echo "The instance runs $TAG from its next start."
+
+      - name: Restart the backend if nobody is playing
+        run: |
+          state=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].State.Name" --output text)
+          if [ "$state" != running ]; then
+            echo "The instance is $state; it runs $TAG from its next start."
+            exit 0
+          fi
+          # If CloudFront doesn't reach the backend (the instance was started
+          # without start.ps1), nobody can be playing, but nothing can be
+          # checked through CloudFront after the restart either.
+          reachable=true
+          sessions=$(curl -fsS --max-time 10 "https://$DOMAIN/api/game-sessions?size=1" | jq .totalElements) \
+            || { reachable=false; sessions=0; }
+          if [ "$sessions" -gt 0 ]; then
+            echo "::warning::$sessions game session(s) running, so the backend wasn't restarted. $TAG starts with the next start, or run this workflow again."
+            exit 0
+          fi
+          command_id=$(aws ssm send-command --instance-ids "$INSTANCE_ID" \
+            --document-name Jeopardy-RestartBackend --comment "GitHub Actions: deploy $TAG" \
+            --query Command.CommandId --output text)
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID"
+          if [ "$reachable" = false ]; then
+            echo "::notice::Restarted with $TAG, but CloudFront doesn't reach the instance; run start.ps1 to point it there."
+            exit 0
+          fi
+          for attempt in $(seq 60); do
+            if curl -fsS --max-time 10 "https://$DOMAIN/api/games?size=1" > /dev/null; then
+              echo "Deployed $TAG: https://$DOMAIN"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::The backend didn't answer within 5 minutes; see /jeopardy/backend in CloudWatch Logs."
+          exit 1
