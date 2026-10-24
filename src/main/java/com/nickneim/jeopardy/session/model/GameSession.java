@@ -729,14 +729,8 @@ public class GameSession {
         return check != null && check.correct();
     }
 
-    /** Whether the player's Final Jeopardy answer was phrased as a question; null without an answer. */
-    public Boolean isFinalJeopardyAnswerPhrasedAsQuestion(Long playerId) {
-        AnswerCheck check = checkFinalJeopardyAnswer(playerId);
-
-        return check == null ? null : check.phrasedAsQuestion();
-    }
-
-    private AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
+    /** The check of the player's Final Jeopardy answer; null without an answer. */
+    public AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
         String answer = finalJeopardyAnswers.get(playerId);
 
         return answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
@@ -752,7 +746,7 @@ public class GameSession {
 
     public void timeoutAnswer() {
         GameSessionPlayer player = getPlayer(playerWhoBuzzed);
-        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false, null));
+        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false, null, null, null));
         if (board.isDailyDouble(chosenClueId)) {
             changeScore(player, -player.getWager());
             startRevealingAnswer();
@@ -839,7 +833,8 @@ public class GameSession {
         GameSessionPlayer player = getPlayer(playerId);
         AnswerCheck check = checkAnswer(clue, answer);
         boolean correct = check.correct();
-        clueAnswers.add(new ClueAnswer(playerId, answer, correct, check.phrasedAsQuestion()));
+        clueAnswers.add(new ClueAnswer(
+                playerId, answer, correct, check.phrasedAsQuestion(), check.matchedAnswers(), check.alsoAccepted()));
         if (correct) {
             changeScore(player, clueValue);
             playerChoosingClue = playerId;

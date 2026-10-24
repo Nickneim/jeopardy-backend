@@ -890,7 +890,7 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         assertEquals(
-                List.of(new ClueAnswerResponse(playerId, "Wrong answer", false, false)),
+                List.of(new ClueAnswerResponse(playerId, "Wrong answer", false, false, null, null)),
                 response.clueAnswers()
         );
     }
