@@ -96,7 +96,12 @@ jobs:
             echo "The instance is $state; it runs $TAG from its next start."
             exit 0
           fi
-          sessions=$(curl -fsS --max-time 10 "https://$DOMAIN/api/game-sessions?size=1" | jq .totalElements) || sessions=0
+          # If CloudFront doesn't reach the backend (the instance was started
+          # without start.ps1), nobody can be playing, but nothing can be
+          # checked through CloudFront after the restart either.
+          reachable=true
+          sessions=$(curl -fsS --max-time 10 "https://$DOMAIN/api/game-sessions?size=1" | jq .totalElements) \
+            || { reachable=false; sessions=0; }
           if [ "$sessions" -gt 0 ]; then
             echo "::warning::$sessions game session(s) running, so the backend wasn't restarted. $TAG starts with the next start, or run this workflow again."
             exit 0
@@ -105,6 +110,10 @@ jobs:
             --document-name Jeopardy-RestartBackend --comment "GitHub Actions: deploy $TAG" \
             --query Command.CommandId --output text)
           aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID"
+          if [ "$reachable" = false ]; then
+            echo "::notice::Restarted with $TAG, but CloudFront doesn't reach the instance; run start.ps1 to point it there."
+            exit 0
+          fi
           for attempt in $(seq 60); do
             if curl -fsS --max-time 10 "https://$DOMAIN/api/games?size=1" > /dev/null; then
               echo "Deployed $TAG: https://$DOMAIN"

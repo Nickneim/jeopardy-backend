@@ -58,13 +58,24 @@ if ($state -ne "running") {
     exit
 }
 
-$sessions = Invoke-RestMethod "https://$Domain/api/game-sessions?size=1" -TimeoutSec 10
-if ($sessions.totalElements -gt 0) {
-    $answer = Read-Host "$($sessions.totalElements) game session(s) running; restarting ends them. Restart now? (y/N)"
-    if ($answer -ne "y") {
-        Write-Host "Not restarted: $Tag starts with the next start, or run this script again."
-        exit
+# A running instance should be CloudFront's backend, even if it was started
+# without start.ps1 (then the origin is still parked by stop.ps1).
+$dns = Invoke-Aws ec2 describe-instances --instance-ids $InstanceId `
+    --query "Reservations[0].Instances[0].PublicDnsName" --output text
+Set-BackendOrigin $dns
+
+try {
+    $sessions = Invoke-RestMethod "https://$Domain/api/game-sessions?size=1" -TimeoutSec 10
+    if ($sessions.totalElements -gt 0) {
+        $answer = Read-Host "$($sessions.totalElements) game session(s) running; restarting ends them. Restart now? (y/N)"
+        if ($answer -ne "y") {
+            Write-Host "Not restarted: $Tag starts with the next start, or run this script again."
+            exit
+        }
     }
+} catch {
+    # Nobody can be playing on a backend CloudFront doesn't reach.
+    Write-Host "The game isn't reachable through CloudFront yet, so nobody is playing."
 }
 
 # Run Command: runs the Jeopardy-RestartBackend document (deploy/aws/ssm/) on
@@ -79,14 +90,15 @@ if ($LASTEXITCODE -ne 0) {
     throw "The restart failed"
 }
 
+# The backend needs about a minute, and a CloudFront change a few minutes.
 Write-Host "Waiting for the backend to answer..."
-$deadline = (Get-Date).AddMinutes(5)
+$deadline = (Get-Date).AddMinutes(10)
 while ($true) {
     try {
         $response = Invoke-WebRequest "https://$Domain/api/games?size=1" -TimeoutSec 10
         if ($response.StatusCode -eq 200) { break }
     } catch { }
-    if ((Get-Date) -gt $deadline) { throw "No answer from https://$Domain after 5 minutes; check the logs in CloudWatch" }
+    if ((Get-Date) -gt $deadline) { throw "No answer from https://$Domain after 10 minutes; check the logs in CloudWatch" }
     Start-Sleep -Seconds 5
 }
 Write-Host "Deployed $($Tag): https://$Domain"
