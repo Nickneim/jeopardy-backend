@@ -2,10 +2,12 @@ package com.nickneim.jeopardy.session.answer;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,15 +112,34 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                 .allMatch(Variant::isNumber);
     }
 
+    /** The first wording of every option, to show the answer. */
+    List<String> firstWordings() {
+        return options.stream().map(Option::firstWording).toList();
+    }
+
+    /** The first wording of every option the response didn't name. */
+    List<String> firstWordingsExcept(List<Named> named) {
+        List<String> wordings = new ArrayList<>();
+        for (int i = 0; i < options.size(); i++) {
+            int option = i;
+            if (named.stream().noneMatch(n -> n.option() == option)) {
+                wordings.add(options.get(i).firstWording());
+            }
+        }
+        return wordings;
+    }
+
     /**
-     * True if the response names at least {@code required} different options
-     * and nothing else. The response is cut into pieces that each match an
-     * option; separators (commas, slashes, "and", "or") between pieces are
-     * skipped, and pieces may also follow each other with no separator.
+     * The options the response names, in the order it names them, each with
+     * the wording it used; null unless it names at least {@code required}
+     * different options and nothing else. The response is cut into pieces
+     * that each match an option; separators (commas, slashes, "and", "or")
+     * between pieces are skipped, and pieces may also follow each other with
+     * no separator.
      */
-    boolean isMatchedBy(List<String> response) {
+    List<Named> match(List<String> response) {
         if (options.isEmpty() || response.isEmpty() || response.size() > MAX_RESPONSE_TOKENS) {
-            return false;
+            return null;
         }
 
         int maxPieceLength = options.stream()
@@ -128,54 +149,87 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                 .orElse(0) * 2 + 2;
 
         // reachable.get(i): the sets of options (as bit masks) that the first i
-        // tokens can be cut into.
-        List<Set<Long>> reachable = new ArrayList<>();
+        // tokens can be cut into, each with the last step of one way to get there.
+        List<Map<Long, Step>> reachable = new ArrayList<>();
         for (int i = 0; i <= response.size(); i++) {
-            reachable.add(new HashSet<>());
+            reachable.add(new LinkedHashMap<>());
         }
-        reachable.getFirst().add(0L);
+        reachable.getFirst().put(0L, null);
 
         for (int start = 0; start < response.size(); start++) {
-            Set<Long> masks = reachable.get(start);
+            Map<Long, Step> masks = reachable.get(start);
             if (masks.isEmpty()) {
                 continue;
             }
             if (AnswerText.isSeparator(response.get(start))) {
-                reachable.get(start + 1).addAll(masks);
+                for (long mask : masks.keySet()) {
+                    reachable.get(start + 1).putIfAbsent(mask, new Step(start, mask, null));
+                }
             }
             int last = Math.min(response.size(), start + maxPieceLength);
             for (int end = start + 1; end <= last; end++) {
-                long matched = matchingOptions(response.subList(start, end));
-                if (matched == 0) {
-                    continue;
-                }
-                for (long mask : masks) {
-                    for (long bits = matched; bits != 0; bits &= bits - 1) {
-                        reachable.get(end).add(mask | Long.lowestOneBit(bits));
+                List<Named> matched = matchingOptions(response.subList(start, end));
+                for (long mask : masks.keySet()) {
+                    for (Named named : matched) {
+                        // A list longer than 64 options shares the last bit; none comes close.
+                        long bit = 1L << Math.min(named.option(), 63);
+                        reachable.get(end).putIfAbsent(mask | bit, new Step(start, mask, named));
                     }
                 }
             }
         }
 
-        return reachable.getLast().stream().anyMatch(mask -> Long.bitCount(mask) >= required);
+        Long best = reachable.getLast().keySet().stream()
+                .filter(mask -> Long.bitCount(mask) >= required)
+                .max(Comparator.comparingInt(Long::bitCount))
+                .orElse(null);
+        if (best == null) {
+            return null;
+        }
+
+        List<Named> said = new ArrayList<>();
+        long mask = best;
+        for (int end = response.size(); end > 0; ) {
+            Step step = reachable.get(end).get(mask);
+            if (step.named() != null) {
+                said.add(step.named());
+            }
+            mask = step.previous();
+            end = step.start();
+        }
+        Collections.reverse(said);
+        // An option named twice is reported once.
+        List<Named> named = new ArrayList<>();
+        for (Named n : said) {
+            if (named.stream().noneMatch(other -> other.option() == n.option())) {
+                named.add(n);
+            }
+        }
+        return named;
     }
 
-    /** The options a piece of a response matches, as a bit mask. */
-    private long matchingOptions(List<String> piece) {
+    /** The options a piece of a response matches, each with the wording it matches. */
+    private List<Named> matchingOptions(List<String> piece) {
         // "and" and "or" can start or end an option ("or" is an answer), commas can't.
         if (piece.getFirst().equals(AnswerText.SEPARATOR) || piece.getLast().equals(AnswerText.SEPARATOR)) {
-            return 0;
+            return List.of();
         }
         List<String> words = piece.stream().filter(token -> !token.equals(AnswerText.SEPARATOR)).toList();
-        long matched = 0;
+        List<Named> matched = new ArrayList<>();
         for (int i = 0; i < options.size(); i++) {
-            if (options.get(i).isMatchedBy(words)) {
-                // A list longer than 64 options shares the last bit; none comes close.
-                matched |= 1L << Math.min(i, 63);
+            String wording = options.get(i).matchingWording(words);
+            if (wording != null) {
+                matched.add(new Named(i, wording));
             }
         }
         return matched;
     }
+
+    /** An option a response names ({@code option} is its index), and the wording it matched. */
+    record Named(int option, String wording) {}
+
+    /** How {@link #match} reached a set of options: from {@code previous} at token {@code start}, naming {@code named} (null for a separator). */
+    private record Step(int start, long previous, Named named) {}
 
     /** One option of an answer, with its wordings ("a linen [closet | cupboard]" and "bear/bare" have two). */
     record Option(List<Variant> variants) {
@@ -188,8 +242,25 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                     .toList());
         }
 
-        boolean isMatchedBy(List<String> words) {
-            return variants.stream().anyMatch(variant -> variant.isMatchedBy(words));
+        String firstWording() {
+            return variants.getFirst().wording();
+        }
+
+        /**
+         * The wording the words say, or null. A typo can be close to more
+         * than one ("coronel" is one letter from "coronet"), so a wording
+         * that has every word as said comes first.
+         */
+        String matchingWording(List<String> words) {
+            List<Variant> matching = variants.stream().filter(variant -> variant.isMatchedBy(words)).toList();
+            if (matching.isEmpty()) {
+                return null;
+            }
+            return matching.stream()
+                    .filter(variant -> variant.hasEvery(words))
+                    .findFirst()
+                    .orElse(matching.getFirst())
+                    .wording();
         }
 
         /** Splits at slashes outside parentheses, except in a fraction like "8/12". */
@@ -221,9 +292,10 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
     /**
      * One way to say an option. Each word is required ({@code group} -1) or
      * belongs to a parenthesized group; {@code parents} gives each group's
-     * enclosing group (-1 at the top level).
+     * enclosing group (-1 at the top level). {@code wording} is the text it
+     * was parsed from, to show to players.
      */
-    record Variant(List<Word> words, List<Integer> parents) {
+    record Variant(List<Word> words, List<Integer> parents, String wording) {
 
         // Each group can be left in or out when the response is compared as
         // one string; past this many, only all-in and all-out are tried.
@@ -262,7 +334,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
             if (words.stream().allMatch(Word::isOptional)) {
                 words = words.stream().map(word -> new Word(word.text(), -1)).toList();
             }
-            return new Variant(List.copyOf(words), List.copyOf(parents));
+            return new Variant(List.copyOf(words), List.copyOf(parents), text.strip().replaceAll("\\s+", " "));
         }
 
         private static void addWords(List<Word> words, CharSequence segment, int group) {
@@ -271,6 +343,11 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                     words.add(new Word(token, group));
                 }
             }
+        }
+
+        /** True if each of the given words is one of this wording's words, spelled the same. */
+        boolean hasEvery(List<String> given) {
+            return given.stream().allMatch(token -> words.stream().anyMatch(word -> word.text().equals(token)));
         }
 
         boolean isNumber() {

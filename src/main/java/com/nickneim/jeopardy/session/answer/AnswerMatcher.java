@@ -1,5 +1,8 @@
 package com.nickneim.jeopardy.session.answer;
 
+import com.nickneim.jeopardy.session.answer.ExpectedAnswer.Named;
+
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,26 +30,49 @@ public final class AnswerMatcher {
         return check(answer, response, questionRequired).correct();
     }
 
-    /** Whether the response is correct, and whether it was phrased as a question. */
+    /** Whether the response is correct, whether it was phrased as a question, and what it named. */
     public static AnswerCheck check(String answer, String response, boolean questionRequired) {
         if (answer == null || response == null || response.isBlank()) {
-            return new AnswerCheck(false, false);
+            return AnswerCheck.wrong(false);
         }
         ExpectedAnswer expected = ExpectedAnswer.parse(answer);
 
         Optional<String> afterQuestion = QuestionForm.strip(response);
         if (afterQuestion.isPresent()) {
-            boolean correct = expected.isMatchedBy(AnswerText.wholeTokens(afterQuestion.get()))
-                    // "Who's the Boss?" for "Who's the Boss?": the question form is part of the answer.
-                    || ((!questionRequired || expected.question()) && expected.isMatchedBy(AnswerText.wholeTokens(response)));
-            return new AnswerCheck(correct, true);
+            List<Named> named = expected.match(AnswerText.wholeTokens(afterQuestion.get()));
+            // "Who's the Boss?" for "Who's the Boss?": the question form is part of the answer.
+            if (named == null && (!questionRequired || expected.question())) {
+                named = expected.match(AnswerText.wholeTokens(response));
+            }
+            return result(expected, named, true);
         }
 
         // Said bare. An answer that is itself a question ("Who's the Boss?"),
         // said as it is, counts as phrased as one.
-        boolean saidAsItIs = expected.isMatchedBy(AnswerText.wholeTokens(response));
-        boolean phrasedAsQuestion = expected.question() && saidAsItIs;
-        return new AnswerCheck((!questionRequired || phrasedAsQuestion) && saidAsItIs, phrasedAsQuestion);
+        List<Named> saidAsItIs = expected.match(AnswerText.wholeTokens(response));
+        boolean phrasedAsQuestion = expected.question() && saidAsItIs != null;
+        return result(expected, !questionRequired || phrasedAsQuestion ? saidAsItIs : null, phrasedAsQuestion);
+    }
+
+    private static AnswerCheck result(ExpectedAnswer expected, List<Named> named, boolean phrasedAsQuestion) {
+        if (named == null) {
+            return AnswerCheck.wrong(phrasedAsQuestion);
+        }
+        return new AnswerCheck(
+                true,
+                phrasedAsQuestion,
+                named.stream().map(Named::wording).toList(),
+                expected.firstWordingsExcept(named)
+        );
+    }
+
+    /** The answer as players should see it; null for a missing answer. */
+    public static AcceptedAnswers acceptedAnswers(String answer) {
+        if (answer == null) {
+            return null;
+        }
+        ExpectedAnswer expected = ExpectedAnswer.parse(answer);
+        return new AcceptedAnswers(expected.required(), expected.firstWordings());
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -11,8 +12,9 @@ import java.util.List;
 /**
  * Final Jeopardy as every player sees it. The category and its comments are
  * shown while wagering, the clue (and whether only an exact number is
- * accepted) once answering starts, and the correct response plus
- * everyone's wagers and answers only from the reveal on.
+ * accepted) once answering starts, and the correct response (as stored and
+ * as {@code acceptedAnswers} to show) plus everyone's wagers and answers only
+ * from the reveal on.
  */
 public record FinalJeopardyResponse(
         String category,
@@ -20,6 +22,7 @@ public record FinalJeopardyResponse(
         String question,
         Boolean numberExpected,
         String answer,
+        AcceptedAnswersResponse acceptedAnswers,
         List<FinalJeopardyPlayerResponse> players
 ) {
 
@@ -58,15 +61,20 @@ public record FinalJeopardyResponse(
 
         List<FinalJeopardyPlayerResponse> players = session.getPlayers()
                 .stream()
-                .map(player -> new FinalJeopardyPlayerResponse(
-                        player.getId(),
-                        session.hasFinalJeopardyWager(player.getId()),
-                        session.hasFinalJeopardyAnswer(player.getId()),
-                        showResults ? session.getFinalJeopardyWager(player.getId()) : null,
-                        showResults ? session.getFinalJeopardyAnswer(player.getId()) : null,
-                        showResults ? session.isFinalJeopardyAnswerCorrect(player.getId()) : null,
-                        showResults ? session.isFinalJeopardyAnswerPhrasedAsQuestion(player.getId()) : null
-                ))
+                .map(player -> {
+                    AnswerCheck check = showResults ? session.checkFinalJeopardyAnswer(player.getId()) : null;
+                    return new FinalJeopardyPlayerResponse(
+                            player.getId(),
+                            session.hasFinalJeopardyWager(player.getId()),
+                            session.hasFinalJeopardyAnswer(player.getId()),
+                            showResults ? session.getFinalJeopardyWager(player.getId()) : null,
+                            showResults ? session.getFinalJeopardyAnswer(player.getId()) : null,
+                            showResults ? check != null && check.correct() : null,
+                            check == null ? null : check.phrasedAsQuestion(),
+                            check == null ? null : check.matchedAnswers(),
+                            check == null ? null : check.alsoAccepted()
+                    );
+                })
                 .toList();
 
         BoardCategory category = session.getFinalJeopardyCategory();
@@ -77,6 +85,7 @@ public record FinalJeopardyResponse(
                 showQuestion ? clue.question() : null,
                 showQuestion ? AnswerMatcher.expectsNumber(clue.answer()) : null,
                 showResults ? clue.answer() : null,
+                showResults ? AcceptedAnswersResponse.from(AnswerMatcher.acceptedAnswers(clue.answer())) : null,
                 players
         );
     }

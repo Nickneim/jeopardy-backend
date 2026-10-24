@@ -312,6 +312,7 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
 | `numberExpected` | `true` when only an exact number is accepted (§6.7), so you can warn the player that typos won't be forgiven. Hidden exactly like `question`, since it says something about the answer. |
 | `answer` | Only in `REVEALING_ANSWER`. Alternatives and lists are written `(N of) A \| B` (§6.7). |
+| `acceptedAnswers` | Only in `REVEALING_ANSWER`, with `answer`: the answer ready to show, `{ required, options }`, each option in a single wording (§6.7). |
 
 ### 5.3 `finalJeopardy`
 
@@ -323,17 +324,19 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `categoryComments` (the category's comments, or `null` if it has none) | `FINAL_JEOPARDY_WAGERING` |
 | `question` | `FINAL_JEOPARDY_ANSWERING` |
 | `numberExpected` (only an exact number is accepted, §6.7) | `FINAL_JEOPARDY_ANSWERING` |
-| `answer` (the correct response, written as in §6.7) | `FINAL_JEOPARDY_REVEALING` |
+| `answer` (the correct response, written as in §6.7) and `acceptedAnswers` (the same, ready to show, as in §5.2) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
-| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer. |
+| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. |
 
 ### 5.4 `clueAnswers`
 
-What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct, phrasedAsQuestion }`:
+What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct, phrasedAsQuestion, matchedAnswers, alsoAccepted }`:
 
 - `answer` is the text the player submitted, or `null` if they ran out of time (which counts as wrong).
 - `correct` is the result of the answer check (§6.2).
 - `phrasedAsQuestion` says whether the answer was phrased as a question (§6.7), in every round, also where that isn't required. It's `null` when the player ran out of time.
+- `matchedAnswers` (only for a correct answer, otherwise `null`): what the answer named, in the order the player named it, each in the wording they matched. For `a linen [closet | cupboard]`, "linen cupbord" gives `["a linen cupboard"]`; for `(2 of) gold | frankincense | myrrh`, "myrrh and gold" gives `["myrrh", "gold"]`. Optional parts stay in, said or not (`["(Abraham) Lincoln"]`).
+- `alsoAccepted` (only for a correct answer, otherwise `null`): the options of a list the player didn't name, each in its first wording, for "We would also have accepted ...". It's empty for an answer that isn't a list, since other wordings of the same thing are never offered. A correct answer ends the clue, so neither field shows anything before the reveal.
 
 An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
 
@@ -512,7 +515,11 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `(...)` | An optional part. Parentheses can nest. | `(Abraham) Lincoln`, `(duck-bill(ed)) platypus` |
 | `A/B` | Either side, except in a fraction like `2/3` | `bear/bare` |
 
-`|` appears nowhere else. To show the answer to players, show a single wording: the first in each `[A | B]` ("a linen closet"). For a list, the options are different answers, so show them: `(1 of) A | B` as "A or B", and `(2 of) A | B | C` as something like "Any 2 of: A, B, C".
+`|` appears nowhere else. **To show the answer, you don't need to parse this:**
+
+- When someone answered correctly, show what they matched (`matchedAnswers`, §5.4), so the player sees their own wording ("a linen cupboard"), and for a list the options they didn't name (`alsoAccepted`: "We would also have accepted Uruguay or Argentina").
+- Otherwise show `acceptedAnswers` (`currentClue`, `finalJeopardy`): `{ required, options }`, each option in its first wording (`a linen [closet | cupboard]` is `{ required: 1, options: ["a linen closet"] }`). An answer that isn't a list has one option. For a list the options are different answers, so show them: `(1 of) A | B` as "A or B", and `(2 of) A | B | C` as something like "Any 2 of: A, B, C".
+- Never show the other wordings of one thing (`[A | B]`): they're the same answer.
 
 **What counts as correct:**
 
@@ -757,6 +764,12 @@ interface CurrentClueResponse {
   mediaUrl: string | null;     // null while hidden, and always for TEXT
   numberExpected: boolean | null;  // only an exact number is accepted; null while hidden
   answer: string | null;       // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
+  acceptedAnswers: AcceptedAnswersResponse | null;  // with answer: ready to show (§6.7)
+}
+
+interface AcceptedAnswersResponse {
+  required: number;    // a correct answer names this many of the options
+  options: string[];   // each in a single wording; one option unless it's a list
 }
 
 interface ClueAnswerResponse {
@@ -764,6 +777,8 @@ interface ClueAnswerResponse {
   answer: string | null;    // null: ran out of time
   correct: boolean;
   phrasedAsQuestion: boolean | null;  // set in every round; null: ran out of time
+  matchedAnswers: string[] | null;    // correct only: what it named, in the wording matched
+  alsoAccepted: string[] | null;      // correct only: a list's other options; [] if not a list
 }
 
 interface FinalJeopardyPlayerResponse {
@@ -774,6 +789,8 @@ interface FinalJeopardyPlayerResponse {
   answer: string | null;    // revealed in FINAL_JEOPARDY_REVEALING
   correct: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING
   phrasedAsQuestion: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING; null without an answer
+  matchedAnswers: string[] | null;    // revealed, correct only (as in ClueAnswerResponse)
+  alsoAccepted: string[] | null;      // revealed, correct only (as in ClueAnswerResponse)
 }
 
 interface FinalJeopardyResponse {
@@ -782,6 +799,7 @@ interface FinalJeopardyResponse {
   question: string | null;
   numberExpected: boolean | null;  // only an exact number is accepted; null while wagering
   answer: string | null;           // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
+  acceptedAnswers: AcceptedAnswersResponse | null;  // with answer: ready to show (§6.7)
   players: FinalJeopardyPlayerResponse[];
 }
 

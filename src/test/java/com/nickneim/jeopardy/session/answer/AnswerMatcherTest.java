@@ -3,9 +3,11 @@ package com.nickneim.jeopardy.session.answer;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,37 +67,37 @@ class AnswerMatcherTest {
     @Test
     void check_reportsTheQuestionFormInEveryRound() {
         // Jeopardy round: optional, but still reported.
-        assertEquals(new AnswerCheck(true, false), AnswerMatcher.check("Lincoln", "Lincoln", false));
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "Who is Lincoln?", false));
+        assertFlags(true, false, AnswerMatcher.check("Lincoln", "Lincoln", false));
+        assertFlags(true, true, AnswerMatcher.check("Lincoln", "Who is Lincoln?", false));
         // Double and Final Jeopardy: a bare answer is wrong because of it.
-        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", "Lincoln", true));
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "Who is Lincoln?", true));
+        assertFlags(false, false, AnswerMatcher.check("Lincoln", "Lincoln", true));
+        assertFlags(true, true, AnswerMatcher.check("Lincoln", "Who is Lincoln?", true));
     }
 
     @Test
     void check_countsATypoOfTheQuestionWord() {
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "waht is Lincoln", true));
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Lincoln", "whats lincln", true));
+        assertFlags(true, true, AnswerMatcher.check("Lincoln", "waht is Lincoln", true));
+        assertFlags(true, true, AnswerMatcher.check("Lincoln", "whats lincln", true));
     }
 
     @Test
     void check_reportsTheQuestionFormOfAWrongAnswerToo() {
-        assertEquals(new AnswerCheck(false, true), AnswerMatcher.check("Lincoln", "Who is Washington?", true));
-        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", "Washington", false));
+        assertFlags(false, true, AnswerMatcher.check("Lincoln", "Who is Washington?", true));
+        assertFlags(false, false, AnswerMatcher.check("Lincoln", "Washington", false));
     }
 
     @Test
     void check_answerThatIsItselfAQuestion_saidAsItIs_isPhrasedAsOne() {
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Who's The Boss?", "Who's the Boss?", true));
+        assertFlags(true, true, AnswerMatcher.check("Who's The Boss?", "Who's the Boss?", true));
         // Without a question word the matcher recognises, said as it is (with a typo).
-        assertEquals(new AnswerCheck(true, true), AnswerMatcher.check("Who's The Boss?", "Whoo's the Boss", true));
-        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Who's The Boss?", "the Boss", true));
+        assertFlags(true, true, AnswerMatcher.check("Who's The Boss?", "Whoo's the Boss", true));
+        assertFlags(false, false, AnswerMatcher.check("Who's The Boss?", "the Boss", true));
     }
 
     @Test
     void check_missingResponseIsNeitherCorrectNorPhrasedAsAQuestion() {
-        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", null, true));
-        assertEquals(new AnswerCheck(false, false), AnswerMatcher.check("Lincoln", " ", true));
+        assertFlags(false, false, AnswerMatcher.check("Lincoln", null, true));
+        assertFlags(false, false, AnswerMatcher.check("Lincoln", " ", true));
     }
 
     @Test
@@ -163,6 +165,63 @@ class AnswerMatcherTest {
 
         assertTimeoutPreemptively(Duration.ofSeconds(1), () ->
                 assertTrue(AnswerMatcher.matches(answer, response, false)));
+    }
+
+    @Test
+    void check_reportsTheWordingThePlayerMatched() {
+        assertMatched(List.of("a linen cupboard"), List.of(), "a linen [closet | cupboard]", "linen cupbord");
+        assertMatched(List.of("Burma"), List.of(), "[Myanmar | Burma]", "What is Burma?");
+        assertMatched(List.of("bare"), List.of(), "bear/bare", "bare");
+        // Optional parts stay in the wording, whether or not they were said.
+        assertMatched(List.of("(Abraham) Lincoln"), List.of(), "(Abraham) Lincoln", "Lincoln");
+    }
+
+    @Test
+    void check_reportsTheListOptionsNamed_inTheOrderSaid_andTheOthers() {
+        assertMatched(List.of("Uruguay"), List.of("Chile", "Argentina"), "(1 of) Chile | Uruguay | Argentina", "uruguay");
+        assertMatched(
+                List.of("myrrh", "gold"), List.of("frankincense"),
+                "(2 of) gold | frankincense | myrrh", "myrrh and gold"
+        );
+        assertMatched(
+                List.of("coroner", "coronel"), List.of(),
+                "(2 of) coroner | [coronet | coronel]", "coroner & coronel"
+        );
+        // An option named twice is reported once.
+        assertMatched(List.of("Burma"), List.of(), "[Myanmar | Burma]", "Burma or Burma");
+    }
+
+    @Test
+    void check_reportsNothingMatchedForAWrongAnswer() {
+        AnswerCheck check = AnswerMatcher.check("Lincoln", "Lincoln", true);
+
+        assertFalse(check.correct());
+        assertNull(check.matchedAnswers(), "right words, but wrong without the question form");
+        assertNull(check.alsoAccepted());
+    }
+
+    @Test
+    void acceptedAnswers_givesTheFirstWordingOfEachOption() {
+        assertEquals(new AcceptedAnswers(1, List.of("a linen closet")), AnswerMatcher.acceptedAnswers("a linen [closet | cupboard]"));
+        assertEquals(
+                new AcceptedAnswers(2, List.of("coroner", "coronet")),
+                AnswerMatcher.acceptedAnswers("(2 of) coroner | [coronet | coronel]")
+        );
+        assertEquals(new AcceptedAnswers(1, List.of("bear")), AnswerMatcher.acceptedAnswers("bear/bare"));
+        assertNull(AnswerMatcher.acceptedAnswers(null));
+    }
+
+    private static void assertFlags(boolean correct, boolean phrasedAsQuestion, AnswerCheck check) {
+        assertEquals(correct, check.correct(), "correct");
+        assertEquals(phrasedAsQuestion, check.phrasedAsQuestion(), "phrasedAsQuestion");
+    }
+
+    private static void assertMatched(List<String> matched, List<String> alsoAccepted, String answer, String response) {
+        AnswerCheck check = AnswerMatcher.check(answer, response, false);
+
+        assertTrue(check.correct(), response);
+        assertEquals(matched, check.matchedAnswers(), response);
+        assertEquals(alsoAccepted, check.alsoAccepted(), response);
     }
 
     @Test

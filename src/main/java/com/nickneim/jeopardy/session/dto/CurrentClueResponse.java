@@ -12,7 +12,8 @@ import com.nickneim.jeopardy.session.model.GameSession;
  * answer is revealed.
  * {@code wager} is only set for a Daily Double once the wager is placed.
  * {@code numberExpected} (only an exact number is accepted) is shown with the
- * question, since it says something about the answer.
+ * question, since it says something about the answer. {@code acceptedAnswers}
+ * is the answer as players should see it, revealed with {@code answer}.
  */
 public record CurrentClueResponse(
         Long clueId,
@@ -23,7 +24,8 @@ public record CurrentClueResponse(
         ClueType clueType,
         String mediaUrl,
         Boolean numberExpected,
-        String answer
+        String answer,
+        AcceptedAnswersResponse acceptedAnswers
 ) {
 
     /** Returns null when no clue is being played. */
@@ -60,7 +62,8 @@ public record CurrentClueResponse(
                 showQuestion ? clue.clueType() : null,
                 showQuestion ? clue.mediaUrl() : null,
                 showQuestion ? AnswerMatcher.expectsNumber(clue.answer()) : null,
-                showAnswer ? clue.answer() : null
+                showAnswer ? clue.answer() : null,
+                showAnswer ? AcceptedAnswersResponse.from(AnswerMatcher.acceptedAnswers(clue.answer())) : null
         );
     }
 }
