@@ -745,23 +745,7 @@ public class GameSession {
     }
 
     public void timeoutAnswer() {
-        GameSessionPlayer player = getPlayer(playerWhoBuzzed);
-        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false, null, null, null));
-        if (board.isDailyDouble(chosenClueId)) {
-            changeScore(player, -player.getWager());
-            startRevealingAnswer();
-        } else {
-            BoardClue clue = board.getClue(chosenClueId);
-            changeScore(player, -clue.value());
-            if (haveAllActivePlayersBuzzed()) {
-                startRevealingAnswer();
-            } else {
-                startWaitingForBuzzer();
-            }
-        }
-
-        // The answerer's turn is over, so they're removed if they left.
-        removeDepartedPlayers();
+        resolveAnswer(new ClueAnswer(playerWhoBuzzed, null, false, null, null, null));
     }
 
     /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
@@ -814,43 +798,41 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
         requireActivePlayer(playerId);
-
-        BoardClue clue = board.getClue(chosenClueId);
-        int clueValue;
-        if (board.isDailyDouble(chosenClueId)) {
-            // player must be playerChoosingClue
-            // use dailyDoubleWager
-            if (!playerChoosingClue.equals(playerId)) {
-                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
-            }
-            clueValue = getPlayer(playerId).getWager();
-        } else {
-            if (!playerWhoBuzzed.equals(playerId)) {
-                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
-            }
-            clueValue = clue.value();
+        // On a Daily Double the chooser counts as the buzzer (see playClue).
+        if (!playerWhoBuzzed.equals(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
         }
-        GameSessionPlayer player = getPlayer(playerId);
-        AnswerCheck check = checkAnswer(clue, answer);
-        boolean correct = check.correct();
-        clueAnswers.add(new ClueAnswer(
-                playerId, answer, correct, check.phrasedAsQuestion(), check.matchedAnswers(), check.alsoAccepted()));
-        if (correct) {
-            changeScore(player, clueValue);
-            playerChoosingClue = playerId;
+
+        AnswerCheck check = checkAnswer(board.getClue(chosenClueId), answer);
+        resolveAnswer(new ClueAnswer(
+                playerId, answer, check.correct(), check.phrasedAsQuestion(), check.matchedAnswers(), check.alsoAccepted()));
+    }
+
+    /**
+     * Applies an answer (or a timeout) to the clue in play: the answerer wins
+     * or loses the stake, a correct answer takes control of the board, and
+     * the clue ends unless someone else can still buzz.
+     */
+    private void resolveAnswer(ClueAnswer clueAnswer) {
+        boolean dailyDouble = board.isDailyDouble(chosenClueId);
+        GameSessionPlayer player = getPlayer(clueAnswer.playerId());
+        int stake = dailyDouble ? player.getWager() : board.getClue(chosenClueId).value();
+
+        clueAnswers.add(clueAnswer);
+        changeScore(player, clueAnswer.correct() ? stake : -stake);
+
+        if (clueAnswer.correct()) {
+            playerChoosingClue = clueAnswer.playerId();
+        }
+
+        if (clueAnswer.correct() || dailyDouble || haveAllActivePlayersBuzzed()) {
             startRevealingAnswer();
         } else {
-            changeScore(player, -clueValue);
-            if (board.isDailyDouble(chosenClueId)) {
-                startRevealingAnswer();
-            } else if (haveAllActivePlayersBuzzed()) {
-                startRevealingAnswer();
-            } else {
-                startWaitingForBuzzer();
-            }
+            startWaitingForBuzzer();
         }
 
-        // A correct answer takes control of the board from a chooser who left.
+        // The answerer's turn is over, so they're removed if they left; a
+        // correct answer also takes control from a chooser who left.
         removeDepartedPlayers();
     }
 
