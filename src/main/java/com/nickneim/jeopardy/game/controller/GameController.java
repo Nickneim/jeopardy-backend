@@ -30,7 +30,7 @@ public class GameController {
     }
 
     @GetMapping("/{id}")
-    public GameResponse getClue(@PathVariable Long id) {
+    public GameResponse getGame(@PathVariable Long id) {
         return GameResponse.from(gameService.getGame(id));
     }
 
