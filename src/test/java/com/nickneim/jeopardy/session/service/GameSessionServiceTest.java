@@ -22,6 +22,7 @@ import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import com.nickneim.jeopardy.session.model.SessionCode;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -607,7 +608,7 @@ class GameSessionServiceTest {
             session.addPlayer(
                     new GameSessionPlayer(
                             (long) i,
-                            "Player " + i
+                            "Player " + i, PlayerTokens.generate()
                     )
             );
         }
@@ -1192,7 +1193,7 @@ class GameSessionServiceTest {
         );
 
         session.addPlayer(
-                new GameSessionPlayer(1L, "Player 1")
+                new GameSessionPlayer(1L, "Player 1", PlayerTokens.generate())
         );
 
         gameSessionService.startGame(
@@ -1335,7 +1336,7 @@ class GameSessionServiceTest {
         ));
 
         GameSession session = gameSessionService.createSession(board);
-        session.addPlayer(new GameSessionPlayer(PLAYER_ID, "Player 1"));
+        session.addPlayer(new GameSessionPlayer(PLAYER_ID, "Player 1", PlayerTokens.generate()));
 
         gameSessionService.startGame(session.getId(), PLAYER_ID);
         gameSessionService.chooseClue(session.getId(), PLAYER_ID, CLUE_ID);
@@ -1765,7 +1766,7 @@ class GameSessionServiceTest {
     void localSummaries_listsEverySessionIncludingFinishedOnes() {
         GameSession waiting = createSession();
         GameSession finished = createSession();
-        finished.addPlayer("Nico");
+        finished.addPlayer("Nico", PlayerTokens.generate());
         finished.startGame(1L);
         finished.timeoutChoosingClue();
         finished.finishRevealingClue();

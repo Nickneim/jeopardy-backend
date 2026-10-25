@@ -9,6 +9,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCode;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -50,8 +51,8 @@ class FinalJeopardyResponseTest {
                 ))
         )));
 
-        player1 = new GameSessionPlayer(1L, "Nico");
-        player2 = new GameSessionPlayer(2L, "John");
+        player1 = new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
+        player2 = new GameSessionPlayer(2L, "John", PlayerTokens.generate());
         session.addPlayer(player1);
         session.addPlayer(player2);
 

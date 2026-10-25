@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -35,8 +36,8 @@ class GameSessionJoiningTest {
                         new BoardCategory("SCIENCE", SCIENCE)
                 ))
         )));
-        ana = session.addPlayer("Ana");
-        ben = session.addPlayer("Ben");
+        ana = session.addPlayer("Ana", PlayerTokens.generate());
+        ben = session.addPlayer("Ben", PlayerTokens.generate());
     }
 
     // -------------------------------------------------------------------------
@@ -55,7 +56,7 @@ class GameSessionJoiningTest {
         play(HISTORY.get(0), ben, false);
 
         assertEquals(-200, session.getJoinScore());
-        assertEquals(-200, session.addPlayer("Cy").getScore());
+        assertEquals(-200, session.addPlayer("Cy", PlayerTokens.generate()).getScore());
     }
 
     @Test
@@ -67,7 +68,7 @@ class GameSessionJoiningTest {
 
         assertEquals(List.of(ana), session.getPlayers());
         assertEquals(-400, session.getJoinScore());
-        assertEquals(-400, session.addPlayer("Ben").getScore());
+        assertEquals(-400, session.addPlayer("Ben", PlayerTokens.generate()).getScore());
     }
 
     @Test
@@ -100,7 +101,7 @@ class GameSessionJoiningTest {
 
     @Test
     void joinScore_staysWhileAnotherPlayerIsStillAtTheBottom() {
-        GameSessionPlayer cy = session.addPlayer("Cy");
+        GameSessionPlayer cy = session.addPlayer("Cy", PlayerTokens.generate());
         session.startGame(ana.getId());
         play(HISTORY.get(0), ana, false);
         play(HISTORY.get(1), ben, false);
@@ -139,7 +140,7 @@ class GameSessionJoiningTest {
         play(HISTORY.get(0), ana, true);
         assertEquals(-400, session.getJoinScore());
 
-        GameSessionPlayer dee = session.addPlayer("Dee");
+        GameSessionPlayer dee = session.addPlayer("Dee", PlayerTokens.generate());
         play(SCIENCE.get(4), dee, true);
 
         assertEquals(600, dee.getScore());
@@ -154,7 +155,7 @@ class GameSessionJoiningTest {
                         new BoardCategory("HISTORY", List.of(HISTORY.get(0), dailyDouble))
                 ))
         )));
-        ana = session.addPlayer("Ana");
+        ana = session.addPlayer("Ana", PlayerTokens.generate());
         session.startGame(ana.getId());
 
         session.chooseClue(ana.getId(), dailyDouble.id());
@@ -175,7 +176,7 @@ class GameSessionJoiningTest {
 
         assertTrue(session.isLateJoinAllowed());
         assertTrue(session.isJoinable());
-        assertEquals(3L, session.addPlayer("Cy").getId());
+        assertEquals(3L, session.addPlayer("Cy", PlayerTokens.generate()).getId());
     }
 
     @Test
@@ -183,13 +184,13 @@ class GameSessionJoiningTest {
         session.updateLateJoin(ana.getId(), false);
 
         // The lobby is still open.
-        GameSessionPlayer cy = session.addPlayer("Cy");
+        GameSessionPlayer cy = session.addPlayer("Cy", PlayerTokens.generate());
         assertTrue(session.getPlayers().contains(cy));
 
         session.startGame(ana.getId());
 
         assertFalse(session.isJoinable());
-        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee"));
+        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
         assertEquals(3, session.getPlayers().size());
     }
 
@@ -199,7 +200,7 @@ class GameSessionJoiningTest {
         session.startGame(ana.getId());
         session.leave(ben.getId());
 
-        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Ben"));
+        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Ben", PlayerTokens.generate()));
     }
 
     @Test
@@ -214,7 +215,7 @@ class GameSessionJoiningTest {
         }
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
 
-        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee"));
+        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
     }
 
     @Test

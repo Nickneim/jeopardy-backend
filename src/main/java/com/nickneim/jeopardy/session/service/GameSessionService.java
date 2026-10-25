@@ -16,6 +16,7 @@ import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.stereotype.Service;
 
@@ -157,7 +158,7 @@ public class GameSessionService {
                 throw new GameSessionNotFoundException(sessionId);
             }
 
-            GameSessionPlayer player = session.addPlayer(playerName);
+            GameSessionPlayer player = session.addPlayer(playerName, PlayerTokens.generate());
             playerTokens.register(
                     player.getToken(),
                     new PlayerPrincipal(sessionId, player.getId())

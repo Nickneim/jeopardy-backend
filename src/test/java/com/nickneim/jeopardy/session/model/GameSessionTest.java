@@ -8,6 +8,7 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,7 @@ class GameSessionTest {
                 new GameSession(sessionId, this.session.getBoard());
 
         GameSessionPlayer player =
-                new GameSessionPlayer(1L, "Nico");
+                new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
 
         session.addPlayer(player);
 
@@ -58,7 +59,7 @@ class GameSessionTest {
     @Test
     void newPlayer_startsWithZeroScore() {
         GameSessionPlayer player =
-                new GameSessionPlayer(1L, "Nico");
+                new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
 
         assertEquals(0, player.getScore());
     }
@@ -66,7 +67,7 @@ class GameSessionTest {
     @Test
     void addScore_changesPlayerScore() {
         GameSessionPlayer player =
-                new GameSessionPlayer(1L, "Nico");
+                new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
 
         player.addScore(500);
 
@@ -130,8 +131,8 @@ class GameSessionTest {
                 false
         );
 
-        player1 = new GameSessionPlayer(1L, "Nico");
-        player2 = new GameSessionPlayer(2L, "John");
+        player1 = new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
+        player2 = new GameSessionPlayer(2L, "John", PlayerTokens.generate());
 
         useBoard(false, false);
     }
@@ -1870,7 +1871,7 @@ class GameSessionTest {
         reachFinalJeopardy();
         player1.addScore(1000);
         player2.addScore(800);
-        GameSessionPlayer player3 = new GameSessionPlayer(3L, "Ana");
+        GameSessionPlayer player3 = new GameSessionPlayer(3L, "Ana", PlayerTokens.generate());
         session.addPlayer(player3);
         player3.addScore(600);
 
@@ -1932,7 +1933,7 @@ class GameSessionTest {
     @Test
     void addPlayerByName_numbersAfterTheHighestId() {
         // The fixture already has players 1 and 2.
-        GameSessionPlayer ana = session.addPlayer("Ana");
+        GameSessionPlayer ana = session.addPlayer("Ana", PlayerTokens.generate());
 
         assertEquals(3L, ana.getId());
         assertEquals("Ana", ana.getName());
@@ -1946,8 +1947,8 @@ class GameSessionTest {
                 session.getBoard()
         );
 
-        assertEquals(1L, emptySession.addPlayer("Nico").getId());
-        assertEquals(2L, emptySession.addPlayer("John").getId());
+        assertEquals(1L, emptySession.addPlayer("Nico", PlayerTokens.generate()).getId());
+        assertEquals(2L, emptySession.addPlayer("John", PlayerTokens.generate()).getId());
     }
 
     @Test

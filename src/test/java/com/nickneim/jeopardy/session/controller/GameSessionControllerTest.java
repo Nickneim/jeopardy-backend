@@ -20,6 +20,7 @@ import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.service.GameBoardService;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -166,7 +167,7 @@ class GameSessionControllerTest {
     @Test
     void joinSession_returnsPlayerIdAndToken() throws Exception {
         SessionCode sessionId = SessionCode.random();
-        GameSessionPlayer player = new GameSessionPlayer(42L, "Nico");
+        GameSessionPlayer player = new GameSessionPlayer(42L, "Nico", PlayerTokens.generate());
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
                 .thenReturn(player);
@@ -286,7 +287,7 @@ class GameSessionControllerTest {
                         ))
                 )
         )));
-        session.addPlayer("Nico");
+        session.addPlayer("Nico", PlayerTokens.generate());
         session.incrementVersion();
 
         when(gameSessionService.getSessionState(sessionId))
@@ -335,8 +336,8 @@ class GameSessionControllerTest {
     void getSession_includesTheHostTimersAndLeavingFlags() throws Exception {
         SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(sessionId, oneClueBoard());
-        session.addPlayer("Nico");
-        session.addPlayer("John");
+        session.addPlayer("Nico", PlayerTokens.generate());
+        session.addPlayer("John", PlayerTokens.generate());
 
         when(gameSessionService.getSessionState(sessionId))
                 .thenReturn(GameSessionResponse.from(session));
@@ -382,7 +383,7 @@ class GameSessionControllerTest {
     void getSession_includesTheJoinSettings() throws Exception {
         SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(sessionId, oneClueBoard());
-        session.addPlayer("Nico");
+        session.addPlayer("Nico", PlayerTokens.generate());
         session.updateLateJoin(1L, false);
 
         when(gameSessionService.getSessionState(sessionId))
@@ -431,7 +432,7 @@ class GameSessionControllerTest {
                 GameSessionTimeouts.defaults(),
                 Instant.parse("2026-10-09T12:30:00Z")
         );
-        session.addPlayer("Nico");
+        session.addPlayer("Nico", PlayerTokens.generate());
 
         when(sessionLobby.listSessions(false, 0, 20)).thenReturn(new PageResponse<>(
                 List.of(GameSessionSummaryResponse.from(session)), 0, 20, 1, 1
