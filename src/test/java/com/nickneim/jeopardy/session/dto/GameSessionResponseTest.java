@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCode;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -49,7 +50,7 @@ class GameSessionResponseTest {
         ));
 
         session = new GameSession(SessionCode.random(), board);
-        player = new GameSessionPlayer(1L, "Nico");
+        player = new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
         session.addPlayer(player);
     }
 
@@ -386,7 +387,7 @@ class GameSessionResponseTest {
 
     @Test
     void serializedResponse_afterWrongAnswer_showsWhatWasAnsweredButNotTheCorrectResponse() {
-        GameSessionPlayer secondPlayer = new GameSessionPlayer(2L, "John");
+        GameSessionPlayer secondPlayer = new GameSessionPlayer(2L, "John", PlayerTokens.generate());
         session.addPlayer(secondPlayer);
 
         session.startGame(player.getId());

@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
+import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -176,7 +177,7 @@ class GameSessionHostAndLeavingTest {
     void idsAreNeverReused_afterAPlayerLeaves() {
         session.leave(cy.getId());
 
-        GameSessionPlayer newcomer = session.addPlayer("Dee");
+        GameSessionPlayer newcomer = session.addPlayer("Dee", PlayerTokens.generate());
 
         assertEquals(4L, newcomer.getId());
     }
@@ -185,7 +186,7 @@ class GameSessionHostAndLeavingTest {
     void playerWhoLeft_canRejoinAsANewPlayer() {
         session.leave(ben.getId());
 
-        GameSessionPlayer rejoined = session.addPlayer("Ben");
+        GameSessionPlayer rejoined = session.addPlayer("Ben", PlayerTokens.generate());
 
         assertNotEquals(ben.getId(), rejoined.getId());
         assertEquals(0, rejoined.getScore());
@@ -499,9 +500,9 @@ class GameSessionHostAndLeavingTest {
 
     private void useBoard(GameBoard board) {
         session = new GameSession(SessionCode.random(), board);
-        ana = session.addPlayer("Ana");
-        ben = session.addPlayer("Ben");
-        cy = session.addPlayer("Cy");
+        ana = session.addPlayer("Ana", PlayerTokens.generate());
+        ben = session.addPlayer("Ben", PlayerTokens.generate());
+        cy = session.addPlayer("Cy", PlayerTokens.generate());
     }
 
     private void chooseAndBuzz(BoardClue clue, GameSessionPlayer buzzer) {

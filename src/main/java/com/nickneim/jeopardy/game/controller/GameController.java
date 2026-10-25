@@ -2,7 +2,7 @@ package com.nickneim.jeopardy.game.controller;
 
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
-import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.SeasonResponse;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameFilter;
@@ -30,7 +30,7 @@ public class GameController {
     }
 
     @GetMapping("/{id}")
-    public GameResponse getClue(@PathVariable Long id) {
+    public GameResponse getGame(@PathVariable Long id) {
         return GameResponse.from(gameService.getGame(id));
     }
 

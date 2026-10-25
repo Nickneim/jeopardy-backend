@@ -2,7 +2,6 @@ package com.nickneim.jeopardy.session.controller;
 
 import com.nickneim.jeopardy.session.dto.*;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
-import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.service.GameSessionService;
@@ -196,23 +195,12 @@ public class GameSessionWebSocketController {
         return player.playerId();
     }
 
+    // Also a missing session: GameSessionNotFoundException is one.
     @MessageExceptionHandler(InvalidGameActionException.class)
     @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleInvalidGameAction(
             InvalidGameActionException exception
     ) {
-        return new GameSessionErrorResponse(
-                exception.getCode().name(),
-                exception.getMessage()
-        );
-    }
-
-    @MessageExceptionHandler(GameSessionNotFoundException.class)
-    @SendToUser(value = "/queue/errors", broadcast = false)
-    public GameSessionErrorResponse handleSessionNotFound(
-            GameSessionNotFoundException exception
-    ) {
-
         return new GameSessionErrorResponse(
                 exception.getCode().name(),
                 exception.getMessage()

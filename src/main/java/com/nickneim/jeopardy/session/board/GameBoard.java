@@ -27,6 +27,8 @@ public final class GameBoard {
     private final List<BoardRound> rounds;
     private final Map<GameRound, BoardRound> roundsByType;
     private final Map<Long, BoardClue> cluesById;
+    // Built once: the available clues are derived from these on every broadcast.
+    private final Map<GameRound, Set<Long>> clueIdsByRound;
 
     public GameBoard(List<BoardRound> rounds) {
         this(null, null, rounds);
@@ -41,6 +43,7 @@ public final class GameBoard {
 
         Map<GameRound, BoardRound> byType = new EnumMap<>(GameRound.class);
         Map<Long, BoardClue> byId = new HashMap<>();
+        Map<GameRound, Set<Long>> idsByRound = new EnumMap<>(GameRound.class);
 
         for (BoardRound boardRound : this.rounds) {
             if (byType.put(boardRound.round(), boardRound) != null) {
@@ -53,6 +56,11 @@ public final class GameBoard {
                 }
             });
 
+            idsByRound.put(
+                    boardRound.round(),
+                    boardRound.clues().map(BoardClue::id).collect(Collectors.toUnmodifiableSet())
+            );
+
             if (boardRound.round() == GameRound.FINAL_JEOPARDY && boardRound.clues().count() > 1) {
                 throw new IllegalArgumentException("Final Jeopardy can only have one clue");
             }
@@ -64,6 +72,7 @@ public final class GameBoard {
 
         this.roundsByType = byType;
         this.cluesById = Map.copyOf(byId);
+        this.clueIdsByRound = idsByRound;
     }
 
     /**
@@ -144,15 +153,7 @@ public final class GameBoard {
     }
 
     public Set<Long> getClueIds(GameRound round) {
-        BoardRound boardRound = roundsByType.get(round);
-
-        if (boardRound == null) {
-            return Set.of();
-        }
-
-        return boardRound.clues()
-                .map(BoardClue::id)
-                .collect(Collectors.toUnmodifiableSet());
+        return clueIdsByRound.getOrDefault(round, Set.of());
     }
 
     public int getHighestValue(GameRound round) {

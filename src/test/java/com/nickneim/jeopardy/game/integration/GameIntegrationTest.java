@@ -2,7 +2,7 @@ package com.nickneim.jeopardy.game.integration;
 
 import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.dto.GameResponse;
-import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

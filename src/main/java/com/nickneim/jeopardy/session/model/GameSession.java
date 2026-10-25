@@ -194,12 +194,12 @@ public class GameSession {
      * which is fine because a player is always identified by their session
      * and token, never their id alone.
      */
-    public GameSessionPlayer addPlayer(String name) {
+    public GameSessionPlayer addPlayer(String name, String token) {
         if (!isJoinable()) {
             throw new LateJoinNotAllowedException();
         }
 
-        GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore);
+        GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore, token);
         addPlayer(player);
 
         return player;

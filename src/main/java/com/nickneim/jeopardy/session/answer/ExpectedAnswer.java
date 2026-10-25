@@ -8,6 +8,7 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntPredicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +41,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         Matcher list = LIST.matcher(answer);
         if (list.matches()) {
             required = Math.max(1, Integer.parseInt(list.group(1)));
-            texts = splitOutsideBrackets(list.group(2));
+            texts = splitOutside(list.group(2), '[', ']', '|', i -> false);
         }
 
         List<Option> options = texts.stream()
@@ -57,18 +58,23 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         );
     }
 
-    /** Splits a list at "|", except inside "[...]": "coroner | [coronet | coronel]". */
-    private static List<String> splitOutsideBrackets(String text) {
+    /**
+     * Splits {@code text} at {@code separator}, except inside {@code open}
+     * ... {@code close} and where {@code keep} holds for the separator's
+     * index. A list splits at "|" outside "[...]" ("coroner | [coronet |
+     * coronel]"); an option at "/" outside "(...)", except in a fraction.
+     */
+    private static List<String> splitOutside(String text, char open, char close, char separator, IntPredicate keep) {
         List<String> parts = new ArrayList<>();
         int depth = 0;
         int start = 0;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == '[') {
+            if (c == open) {
                 depth++;
-            } else if (c == ']') {
+            } else if (c == close) {
                 depth = Math.max(0, depth - 1);
-            } else if (c == '|' && depth == 0) {
+            } else if (c == separator && depth == 0 && !keep.test(i)) {
                 parts.add(text.substring(start, i));
                 start = i + 1;
             }
@@ -265,22 +271,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
 
         /** Splits at slashes outside parentheses, except in a fraction like "8/12". */
         private static List<String> splitAtSlashes(String text) {
-            List<String> parts = new ArrayList<>();
-            int depth = 0;
-            int start = 0;
-            for (int i = 0; i < text.length(); i++) {
-                char c = text.charAt(i);
-                if (c == '(') {
-                    depth++;
-                } else if (c == ')') {
-                    depth = Math.max(0, depth - 1);
-                } else if (c == '/' && depth == 0 && !isBetweenDigits(text, i)) {
-                    parts.add(text.substring(start, i));
-                    start = i + 1;
-                }
-            }
-            parts.add(text.substring(start));
-            return parts;
+            return splitOutside(text, '(', ')', '/', i -> isBetweenDigits(text, i));
         }
 
         private static boolean isBetweenDigits(String text, int i) {

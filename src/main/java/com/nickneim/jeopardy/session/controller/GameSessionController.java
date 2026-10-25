@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.session.controller;
 
-import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionRequest;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionResponse;

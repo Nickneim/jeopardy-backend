@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.exception;
 
-import com.nickneim.jeopardy.game.dto.ApiErrorResponse;
+import com.nickneim.jeopardy.dto.ApiErrorResponse;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
@@ -23,33 +23,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(GameNotFoundException.class)
+    @ExceptionHandler({
+            GameNotFoundException.class,
+            ClueNotFoundException.class,
+            GameSessionNotFoundException.class
+    })
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiErrorResponse handleGameNotFound(GameNotFoundException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                exception.getMessage()
-        );
-    }
-
-    @ExceptionHandler(ClueNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiErrorResponse handleClueNotFound(ClueNotFoundException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                exception.getMessage()
-        );
-    }
-
-    @ExceptionHandler(GameSessionNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiErrorResponse handleGameSessionNotFound(
-            GameSessionNotFoundException exception
-    ) {
-        return new ApiErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                exception.getMessage()
-        );
+    public ApiErrorResponse handleNotFound(RuntimeException exception) {
+        return error(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
     // 422 rather than 409: the request is well formed and the game exists, but
@@ -58,31 +39,19 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UnplayableGameException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ApiErrorResponse handleUnplayableGame(UnplayableGameException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.UNPROCESSABLE_CONTENT.value(),
-                exception.getMessage()
-        );
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage());
     }
 
-    // 409: the request is fine, but the session's state (started, with late
-    // joining blocked by the host) doesn't allow it.
-    @ExceptionHandler(LateJoinNotAllowedException.class)
+    // 409: the request is fine, but the session's state doesn't allow it:
+    // it has started with late joining blocked by the host, or (for a
+    // create) its id is already in use.
+    @ExceptionHandler({
+            LateJoinNotAllowedException.class,
+            GameSessionAlreadyExistsException.class
+    })
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiErrorResponse handleLateJoinNotAllowed(LateJoinNotAllowedException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.CONFLICT.value(),
-                exception.getMessage()
-        );
-    }
-
-    // 409: a create with a session id that's already in use.
-    @ExceptionHandler(GameSessionAlreadyExistsException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiErrorResponse handleGameSessionAlreadyExists(GameSessionAlreadyExistsException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.CONFLICT.value(),
-                exception.getMessage()
-        );
+    public ApiErrorResponse handleConflict(RuntimeException exception) {
+        return error(HttpStatus.CONFLICT, exception.getMessage());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -90,10 +59,7 @@ public class ApiExceptionHandler {
     public ApiErrorResponse handleConstraintViolation(
             ConstraintViolationException exception
     ) {
-        return new ApiErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                "Invalid request parameters"
-        );
+        return error(HttpStatus.BAD_REQUEST, "Invalid request parameters");
     }
 
     /**
@@ -112,19 +78,13 @@ public class ApiExceptionHandler {
                 .sorted()
                 .collect(Collectors.joining(", "));
 
-        return new ApiErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                message.isEmpty() ? "Invalid request body" : message
-        );
+        return error(HttpStatus.BAD_REQUEST, message.isEmpty() ? "Invalid request body" : message);
     }
 
     @ExceptionHandler(InvalidGameFilterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrorResponse handleInvalidGameFilter(InvalidGameFilterException exception) {
-        return new ApiErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                exception.getMessage()
-        );
+        return error(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     /**
@@ -151,8 +111,11 @@ public class ApiExceptionHandler {
             throw exception;
         }
 
-        return new ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return error(HttpStatus.BAD_REQUEST, message);
     }
 
+    private static ApiErrorResponse error(HttpStatus status, String message) {
+        return new ApiErrorResponse(status.value(), message);
+    }
 
 }
