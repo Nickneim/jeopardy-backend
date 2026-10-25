@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 @Service
 public class GameSessionService {
@@ -183,13 +184,8 @@ public class GameSessionService {
             Long playerId,
             SessionTimersRequest request
     ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.updateTimeouts(playerId, request.applyTo(session.getTimeouts()));
-
-            broadcast(session);
-        }
+        actKeepingTimer(sessionId, session ->
+                session.updateTimeouts(playerId, request.applyTo(session.getTimeouts())));
     }
 
     /** The host's lobby settings. Like the timers, they have no timer to re-arm. */
@@ -198,13 +194,7 @@ public class GameSessionService {
             Long playerId,
             SessionSettingsRequest request
     ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.updateLateJoin(playerId, request.allowLateJoin());
-
-            broadcast(session);
-        }
+        actKeepingTimer(sessionId, session -> session.updateLateJoin(playerId, request.allowLateJoin()));
     }
 
     public void leave(
@@ -265,236 +255,80 @@ public class GameSessionService {
         connections.close(new PlayerPrincipal(session.getId(), player.getId()), message);
     }
 
-    public void startGame(
-            SessionCode sessionId,
-            Long playerId
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.startGame(playerId);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+    public void startGame(SessionCode sessionId, Long playerId) {
+        act(sessionId, session -> session.startGame(playerId));
     }
 
-    public void chooseClue(
-            SessionCode sessionId,
-            Long playerId,
-            Long clueId
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.chooseClue(playerId, clueId);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+    public void chooseClue(SessionCode sessionId, Long playerId, Long clueId) {
+        act(sessionId, session -> session.chooseClue(playerId, clueId));
     }
 
-    public void placeDailyDoubleWager(
-            SessionCode sessionId,
-            Long playerId,
-            int wager
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.placeDailyDoubleWager(playerId, wager);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+    public void placeDailyDoubleWager(SessionCode sessionId, Long playerId, int wager) {
+        act(sessionId, session -> session.placeDailyDoubleWager(playerId, wager));
     }
 
     // Final Jeopardy submissions don't change the state, so they deliberately
     // skip scheduleTimeout: re-arming the timer would restart the phase.
-    public void placeFinalJeopardyWager(
-            SessionCode sessionId,
-            Long playerId,
-            int wager
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.placeFinalJeopardyWager(playerId, wager);
-
-            broadcast(session);
-        }
+    public void placeFinalJeopardyWager(SessionCode sessionId, Long playerId, int wager) {
+        actKeepingTimer(sessionId, session -> session.placeFinalJeopardyWager(playerId, wager));
     }
 
-    public void answerFinalJeopardy(
-            SessionCode sessionId,
-            Long playerId,
-            String answer
-    ) {
-        GameSession session = getSession(sessionId);
+    public void answerFinalJeopardy(SessionCode sessionId, Long playerId, String answer) {
+        actKeepingTimer(sessionId, session -> session.answerFinalJeopardy(playerId, answer));
+    }
 
-        synchronized (session) {
-            session.answerFinalJeopardy(playerId, answer);
+    public void buzz(SessionCode sessionId, Long playerId) {
+        act(sessionId, session -> session.buzz(playerId));
+    }
 
-            broadcast(session);
-        }
+    public void answerClue(SessionCode sessionId, Long playerId, String answer) {
+        act(sessionId, session -> session.answerClue(playerId, answer));
     }
 
     public void finishRevealingClue(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-        synchronized (session) {
-            if (session.getState() != GameSessionState.REVEALING_CLUE) {
-                return;
-            }
-            session.finishRevealingClue();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    public void buzz(
-            SessionCode sessionId,
-            Long playerId
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.buzz(playerId);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    public void answerClue(
-            SessionCode sessionId,
-            Long playerId,
-            String answer
-    ) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            session.answerClue(playerId, answer);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+        onTimeout(sessionId, GameSessionState.REVEALING_CLUE, GameSession::finishRevealingClue);
     }
 
     public void finishRevealingAnswer(SessionCode sessionId) {
+        onTimeout(sessionId, GameSessionState.REVEALING_ANSWER, GameSession::finishRevealingAnswer);
+    }
+
+    /** The usual mutation: under the lock, act, re-arm the phase timer, broadcast. */
+    private void act(SessionCode sessionId, Consumer<GameSession> action) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            if (session.getState() != GameSessionState.REVEALING_ANSWER) {
-                return;
-            }
-
-            session.finishRevealingAnswer();
+            action.accept(session);
 
             scheduleTimeout(session);
             broadcast(session);
         }
     }
 
-    private void timeoutChoosingClue(SessionCode sessionId) {
+    /** For actions that leave the state alone: re-arming the timer would restart the phase. */
+    private void actKeepingTimer(SessionCode sessionId, Consumer<GameSession> action) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            if (session.getState() != GameSessionState.CHOOSING_CLUE) {
-                return;
-            }
+            action.accept(session);
 
-            session.timeoutChoosingClue();
-
-            scheduleTimeout(session);
             broadcast(session);
         }
     }
 
-    private void timeoutBuzzer(SessionCode sessionId) {
+    /**
+     * A phase timer firing. It only acts if the session is still in the state
+     * the timer was armed for, so a stale timer is a no-op.
+     */
+    private void onTimeout(SessionCode sessionId, GameSessionState armedIn, Consumer<GameSession> action) {
         GameSession session = getSession(sessionId);
 
         synchronized (session) {
-            if (session.getState() != GameSessionState.WAITING_FOR_BUZZER) {
+            if (session.getState() != armedIn) {
                 return;
             }
 
-            session.timeoutBuzzer();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    private void timeoutAnswer(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            if (session.getState() != GameSessionState.WAITING_FOR_ANSWER) {
-                return;
-            }
-
-            session.timeoutAnswer();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    private void timeoutDailyDoubleWager(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            if (session.getState() != GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER) {
-                return;
-            }
-
-            session.timeoutDailyDoubleWager();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    private void timeoutFinalJeopardyWagering(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            if (session.getState() != GameSessionState.FINAL_JEOPARDY_WAGERING) {
-                return;
-            }
-
-            session.timeoutFinalJeopardyWagering();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    private void timeoutFinalJeopardyAnswering(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            if (session.getState() != GameSessionState.FINAL_JEOPARDY_ANSWERING) {
-                return;
-            }
-
-            session.timeoutFinalJeopardyAnswering();
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
-    }
-
-    private void finishFinalJeopardyReveal(SessionCode sessionId) {
-        GameSession session = getSession(sessionId);
-
-        synchronized (session) {
-            if (session.getState() != GameSessionState.FINAL_JEOPARDY_REVEALING) {
-                return;
-            }
-
-            session.finishFinalJeopardyReveal();
+            action.accept(session);
 
             scheduleTimeout(session);
             broadcast(session);
@@ -578,43 +412,22 @@ public class GameSessionService {
 
         timer.cancel(sessionId);
 
-        PhaseTimeout timeout = switch (session.getState()) {
-            case CHOOSING_CLUE -> new PhaseTimeout(
-                    timeouts.clueChoice(),
-                    () -> timeoutChoosingClue(sessionId)
-            );
-            case REVEALING_CLUE -> new PhaseTimeout(
-                    timeouts.clueReveal(),
-                    () -> finishRevealingClue(sessionId)
-            );
-            case WAITING_FOR_BUZZER -> new PhaseTimeout(
-                    timeouts.buzzer(),
-                    () -> timeoutBuzzer(sessionId)
-            );
-            case WAITING_FOR_ANSWER -> new PhaseTimeout(
-                    timeouts.answer(),
-                    () -> timeoutAnswer(sessionId)
-            );
-            case REVEALING_ANSWER -> new PhaseTimeout(
-                    timeouts.answerReveal(),
-                    () -> finishRevealingAnswer(sessionId)
-            );
-            case WAITING_FOR_DAILY_DOUBLE_WAGER -> new PhaseTimeout(
-                    timeouts.dailyDoubleWager(),
-                    () -> timeoutDailyDoubleWager(sessionId)
-            );
-            case FINAL_JEOPARDY_WAGERING -> new PhaseTimeout(
-                    timeouts.finalJeopardyWager(),
-                    () -> timeoutFinalJeopardyWagering(sessionId)
-            );
-            case FINAL_JEOPARDY_ANSWERING -> new PhaseTimeout(
-                    timeouts.finalJeopardyAnswer(),
-                    () -> timeoutFinalJeopardyAnswering(sessionId)
-            );
-            case FINAL_JEOPARDY_REVEALING -> new PhaseTimeout(
-                    timeouts.finalJeopardyReveal(),
-                    () -> finishFinalJeopardyReveal(sessionId)
-            );
+        GameSessionState state = session.getState();
+
+        PhaseTimeout timeout = switch (state) {
+            case CHOOSING_CLUE -> new PhaseTimeout(timeouts.clueChoice(), GameSession::timeoutChoosingClue);
+            case REVEALING_CLUE -> new PhaseTimeout(timeouts.clueReveal(), GameSession::finishRevealingClue);
+            case WAITING_FOR_BUZZER -> new PhaseTimeout(timeouts.buzzer(), GameSession::timeoutBuzzer);
+            case WAITING_FOR_ANSWER -> new PhaseTimeout(timeouts.answer(), GameSession::timeoutAnswer);
+            case REVEALING_ANSWER -> new PhaseTimeout(timeouts.answerReveal(), GameSession::finishRevealingAnswer);
+            case WAITING_FOR_DAILY_DOUBLE_WAGER ->
+                    new PhaseTimeout(timeouts.dailyDoubleWager(), GameSession::timeoutDailyDoubleWager);
+            case FINAL_JEOPARDY_WAGERING ->
+                    new PhaseTimeout(timeouts.finalJeopardyWager(), GameSession::timeoutFinalJeopardyWagering);
+            case FINAL_JEOPARDY_ANSWERING ->
+                    new PhaseTimeout(timeouts.finalJeopardyAnswer(), GameSession::timeoutFinalJeopardyAnswering);
+            case FINAL_JEOPARDY_REVEALING ->
+                    new PhaseTimeout(timeouts.finalJeopardyReveal(), GameSession::finishFinalJeopardyReveal);
             // No timeout for these states.
             case WAITING_FOR_START, FINISHED_GAME, CLOSED -> null;
         };
@@ -627,8 +440,8 @@ public class GameSessionService {
         // Recorded on the session so every response can say how long the
         // phase has left.
         session.startPhaseTimer(timeout.duration(), System.nanoTime());
-        timer.schedule(sessionId, timeout.duration(), timeout.action());
+        timer.schedule(sessionId, timeout.duration(), () -> onTimeout(sessionId, state, timeout.action()));
     }
 
-    private record PhaseTimeout(Duration duration, Runnable action) {}
+    private record PhaseTimeout(Duration duration, Consumer<GameSession> action) {}
 }
