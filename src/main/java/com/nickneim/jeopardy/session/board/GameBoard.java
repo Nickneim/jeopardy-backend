@@ -7,19 +7,24 @@ import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
  * The immutable board a live session is played from. It holds no Hibernate
  * entities, so it can be used from any thread for as long as the session lives.
+ * Everything a session asks of it is worked out once, when it's built.
+ *
+ * <p>Lookups by clue id take any id, null included: a clue that isn't on
+ * the board is an IllegalArgumentException, and isn't in any round's ids.
  */
 public final class GameBoard {
 
@@ -28,18 +33,20 @@ public final class GameBoard {
     private final Long gameId;
     private final String title;
     private final List<BoardRound> rounds;
-    private final Map<GameRound, BoardRound> roundsByType;
-    private final Map<Long, BoardClue> cluesById;
-    // Built once: the available clues are derived from these on every broadcast.
-    private final Map<GameRound, Set<Long>> clueIdsByRound;
-    // What players are told about each answer, parsed the first time a
-    // broadcast needs it rather than on every one.
-    private final Map<Long, AnswerHints> answerHints = new ConcurrentHashMap<>();
+    private final Map<GameRound, BoardRound> roundsByType = new EnumMap<>(GameRound.class);
+    private final Map<Long, BoardClue> cluesById = new HashMap<>();
+    // The available clues are derived from these on every broadcast.
+    private final Map<GameRound, Set<Long>> clueIdsByRound = new EnumMap<>(GameRound.class);
+    private final Map<GameRound, Integer> highestValueByRound = new EnumMap<>(GameRound.class);
+    // What players are told about each answer.
+    private final Map<Long, AnswerHints> answerHints = new HashMap<>();
+    private final BoardCategory finalJeopardyCategory;
 
     public GameBoard(List<BoardRound> rounds) {
         this(null, null, rounds);
     }
 
+    /** @throws InvalidBoardException if the rounds can't be played */
     public GameBoard(Long gameId, String title, List<BoardRound> rounds) {
         this.gameId = gameId;
         this.title = title;
@@ -47,38 +54,59 @@ public final class GameBoard {
                 .sorted(Comparator.comparing(BoardRound::round))
                 .toList();
 
-        Map<GameRound, BoardRound> byType = new EnumMap<>(GameRound.class);
-        Map<Long, BoardClue> byId = new HashMap<>();
-        Map<GameRound, Set<Long>> idsByRound = new EnumMap<>(GameRound.class);
-
         for (BoardRound boardRound : this.rounds) {
-            if (byType.put(boardRound.round(), boardRound) != null) {
-                throw new IllegalArgumentException("Duplicate round: " + boardRound.round());
+            GameRound round = boardRound.round();
+
+            if (roundsByType.put(round, boardRound) != null) {
+                throw new InvalidBoardException("the board has two " + round + " rounds");
             }
 
-            boardRound.clues().forEach(clue -> {
-                if (byId.put(clue.id(), clue) != null) {
-                    throw new IllegalArgumentException("Duplicate clue id: " + clue.id());
+            List<BoardClue> clues = boardRound.clues().toList();
+
+            if (round == GameRound.FINAL_JEOPARDY && clues.size() > 1) {
+                throw new InvalidBoardException("Final Jeopardy can only have one clue");
+            }
+
+            Set<Long> ids = new HashSet<>();
+
+            for (BoardClue clue : clues) {
+                if (cluesById.put(clue.id(), clue) != null) {
+                    throw new InvalidBoardException("the board has two clues with id " + clue.id());
                 }
-            });
-
-            idsByRound.put(
-                    boardRound.round(),
-                    boardRound.clues().map(BoardClue::id).collect(Collectors.toUnmodifiableSet())
-            );
-
-            if (boardRound.round() == GameRound.FINAL_JEOPARDY && boardRound.clues().count() > 1) {
-                throw new IllegalArgumentException("Final Jeopardy can only have one clue");
+                ids.add(clue.id());
+                answerHints.put(clue.id(), answerHints(clue));
             }
+
+            clueIdsByRound.put(round, Collections.unmodifiableSet(ids));
+            clues.stream()
+                    .mapToInt(BoardClue::value)
+                    .max()
+                    .ifPresent(highest -> highestValueByRound.put(round, highest));
         }
 
-        if (byId.isEmpty()) {
-            throw new IllegalArgumentException("A game board needs at least one clue");
+        if (cluesById.isEmpty()) {
+            throw new InvalidBoardException("the board has no clues");
         }
 
-        this.roundsByType = byType;
-        this.cluesById = Map.copyOf(byId);
-        this.clueIdsByRound = idsByRound;
+        this.finalJeopardyCategory = getRound(GameRound.FINAL_JEOPARDY)
+                .flatMap(finalRound -> finalRound.categories()
+                        .stream()
+                        .filter(category -> !category.clues().isEmpty())
+                        .findFirst())
+                .orElse(null);
+    }
+
+    // An answer that parses to no options would mark every response wrong.
+    private static AnswerHints answerHints(BoardClue clue) {
+        AcceptedAnswers accepted = AnswerMatcher.acceptedAnswers(clue.answer());
+
+        if (accepted.options().isEmpty()) {
+            throw new InvalidBoardException(
+                    "clue " + clue.id() + " has no answer a response could match: \"" + clue.answer() + "\""
+            );
+        }
+
+        return new AnswerHints(AnswerMatcher.expectsNumber(clue.answer()), accepted);
     }
 
     /**
@@ -86,8 +114,15 @@ public final class GameBoard {
      * collections, so call it inside a transaction (as
      * {@code GameBoardService.loadBoard} does). The board it returns holds no
      * entities and can be used after the transaction ends.
+     *
+     * @throws InvalidBoardException if the game can't be played, e.g. it has no clues
      */
     public static GameBoard from(Game game) {
+        Set<Long> dailyDoubles = game.getDailyDoubles()
+                .stream()
+                .map(dailyDouble -> dailyDouble.getClue().getId())
+                .collect(Collectors.toSet());
+
         Map<GameRound, List<BoardCategory>> categoriesByRound =
                 new EnumMap<>(GameRound.class);
 
@@ -100,7 +135,7 @@ public final class GameBoard {
                             clue.getQuestion(),
                             clue.getAnswer(),
                             clue.getValue(),
-                            game.isDailyDouble(clue.getId()),
+                            dailyDoubles.contains(clue.getId()),
                             clue.getClueType(),
                             clue.getMediaUrl()
                     ))
@@ -153,9 +188,7 @@ public final class GameBoard {
     }
 
     public boolean isDailyDouble(Long clueId) {
-        BoardClue clue = cluesById.get(clueId);
-
-        return clue != null && clue.dailyDouble();
+        return getClue(clueId).dailyDouble();
     }
 
     /** Whether only an exact number is accepted for the clue ({@link AnswerMatcher#expectsNumber}). */
@@ -169,12 +202,7 @@ public final class GameBoard {
     }
 
     private AnswerHints answerHints(Long clueId) {
-        String answer = getClue(clueId).answer();
-
-        return answerHints.computeIfAbsent(clueId, id -> new AnswerHints(
-                AnswerMatcher.expectsNumber(answer),
-                AnswerMatcher.acceptedAnswers(answer)
-        ));
+        return answerHints.get(getClue(clueId).id());
     }
 
     private record AnswerHints(boolean numberExpected, AcceptedAnswers acceptedAnswers) {}
@@ -183,17 +211,9 @@ public final class GameBoard {
         return clueIdsByRound.getOrDefault(round, Set.of());
     }
 
+    /** The highest clue value in the round, or 0 if it has no clues. */
     public int getHighestValue(GameRound round) {
-        BoardRound boardRound = roundsByType.get(round);
-
-        if (boardRound == null) {
-            return 0;
-        }
-
-        return boardRound.clues()
-                .mapToInt(BoardClue::value)
-                .max()
-                .orElse(0);
+        return highestValueByRound.getOrDefault(round, 0);
     }
 
     /** The first round that has any clues. */
@@ -216,18 +236,12 @@ public final class GameBoard {
 
     /** The Final Jeopardy category, or null if the board has none. */
     public BoardCategory getFinalJeopardyCategory() {
-        return getRound(GameRound.FINAL_JEOPARDY)
-                .flatMap(finalRound -> finalRound.categories()
-                        .stream()
-                        .filter(category -> !category.clues().isEmpty())
-                        .findFirst())
-                .orElse(null);
+        return finalJeopardyCategory;
     }
 
+    /** The Final Jeopardy clue, or null if the board has none. */
     public BoardClue getFinalJeopardyClue() {
-        BoardCategory category = getFinalJeopardyCategory();
-
-        return category == null ? null : category.clues().getFirst();
+        return finalJeopardyCategory == null ? null : finalJeopardyCategory.clues().getFirst();
     }
 
     private boolean hasClues(GameRound round) {

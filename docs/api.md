@@ -155,7 +155,7 @@ Creates a live session from a stored game, **under a code the client chooses**. 
 - Code already in use: `409 { "status": 409, "message": "Game session already exists: <code>" }`, checked before the game (so a code in use gets a 409 even with an unknown game). There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
 - A code that isn't valid (see below): `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }`.
 - Unknown game: 404.
-- Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
+- Game that can't be played: `422 { "status": 422, "message": "Game 725 can't be played: the board has no clues" }`. Usually a game without clues (some imported games, such as the newest ones, have none); the message gives any other reason, such as a clue whose stored answer no response could match. The game itself is valid and can still be browsed.
 - Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
 - A session nobody joins is removed after 30 minutes (§6.5).
 

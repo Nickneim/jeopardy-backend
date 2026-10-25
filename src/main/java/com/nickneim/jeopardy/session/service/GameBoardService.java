@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.service;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.board.InvalidBoardException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,21 +22,18 @@ public class GameBoardService {
      * {@link GameBoard#from} reads every lazy collection inside this
      * transaction, so the board can be used after it ends.
      *
-     * @throws UnplayableGameException if the game has no clues, which some
-     *         imported games legitimately don't
+     * @throws UnplayableGameException if the board rejects the game, e.g.
+     *         because it has no clues, which some imported games
+     *         legitimately don't
      */
     @Transactional(readOnly = true)
     public GameBoard loadBoard(Long gameId) {
         Game game = gameService.getGame(gameId);
 
-        boolean hasClues = game.getCategories()
-                .stream()
-                .anyMatch(category -> !category.getClues().isEmpty());
-
-        if (!hasClues) {
-            throw new UnplayableGameException(gameId);
+        try {
+            return GameBoard.from(game);
+        } catch (InvalidBoardException exception) {
+            throw new UnplayableGameException(gameId, exception);
         }
-
-        return GameBoard.from(game);
     }
 }

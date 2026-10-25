@@ -110,7 +110,7 @@ class GameSessionEndToEndIntegrationTest {
                 .json("""
                     {
                         "status": 422,
-                        "message": "Game %d has no clues and can't be played"
+                        "message": "Game %d can't be played: the board has no clues"
                     }
                     """.formatted(gameId), JsonCompareMode.STRICT);
     }

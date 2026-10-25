@@ -20,8 +20,8 @@ public record BoardCategory(
 
         for (BoardClue clue : clues) {
             if (!rows.add(clue.row())) {
-                throw new IllegalArgumentException(
-                        "Category " + name + " has two clues on row " + clue.row()
+                throw new InvalidBoardException(
+                        "category " + name + " has two clues on row " + clue.row()
                 );
             }
         }

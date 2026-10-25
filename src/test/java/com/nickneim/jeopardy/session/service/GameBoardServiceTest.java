@@ -64,7 +64,7 @@ class GameBoardServiceTest {
                 () -> gameBoardService.loadBoard(725L)
         );
 
-        assertEquals("Game 725 has no clues and can't be played", exception.getMessage());
+        assertEquals("Game 725 can't be played: the board has no clues", exception.getMessage());
     }
 
     @Test
@@ -75,6 +75,26 @@ class GameBoardServiceTest {
         assertThrows(
                 UnplayableGameException.class,
                 () -> gameBoardService.loadBoard(725L)
+        );
+    }
+
+    @Test
+    void loadBoard_rejectsAGameTheBoardRejects() {
+        Game game = createGame();
+        Category history = game.getCategories().getFirst();
+        Clue blank = new Clue("A clue with no answer", "", (short) 2, ClueType.TEXT, null, history);
+        ReflectionTestUtils.setField(blank, "id", 102L);
+        history.getClues().add(blank);
+        when(gameService.getGame(123L)).thenReturn(game);
+
+        UnplayableGameException exception = assertThrows(
+                UnplayableGameException.class,
+                () -> gameBoardService.loadBoard(123L)
+        );
+
+        assertEquals(
+                "Game 123 can't be played: clue 102 has no answer a response could match: \"\"",
+                exception.getMessage()
         );
     }
 

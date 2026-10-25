@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.board.InvalidBoardException;
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
@@ -162,7 +163,7 @@ class GameSessionControllerTest {
             throws Exception {
 
         when(gameBoardService.loadBoard(725L))
-                .thenThrow(new UnplayableGameException(725L));
+                .thenThrow(new UnplayableGameException(725L, new InvalidBoardException("the board has no clues")));
 
         mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -175,7 +176,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 422,
-                            "message": "Game 725 has no clues and can't be played"
+                            "message": "Game 725 can't be played: the board has no clues"
                         }
                         """, JsonCompareMode.STRICT));
 

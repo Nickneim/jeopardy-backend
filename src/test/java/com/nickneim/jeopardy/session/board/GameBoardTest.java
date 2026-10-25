@@ -60,7 +60,19 @@ class GameBoardTest {
     void isDailyDouble_isTrueOnlyForDailyDoubleClues() {
         assertTrue(board.isDailyDouble(2L));
         assertFalse(board.isDailyDouble(1L));
-        assertFalse(board.isDailyDouble(999L));
+    }
+
+    @Test
+    void isDailyDouble_rejectsUnknownClue() {
+        assertThrows(IllegalArgumentException.class, () -> board.isDailyDouble(999L));
+    }
+
+    @Test
+    void lookups_treatANullIdAsUnknown() {
+        assertThrows(IllegalArgumentException.class, () -> board.getClue(null));
+        assertThrows(IllegalArgumentException.class, () -> board.isDailyDouble(null));
+        assertThrows(IllegalArgumentException.class, () -> board.getAcceptedAnswers(null));
+        assertFalse(board.getClueIds(GameRound.JEOPARDY).contains(null));
     }
 
     @Test
@@ -98,6 +110,39 @@ class GameBoardTest {
     void getHighestValue_returnsHighestClueValueInRound() {
         assertEquals(1000, board.getHighestValue(GameRound.JEOPARDY));
         assertEquals(800, board.getHighestValue(GameRound.DOUBLE_JEOPARDY));
+    }
+
+    @Test
+    void getHighestValue_isZeroForARoundWithoutClues() {
+        GameBoard noDoubleJeopardy = new GameBoard(List.of(
+                round(GameRound.JEOPARDY, jeopardyClue),
+                round(GameRound.DOUBLE_JEOPARDY)
+        ));
+
+        assertEquals(0, noDoubleJeopardy.getHighestValue(GameRound.DOUBLE_JEOPARDY));
+        assertEquals(0, noDoubleJeopardy.getHighestValue(GameRound.FINAL_JEOPARDY));
+    }
+
+    @Test
+    void getFinalJeopardyClue_isTheFinalRoundsOnlyClue() {
+        GameBoard twoFinalCategories = new GameBoard(List.of(
+                round(GameRound.JEOPARDY, jeopardyClue),
+                new BoardRound(GameRound.FINAL_JEOPARDY, List.of(
+                        new BoardCategory("EMPTY", List.of()),
+                        new BoardCategory("FINAL", List.of(finalClue))
+                ))
+        ));
+
+        assertEquals(finalClue, twoFinalCategories.getFinalJeopardyClue());
+        assertEquals("FINAL", twoFinalCategories.getFinalJeopardyCategory().name());
+    }
+
+    @Test
+    void getFinalJeopardyClue_isNullWithoutAFinalRound() {
+        GameBoard noFinal = new GameBoard(List.of(round(GameRound.JEOPARDY, jeopardyClue)));
+
+        assertNull(noFinal.getFinalJeopardyClue());
+        assertNull(noFinal.getFinalJeopardyCategory());
     }
 
     @Test
@@ -172,10 +217,25 @@ class GameBoardTest {
 
     @Test
     void constructor_rejectsBoardWithoutClues() {
-        assertThrows(
-                IllegalArgumentException.class,
+        InvalidBoardException exception = assertThrows(
+                InvalidBoardException.class,
                 () -> new GameBoard(List.of(round(GameRound.JEOPARDY)))
         );
+
+        assertEquals("the board has no clues", exception.getMessage());
+    }
+
+    @Test
+    void constructor_rejectsAnAnswerNoResponseCouldMatch() {
+        for (String answer : List.of("", "   ", "()", "(2 of) | ")) {
+            BoardClue unanswerable = new BoardClue(5L, 1, "Q", answer, 200, false);
+
+            assertThrows(
+                    InvalidBoardException.class,
+                    () -> new GameBoard(List.of(round(GameRound.JEOPARDY, jeopardyClue, unanswerable))),
+                    answer
+            );
+        }
     }
 
     @Test
@@ -205,6 +265,24 @@ class GameBoardTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new BoardClue(5L, 0, "Q", "A", 200, false)
+        );
+    }
+
+    @Test
+    void clue_rejectsRowAboveTheMaximum() {
+        assertDoesNotThrow(() -> new BoardClue(5L, BoardClue.MAX_ROW, "Q", "A", 200, false));
+        assertThrows(
+                InvalidBoardException.class,
+                () -> new BoardClue(5L, BoardClue.MAX_ROW + 1, "Q", "A", 200, false)
+        );
+    }
+
+    @Test
+    void clue_rejectsNegativeValue() {
+        assertDoesNotThrow(() -> new BoardClue(5L, 1, "Q", "A", 0, false));
+        assertThrows(
+                InvalidBoardException.class,
+                () -> new BoardClue(5L, 1, "Q", "A", -200, false)
         );
     }
 
