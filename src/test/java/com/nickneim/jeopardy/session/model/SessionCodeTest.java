@@ -41,6 +41,14 @@ class SessionCodeTest {
     }
 
     @Test
+    void rejectsNonAsciiLettersThatUppercaseToTheAlphabet() {
+        // The long s and the dotless i uppercase to S and I outside ASCII.
+        for (String text : new String[] {"ſ2345", "ı2345"}) {
+            assertThrows(IllegalArgumentException.class, () -> SessionCode.of(text), text);
+        }
+    }
+
+    @Test
     void isAPlainStringInJson() {
         JsonMapper mapper = JsonMapper.builder().build();
 

@@ -54,7 +54,13 @@ public record SessionCode(String value) implements Comparable<SessionCode> {
         char[] code = new char[LENGTH];
 
         for (int i = 0; i < LENGTH; i++) {
-            char c = Character.toUpperCase(text.charAt(i));
+            // Only ASCII: Character.toUpperCase would also turn the long s
+            // and the dotless i into S and I.
+            char c = text.charAt(i);
+            if (c >= 'a' && c <= 'z') {
+                c = (char) (c - 'a' + 'A');
+            }
+
             code[i] = switch (c) {
                 case 'O' -> '0';
                 case 'I', 'L' -> '1';

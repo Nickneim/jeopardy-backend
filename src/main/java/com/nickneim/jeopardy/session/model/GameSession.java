@@ -15,6 +15,9 @@ import java.util.*;
 
 public class GameSession {
 
+    // The lowest Daily Double wager, unless the round's values are lower still.
+    private static final int MINIMUM_DAILY_DOUBLE_WAGER = 5;
+
     private final SessionCode id;
     private final GameBoard board;
     private final Instant createdAt;
@@ -205,6 +208,13 @@ public class GameSession {
 
         GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore, token);
         addPlayer(player);
+
+        // Too late to wager on Final Jeopardy: they wager 0, like everyone
+        // who didn't wager in time.
+        if (state == GameSessionState.FINAL_JEOPARDY_ANSWERING
+                || state == GameSessionState.FINAL_JEOPARDY_REVEALING) {
+            finalJeopardy.wagerZeroForMissing(List.of(player));
+        }
 
         return player;
     }
@@ -485,9 +495,7 @@ public class GameSession {
      * This keeps a game moving even if the chooser has left.
      */
     public void timeoutChoosingClue() {
-        if (state != GameSessionState.CHOOSING_CLUE) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "No clue is being chosen right now!");
-        }
+        requirePhase(GameSessionState.CHOOSING_CLUE);
 
         Set<Long> available = getAvailableClues();
 
@@ -511,18 +519,12 @@ public class GameSession {
         if (!state.equals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager a bet right now!");
         }
-        requireActivePlayer(playerId);
+        GameSessionPlayer player = requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
         }
 
-        // A player may always wager up to the highest clue value in the round.
-        int maximumWager = Math.max(
-                getPlayer(playerId).getScore(),
-                board.getHighestValue(round)
-        );
-
-        if (wager < 5 || wager > maximumWager) {
+        if (wager < minimumDailyDoubleWager(player) || wager > maximumDailyDoubleWager(player)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
         }
 
@@ -530,9 +532,23 @@ public class GameSession {
         startRevealingClue();
     }
 
+    /** The chooser didn't wager in time, so they wager the minimum. */
     public void timeoutDailyDoubleWager() {
-        dailyDoubleWager = 5;
+        requirePhase(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
+
+        dailyDoubleWager = minimumDailyDoubleWager(getPlayer(playerChoosingClue));
         startRevealingClue();
+    }
+
+    // A player may always wager up to the highest clue value in the round.
+    private int maximumDailyDoubleWager(GameSessionPlayer player) {
+        return Math.max(player.getScore(), board.getHighestValue(round));
+    }
+
+    // 5, unless the most they can wager is less (only on a board with very
+    // low values), so there is always a wager they can place.
+    private int minimumDailyDoubleWager(GameSessionPlayer player) {
+        return Math.min(MINIMUM_DAILY_DOUBLE_WAGER, maximumDailyDoubleWager(player));
     }
 
     private void startRevealingClue() {
@@ -540,6 +556,8 @@ public class GameSession {
     }
 
     public void finishRevealingClue() {
+        requirePhase(GameSessionState.REVEALING_CLUE);
+
         playersAlreadyBuzzed.clear();
 
         if (board.isDailyDouble(chosenClueId)) {
@@ -567,6 +585,8 @@ public class GameSession {
     }
 
     public void finishRevealingAnswer() {
+        requirePhase(GameSessionState.REVEALING_ANSWER);
+
         if (!getAvailableClues().isEmpty()) {
             state = GameSessionState.CHOOSING_CLUE;
             return;
@@ -607,6 +627,8 @@ public class GameSession {
 
     /** Players who didn't wager in time wager 0. */
     public void timeoutFinalJeopardyWagering() {
+        requirePhase(GameSessionState.FINAL_JEOPARDY_WAGERING);
+
         finalJeopardy.wagerZeroForMissing(players);
 
         state = GameSessionState.FINAL_JEOPARDY_ANSWERING;
@@ -624,11 +646,15 @@ public class GameSession {
     }
 
     public void timeoutFinalJeopardyAnswering() {
+        requirePhase(GameSessionState.FINAL_JEOPARDY_ANSWERING);
+
         state = GameSessionState.FINAL_JEOPARDY_REVEALING;
     }
 
     /** Applies every wager (no answer counts as wrong) and ends the game. */
     public void finishFinalJeopardyReveal() {
+        requirePhase(GameSessionState.FINAL_JEOPARDY_REVEALING);
+
         // Applied together, so the join score sees the final scores at once.
         changeScores(finalJeopardy.scoreChanges(players));
         state = GameSessionState.FINISHED_GAME;
@@ -685,10 +711,14 @@ public class GameSession {
     }
 
     public void timeoutBuzzer() {
+        requirePhase(GameSessionState.WAITING_FOR_BUZZER);
+
         startRevealingAnswer();
     }
 
     public void timeoutAnswer() {
+        requirePhase(GameSessionState.WAITING_FOR_ANSWER);
+
         resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
     }
 
@@ -728,6 +758,13 @@ public class GameSession {
     private void requireHost(Long playerId, String message) {
         if (!playerId.equals(hostPlayerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_HOST, message);
+        }
+    }
+
+    // For the timers: a phase can only end while it's the current one.
+    private void requirePhase(GameSessionState phase) {
+        if (state != phase) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "The game isn't in " + phase + " right now!");
         }
     }
 

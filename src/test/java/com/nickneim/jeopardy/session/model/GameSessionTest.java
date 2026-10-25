@@ -1340,6 +1340,49 @@ class GameSessionTest {
     }
 
     @Test
+    void dailyDouble_onABoardWithValuesBelowFive_allowsWageringUpToTheMaximum() {
+        GameSession tinySession = tinyDailyDoubleSession();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> tinySession.placeDailyDoubleWager(player1.getId(), 4)
+        );
+        assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
+
+        tinySession.placeDailyDoubleWager(player1.getId(), 3);
+
+        assertEquals(3, tinySession.getDailyDoubleWager());
+    }
+
+    @Test
+    void dailyDoubleTimeout_onABoardWithValuesBelowFive_wagersTheMaximum() {
+        GameSession tinySession = tinyDailyDoubleSession();
+
+        tinySession.timeoutDailyDoubleWager();
+
+        assertEquals(3, tinySession.getDailyDoubleWager());
+    }
+
+    // A Daily Double worth 3 is in play, chosen by player 1 with a score of 0.
+    private GameSession tinyDailyDoubleSession() {
+        BoardClue lowClue = new BoardClue(1L, 1, "Question", "Answer", 1, false);
+        BoardClue dailyDouble = new BoardClue(2L, 3, "DD question", "DD answer", 3, true);
+
+        GameSession tinySession = new GameSession(
+                SessionCode.random(),
+                new GameBoard(List.of(new BoardRound(
+                        GameRound.JEOPARDY,
+                        List.of(new BoardCategory("TINY", List.of(lowClue, dailyDouble)))
+                )))
+        );
+        tinySession.addPlayer(player1);
+        tinySession.startGame(player1.getId());
+        tinySession.chooseClue(player1.getId(), dailyDouble.id());
+
+        return tinySession;
+    }
+
+    @Test
     void finishRevealingAnswer_skipsRoundsWithoutClues() {
         GameSession noDoubleJeopardy = new GameSession(
                 SessionCode.random(),
@@ -1572,6 +1615,48 @@ class GameSessionTest {
         );
 
         assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
+    void phaseEndings_areRejectedOutsideTheirPhase() {
+        session.startGame(player1.getId());
+
+        // CHOOSING_CLUE: none of the other phases can end, and nothing changes.
+        List<Runnable> otherPhases = List.of(
+                session::timeoutDailyDoubleWager,
+                session::finishRevealingClue,
+                session::timeoutBuzzer,
+                session::timeoutAnswer,
+                session::finishRevealingAnswer,
+                session::timeoutFinalJeopardyWagering,
+                session::timeoutFinalJeopardyAnswering,
+                session::finishFinalJeopardyReveal
+        );
+
+        for (Runnable phaseEnding : otherPhases) {
+            InvalidGameActionException exception = assertThrows(InvalidGameActionException.class, phaseEnding::run);
+            assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+        }
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        assertEquals(0, player1.getScore());
+        assertEquals(0, player2.getScore());
+        assertNull(session.getDailyDoubleWager());
+    }
+
+    @Test
+    void timeoutAnswer_isRejectedWhileWaitingForTheBuzzer() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.timeoutAnswer()
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
     }
 
     // -------------------------------------------------------------------------
@@ -1813,6 +1898,33 @@ class GameSessionTest {
         assertEquals(600, session.getFinalJeopardy().getWager(player1.getId()));
         assertTrue(session.getFinalJeopardy().hasWager(player2.getId()));
         assertEquals(0, session.getFinalJeopardy().getWager(player2.getId()));
+    }
+
+    @Test
+    void playerJoiningAfterFinalJeopardyWagering_wagersZero() {
+        reachFinalJeopardy();
+        GameSessionPlayer duringWagering = session.addPlayer("Early", PlayerTokens.generate());
+        session.timeoutFinalJeopardyWagering();
+
+        GameSessionPlayer duringAnswering = session.addPlayer("Late", PlayerTokens.generate());
+        session.timeoutFinalJeopardyAnswering();
+        GameSessionPlayer duringReveal = session.addPlayer("Later", PlayerTokens.generate());
+
+        for (GameSessionPlayer player : List.of(duringWagering, duringAnswering, duringReveal)) {
+            assertTrue(session.getFinalJeopardy().hasWager(player.getId()), player.getName());
+            assertEquals(0, session.getFinalJeopardy().getWager(player.getId()));
+        }
+    }
+
+    @Test
+    void playerJoiningDuringFinalJeopardyWagering_canStillWager() {
+        reachFinalJeopardy();
+
+        GameSessionPlayer player = session.addPlayer("Early", PlayerTokens.generate());
+
+        assertFalse(session.getFinalJeopardy().hasWager(player.getId()));
+        session.placeFinalJeopardyWager(player.getId(), 0);
+        assertTrue(session.getFinalJeopardy().hasWager(player.getId()));
     }
 
     @Test
