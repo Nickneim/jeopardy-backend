@@ -426,11 +426,11 @@ class GameSessionHostAndLeavingTest {
         session.leave(ben.getId());
 
         assertEquals(List.of(ana, cy), session.getPlayers());
-        assertFalse(session.hasFinalJeopardyWager(ben.getId()));
+        assertFalse(session.getFinalJeopardy().hasWager(ben.getId()));
 
         session.timeoutFinalJeopardyWagering();
 
-        assertFalse(session.hasFinalJeopardyWager(ben.getId()));
+        assertFalse(session.getFinalJeopardy().hasWager(ben.getId()));
     }
 
     @Test
@@ -441,7 +441,7 @@ class GameSessionHostAndLeavingTest {
 
         session.leave(cy.getId());
 
-        assertFalse(session.hasFinalJeopardyAnswer(cy.getId()));
+        assertFalse(session.getFinalJeopardy().hasAnswer(cy.getId()));
         assertError(GameErrorCode.PLAYER_NOT_IN_SESSION, () -> session.answerFinalJeopardy(cy.getId(), "Final answer"));
     }
 

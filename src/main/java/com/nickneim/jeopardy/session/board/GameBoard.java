@@ -186,6 +186,22 @@ public final class GameBoard {
                 .findFirst();
     }
 
+    /** The Final Jeopardy category, or null if the board has none. */
+    public BoardCategory getFinalJeopardyCategory() {
+        return getRound(GameRound.FINAL_JEOPARDY)
+                .flatMap(finalRound -> finalRound.categories()
+                        .stream()
+                        .filter(category -> !category.clues().isEmpty())
+                        .findFirst())
+                .orElse(null);
+    }
+
+    public BoardClue getFinalJeopardyClue() {
+        BoardCategory category = getFinalJeopardyCategory();
+
+        return category == null ? null : category.clues().getFirst();
+    }
+
     private boolean hasClues(GameRound round) {
         return !getClueIds(round).isEmpty();
     }

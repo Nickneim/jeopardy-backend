@@ -3,7 +3,6 @@ package com.nickneim.jeopardy.session.model;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
-import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
@@ -43,6 +42,9 @@ public class GameSession {
 
     private Long playerChoosingClue;
     private Long chosenClueId;
+    // The wager on the clue in play, once placed if it's a Daily Double;
+    // null otherwise. Reset whenever a clue is chosen.
+    private Integer dailyDoubleWager;
 
     private final Set<Long> playersAlreadyBuzzed = new HashSet<>();
     // Every clue chosen so far, across all rounds. Which clues are still
@@ -53,10 +55,7 @@ public class GameSession {
     // chosen and when Final Jeopardy starts, so it never holds stale entries.
     private final List<ClueAnswer> clueAnswers = new ArrayList<>();
 
-    // Final Jeopardy submissions, keyed by player id. They stay secret until
-    // FINAL_JEOPARDY_REVEALING; see GameSessionResponse.
-    private final Map<Long, Integer> finalJeopardyWagers = new HashMap<>();
-    private final Map<Long, String> finalJeopardyAnswers = new HashMap<>();
+    private FinalJeopardy finalJeopardy = new FinalJeopardy();
 
     public GameSession(SessionCode id, GameBoard board) {
         this(id, board, GameSessionTimeouts.defaults(), Instant.now());
@@ -172,13 +171,8 @@ public class GameSession {
 
     /** The wager on the Daily Double in play once it is placed, otherwise null. */
     public Integer getDailyDoubleWager() {
-        if (chosenClueId == null || !board.isDailyDouble(chosenClueId)) {
-            return null;
-        }
-
         return switch (state) {
-            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER ->
-                    getPlayer(playerWhoBuzzed).getWager();
+            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER -> dailyDoubleWager;
             default -> null;
         };
     }
@@ -396,8 +390,7 @@ public class GameSession {
             players.remove(player);
             playersAlreadyBuzzed.remove(playerId);
             clueAnswers.removeIf(answer -> answer.playerId().equals(playerId));
-            finalJeopardyWagers.remove(playerId);
-            finalJeopardyAnswers.remove(playerId);
+            finalJeopardy.remove(playerId);
 
             // Only possible once the rounds with a chooser are over.
             if (playerId.equals(playerChoosingClue)) {
@@ -462,6 +455,7 @@ public class GameSession {
 
     private void playClue(Long clueId) {
         chosenClueId = clueId;
+        dailyDoubleWager = null;
         playedClues.add(clueId);
         clueAnswers.clear();
         if (board.isDailyDouble(clueId)) {
@@ -521,12 +515,12 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
         }
 
-        getPlayer(playerId).setWager(wager);
+        dailyDoubleWager = wager;
         startRevealingClue();
     }
 
     public void timeoutDailyDoubleWager() {
-        getPlayer(playerChoosingClue).setWager(5);
+        dailyDoubleWager = 5;
         startRevealingClue();
     }
 
@@ -582,41 +576,27 @@ public class GameSession {
     // -------------------------------------------------------------------------
 
     private void startFinalJeopardy() {
-        BoardClue clue = getFinalJeopardyClue();
+        BoardClue clue = board.getFinalJeopardyClue();
 
         chosenClueId = clue.id();
         playedClues.add(clue.id());
         clueAnswers.clear();
-        finalJeopardyWagers.clear();
-        finalJeopardyAnswers.clear();
+        finalJeopardy = new FinalJeopardy();
         state = GameSessionState.FINAL_JEOPARDY_WAGERING;
     }
 
-    /**
-     * Wagers go from 0 up to the player's score, so a player with a score of
-     * 0 or less can only wager 0 but still plays. A player may change their
-     * wager until the wagering phase ends.
-     */
+    /** See {@link FinalJeopardy#placeWager} for the allowed wagers. */
     public void placeFinalJeopardyWager(Long playerId, int wager) {
         if (state != GameSessionState.FINAL_JEOPARDY_WAGERING) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager on Final Jeopardy right now!");
         }
 
-        GameSessionPlayer player = requireActivePlayer(playerId);
-
-        int maximumWager = Math.max(0, player.getScore());
-        if (wager < 0 || wager > maximumWager) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
-        }
-
-        finalJeopardyWagers.put(playerId, wager);
+        finalJeopardy.placeWager(requireActivePlayer(playerId), wager);
     }
 
     /** Players who didn't wager in time wager 0. */
     public void timeoutFinalJeopardyWagering() {
-        for (GameSessionPlayer player : players) {
-            finalJeopardyWagers.putIfAbsent(player.getId(), 0);
-        }
+        finalJeopardy.wagerZeroForMissing(players);
 
         state = GameSessionState.FINAL_JEOPARDY_ANSWERING;
     }
@@ -628,7 +608,8 @@ public class GameSession {
         }
         requireActivePlayer(playerId);
 
-        finalJeopardyAnswers.put(playerId, answer);
+        AnswerCheck check = answer == null ? null : checkAnswer(board.getFinalJeopardyClue(), answer);
+        finalJeopardy.answer(new ClueAnswer(playerId, answer, check));
     }
 
     public void timeoutFinalJeopardyAnswering() {
@@ -638,15 +619,7 @@ public class GameSession {
     /** Applies every wager (no answer counts as wrong) and ends the game. */
     public void finishFinalJeopardyReveal() {
         // Applied together, so the join score sees the final scores at once.
-        Map<GameSessionPlayer, Integer> changes = new LinkedHashMap<>();
-
-        for (GameSessionPlayer player : players) {
-            int wager = getFinalJeopardyWager(player.getId());
-
-            changes.put(player, isFinalJeopardyAnswerCorrect(player.getId()) ? wager : -wager);
-        }
-
-        changeScores(changes);
+        changeScores(finalJeopardy.scoreChanges(players));
         state = GameSessionState.FINISHED_GAME;
     }
 
@@ -691,49 +664,9 @@ public class GameSession {
         }
     }
 
-    /** The Final Jeopardy category, or null if the board has none. */
-    public BoardCategory getFinalJeopardyCategory() {
-        return board.getRound(GameRound.FINAL_JEOPARDY)
-                .flatMap(finalRound -> finalRound.categories()
-                        .stream()
-                        .filter(category -> !category.clues().isEmpty())
-                        .findFirst())
-                .orElse(null);
-    }
-
-    public BoardClue getFinalJeopardyClue() {
-        BoardCategory category = getFinalJeopardyCategory();
-
-        return category == null ? null : category.clues().getFirst();
-    }
-
-    public boolean hasFinalJeopardyWager(Long playerId) {
-        return finalJeopardyWagers.containsKey(playerId);
-    }
-
-    public boolean hasFinalJeopardyAnswer(Long playerId) {
-        return finalJeopardyAnswers.containsKey(playerId);
-    }
-
-    public int getFinalJeopardyWager(Long playerId) {
-        return finalJeopardyWagers.getOrDefault(playerId, 0);
-    }
-
-    public String getFinalJeopardyAnswer(Long playerId) {
-        return finalJeopardyAnswers.get(playerId);
-    }
-
-    public boolean isFinalJeopardyAnswerCorrect(Long playerId) {
-        AnswerCheck check = checkFinalJeopardyAnswer(playerId);
-
-        return check != null && check.correct();
-    }
-
-    /** The check of the player's Final Jeopardy answer; null without an answer. */
-    public AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
-        String answer = finalJeopardyAnswers.get(playerId);
-
-        return answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
+    /** What has been submitted for Final Jeopardy (nothing before it starts). */
+    public FinalJeopardy getFinalJeopardy() {
+        return finalJeopardy;
     }
 
     private void startWaitingForBuzzer() {
@@ -745,23 +678,7 @@ public class GameSession {
     }
 
     public void timeoutAnswer() {
-        GameSessionPlayer player = getPlayer(playerWhoBuzzed);
-        clueAnswers.add(new ClueAnswer(playerWhoBuzzed, null, false, null, null, null));
-        if (board.isDailyDouble(chosenClueId)) {
-            changeScore(player, -player.getWager());
-            startRevealingAnswer();
-        } else {
-            BoardClue clue = board.getClue(chosenClueId);
-            changeScore(player, -clue.value());
-            if (haveAllActivePlayersBuzzed()) {
-                startRevealingAnswer();
-            } else {
-                startWaitingForBuzzer();
-            }
-        }
-
-        // The answerer's turn is over, so they're removed if they left.
-        removeDepartedPlayers();
+        resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
     }
 
     /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
@@ -814,43 +731,40 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
         }
         requireActivePlayer(playerId);
-
-        BoardClue clue = board.getClue(chosenClueId);
-        int clueValue;
-        if (board.isDailyDouble(chosenClueId)) {
-            // player must be playerChoosingClue
-            // use dailyDoubleWager
-            if (!playerChoosingClue.equals(playerId)) {
-                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
-            }
-            clueValue = getPlayer(playerId).getWager();
-        } else {
-            if (!playerWhoBuzzed.equals(playerId)) {
-                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
-            }
-            clueValue = clue.value();
+        // On a Daily Double the chooser counts as the buzzer (see playClue).
+        if (!playerWhoBuzzed.equals(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
         }
-        GameSessionPlayer player = getPlayer(playerId);
-        AnswerCheck check = checkAnswer(clue, answer);
-        boolean correct = check.correct();
-        clueAnswers.add(new ClueAnswer(
-                playerId, answer, correct, check.phrasedAsQuestion(), check.matchedAnswers(), check.alsoAccepted()));
-        if (correct) {
-            changeScore(player, clueValue);
-            playerChoosingClue = playerId;
+
+        AnswerCheck check = checkAnswer(board.getClue(chosenClueId), answer);
+        resolveAnswer(new ClueAnswer(playerId, answer, check));
+    }
+
+    /**
+     * Applies an answer (or a timeout) to the clue in play: the answerer wins
+     * or loses the stake, a correct answer takes control of the board, and
+     * the clue ends unless someone else can still buzz.
+     */
+    private void resolveAnswer(ClueAnswer clueAnswer) {
+        boolean dailyDouble = board.isDailyDouble(chosenClueId);
+        GameSessionPlayer player = getPlayer(clueAnswer.playerId());
+        int stake = dailyDouble ? dailyDoubleWager : board.getClue(chosenClueId).value();
+
+        clueAnswers.add(clueAnswer);
+        changeScore(player, clueAnswer.correct() ? stake : -stake);
+
+        if (clueAnswer.correct()) {
+            playerChoosingClue = clueAnswer.playerId();
+        }
+
+        if (clueAnswer.correct() || dailyDouble || haveAllActivePlayersBuzzed()) {
             startRevealingAnswer();
         } else {
-            changeScore(player, -clueValue);
-            if (board.isDailyDouble(chosenClueId)) {
-                startRevealingAnswer();
-            } else if (haveAllActivePlayersBuzzed()) {
-                startRevealingAnswer();
-            } else {
-                startWaitingForBuzzer();
-            }
+            startWaitingForBuzzer();
         }
 
-        // A correct answer takes control of the board from a chooser who left.
+        // The answerer's turn is over, so they're removed if they left; a
+        // correct answer also takes control from a chooser who left.
         removeDepartedPlayers();
     }
 

@@ -1,20 +1,40 @@
 package com.nickneim.jeopardy.session.model;
 
+import com.nickneim.jeopardy.session.answer.AnswerCheck;
+
 import java.util.List;
 
 /**
- * One player's answer to an ordinary clue or Daily Double. {@code answer} is
- * the text they submitted, or null if they ran out of time.
- * {@code phrasedAsQuestion} says whether it was phrased as a question (see
- * {@code AnswerCheck}), in every round; it's null when there's no answer.
- * {@code matchedAnswers} and {@code alsoAccepted} are set only for a correct
- * answer (see {@code AnswerCheck}).
+ * One player's answer to a clue, checked once when it's given. {@code answer}
+ * is the text they submitted; {@code check} is the result of checking it
+ * (see {@code AnswerCheck}). Both are null if they ran out of time.
  */
 public record ClueAnswer(
         Long playerId,
         String answer,
-        boolean correct,
-        Boolean phrasedAsQuestion,
-        List<String> matchedAnswers,
-        List<String> alsoAccepted
-) {}
+        AnswerCheck check
+) {
+
+    public static ClueAnswer timedOut(Long playerId) {
+        return new ClueAnswer(playerId, null, null);
+    }
+
+    public boolean correct() {
+        return check != null && check.correct();
+    }
+
+    /** Whether it was phrased as a question, in every round; null without an answer. */
+    public Boolean phrasedAsQuestion() {
+        return check == null ? null : check.phrasedAsQuestion();
+    }
+
+    /** Set only for a correct answer (see {@code AnswerCheck}). */
+    public List<String> matchedAnswers() {
+        return check == null ? null : check.matchedAnswers();
+    }
+
+    /** Set only for a correct answer (see {@code AnswerCheck}). */
+    public List<String> alsoAccepted() {
+        return check == null ? null : check.alsoAccepted();
+    }
+}

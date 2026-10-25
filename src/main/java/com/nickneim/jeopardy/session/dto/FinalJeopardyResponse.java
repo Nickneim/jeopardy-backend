@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.model.FinalJeopardy;
 import com.nickneim.jeopardy.session.model.GameSession;
 
 import java.util.List;
@@ -57,18 +58,19 @@ public record FinalJeopardyResponse(
             }
         }
 
-        BoardClue clue = session.getFinalJeopardyClue();
+        BoardClue clue = session.getBoard().getFinalJeopardyClue();
+        FinalJeopardy finalJeopardy = session.getFinalJeopardy();
 
         List<FinalJeopardyPlayerResponse> players = session.getPlayers()
                 .stream()
                 .map(player -> {
-                    AnswerCheck check = showResults ? session.checkFinalJeopardyAnswer(player.getId()) : null;
+                    AnswerCheck check = showResults ? finalJeopardy.check(player.getId()) : null;
                     return new FinalJeopardyPlayerResponse(
                             player.getId(),
-                            session.hasFinalJeopardyWager(player.getId()),
-                            session.hasFinalJeopardyAnswer(player.getId()),
-                            showResults ? session.getFinalJeopardyWager(player.getId()) : null,
-                            showResults ? session.getFinalJeopardyAnswer(player.getId()) : null,
+                            finalJeopardy.hasWager(player.getId()),
+                            finalJeopardy.hasAnswer(player.getId()),
+                            showResults ? finalJeopardy.getWager(player.getId()) : null,
+                            showResults ? finalJeopardy.getAnswer(player.getId()) : null,
                             showResults ? check != null && check.correct() : null,
                             check == null ? null : check.phrasedAsQuestion(),
                             check == null ? null : check.matchedAnswers(),
@@ -77,7 +79,7 @@ public record FinalJeopardyResponse(
                 })
                 .toList();
 
-        BoardCategory category = session.getFinalJeopardyCategory();
+        BoardCategory category = session.getBoard().getFinalJeopardyCategory();
 
         return new FinalJeopardyResponse(
                 category.name(),
