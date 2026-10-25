@@ -804,7 +804,7 @@ class GameSessionServiceTest {
                     GameSessionState.WAITING_FOR_ANSWER,
                     session.getState()
             );
-            assertNotNull(session.getPlayerWhoBuzzed());
+            assertNotNull(session.getPlayerAnswering());
         }
     }
 

@@ -321,7 +321,7 @@ class GameSessionTest {
 
         assertEquals(
                 player2.getId(),
-                session.getPlayerWhoBuzzed()
+                session.getPlayerAnswering()
         );
         assertEquals(
                 GameSessionState.WAITING_FOR_ANSWER,
@@ -380,7 +380,7 @@ class GameSessionTest {
         session.buzz(player2.getId());
 
         assertTrue(
-                session.getPlayersAlreadyBuzzed()
+                session.getPlayersLockedOut()
                         .contains(player2.getId())
         );
 
@@ -1220,7 +1220,7 @@ class GameSessionTest {
         assertEquals(GameErrorCode.NOT_YOUR_TURN, exception.getCode());
 
         session.buzz(player1.getId());
-        assertEquals(player1.getId(), session.getPlayerWhoBuzzed());
+        assertEquals(player1.getId(), session.getPlayerAnswering());
     }
 
     @Test
@@ -1259,11 +1259,11 @@ class GameSessionTest {
         session.chooseClue(player2.getId(), jeopardyClue2.id());
         session.finishRevealingClue();
 
-        assertTrue(session.getPlayersAlreadyBuzzed().isEmpty());
+        assertTrue(session.getPlayersLockedOut().isEmpty());
 
         session.buzz(player2.getId());
 
-        assertEquals(player2.getId(), session.getPlayerWhoBuzzed());
+        assertEquals(player2.getId(), session.getPlayerAnswering());
     }
 
     @Test

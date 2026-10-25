@@ -129,23 +129,15 @@ public class GameSession {
         return chosenClueId;
     }
 
-    public Set<Long> getPlayersAlreadyBuzzed() {
-        return Set.copyOf(playersAlreadyBuzzed);
-    }
-
     /** Clues of the current round that haven't been played yet. */
     public Set<Long> getAvailableClues() {
         Set<Long> available = new HashSet<>(board.getClueIds(round));
         available.removeAll(playedClues);
-        return Set.copyOf(available);
+        return Collections.unmodifiableSet(available);
     }
 
     public Set<Long> getPlayedClues() {
         return Set.copyOf(playedClues);
-    }
-
-    public Long getPlayerWhoBuzzed() {
-        return playerWhoBuzzed;
     }
 
     /** The player who must answer right now, or null if nobody is answering. */
@@ -382,14 +374,29 @@ public class GameSession {
             startRevealingAnswer();
         }
 
+        // Leaving usually doesn't change the state, so setState may not
+        // have run: a player who holds no role goes now.
         removeDepartedPlayers();
     }
 
     /** Ends the session for good. Nothing can happen in it afterwards. */
     public void close(SessionCloseReason reason) {
+        // Not through setState: the last broadcast shows everyone who was
+        // still there, including departed players who held a role.
         state = GameSessionState.CLOSED;
         closeReason = reason;
         clearPhaseTimer();
+    }
+
+    /**
+     * Every state change goes through here except closing. Roles only end
+     * along with a state change (an answer resolved, the clue rounds over),
+     * so departed players are removed here once they hold none. Change the
+     * chooser before the state change that goes with it.
+     */
+    private void setState(GameSessionState newState) {
+        state = newState;
+        removeDepartedPlayers();
     }
 
     /**
@@ -452,7 +459,7 @@ public class GameSession {
         if (newRound == GameRound.FINAL_JEOPARDY) {
             startFinalJeopardy();
         } else {
-            state = GameSessionState.CHOOSING_CLUE;
+            setState(GameSessionState.CHOOSING_CLUE);
         }
     }
 
@@ -497,12 +504,10 @@ public class GameSession {
     public void timeoutChoosingClue() {
         requirePhase(GameSessionState.CHOOSING_CLUE);
 
-        Set<Long> available = getAvailableClues();
-
         BoardClue clue = board.getRound(round)
                 .orElseThrow()
                 .clues()
-                .filter(candidate -> available.contains(candidate.id()))
+                .filter(candidate -> !playedClues.contains(candidate.id()))
                 // A stable sort, so on the same row the leftmost category wins.
                 .sorted(Comparator.comparingInt(BoardClue::row))
                 .findFirst()
@@ -512,7 +517,7 @@ public class GameSession {
     }
 
     private void startWaitingForDailyDoubleWager() {
-        state = GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER;
+        setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
     }
 
     public void placeDailyDoubleWager(Long playerId, int wager) {
@@ -552,7 +557,7 @@ public class GameSession {
     }
 
     private void startRevealingClue() {
-        state = GameSessionState.REVEALING_CLUE;
+        setState(GameSessionState.REVEALING_CLUE);
     }
 
     public void finishRevealingClue() {
@@ -561,9 +566,9 @@ public class GameSession {
         playersAlreadyBuzzed.clear();
 
         if (board.isDailyDouble(chosenClueId)) {
-            state = GameSessionState.WAITING_FOR_ANSWER;
+            setState(GameSessionState.WAITING_FOR_ANSWER);
         } else {
-            state = GameSessionState.WAITING_FOR_BUZZER;
+            setState(GameSessionState.WAITING_FOR_BUZZER);
         }
     }
 
@@ -577,29 +582,25 @@ public class GameSession {
         }
         playerWhoBuzzed = playerId;
         playersAlreadyBuzzed.add(playerId);
-        state = GameSessionState.WAITING_FOR_ANSWER;
+        setState(GameSessionState.WAITING_FOR_ANSWER);
     }
 
     private void startRevealingAnswer() {
-        state = GameSessionState.REVEALING_ANSWER;
+        setState(GameSessionState.REVEALING_ANSWER);
     }
 
     public void finishRevealingAnswer() {
         requirePhase(GameSessionState.REVEALING_ANSWER);
 
         if (!getAvailableClues().isEmpty()) {
-            state = GameSessionState.CHOOSING_CLUE;
+            setState(GameSessionState.CHOOSING_CLUE);
             return;
         }
 
         board.getNextRound(round).ifPresentOrElse(
                 this::enterRound,
-                () -> state = GameSessionState.FINISHED_GAME
+                () -> setState(GameSessionState.FINISHED_GAME)
         );
-
-        // Final Jeopardy and the end of the game have no chooser, so a
-        // chooser who left is removed now.
-        removeDepartedPlayers();
     }
 
     // -------------------------------------------------------------------------
@@ -613,7 +614,7 @@ public class GameSession {
         playedClues.add(clue.id());
         clueAnswers.clear();
         finalJeopardy = new FinalJeopardy();
-        state = GameSessionState.FINAL_JEOPARDY_WAGERING;
+        setState(GameSessionState.FINAL_JEOPARDY_WAGERING);
     }
 
     /** See {@link FinalJeopardy#placeWager} for the allowed wagers. */
@@ -631,7 +632,7 @@ public class GameSession {
 
         finalJeopardy.wagerZeroForMissing(players);
 
-        state = GameSessionState.FINAL_JEOPARDY_ANSWERING;
+        setState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
     }
 
     /** A player may change their answer until the answering phase ends. */
@@ -641,14 +642,14 @@ public class GameSession {
         }
         requireActivePlayer(playerId);
 
-        AnswerCheck check = answer == null ? null : checkAnswer(board.getFinalJeopardyClue(), answer);
+        AnswerCheck check = checkAnswer(board.getFinalJeopardyClue(), answer);
         finalJeopardy.answer(new ClueAnswer(playerId, answer, check));
     }
 
     public void timeoutFinalJeopardyAnswering() {
         requirePhase(GameSessionState.FINAL_JEOPARDY_ANSWERING);
 
-        state = GameSessionState.FINAL_JEOPARDY_REVEALING;
+        setState(GameSessionState.FINAL_JEOPARDY_REVEALING);
     }
 
     /** Applies every wager (no answer counts as wrong) and ends the game. */
@@ -657,7 +658,7 @@ public class GameSession {
 
         // Applied together, so the join score sees the final scores at once.
         changeScores(finalJeopardy.scoreChanges(players));
-        state = GameSessionState.FINISHED_GAME;
+        setState(GameSessionState.FINISHED_GAME);
     }
 
     private void changeScore(GameSessionPlayer player, int amount) {
@@ -707,7 +708,7 @@ public class GameSession {
     }
 
     private void startWaitingForBuzzer() {
-        state = GameSessionState.WAITING_FOR_BUZZER;
+        setState(GameSessionState.WAITING_FOR_BUZZER);
     }
 
     public void timeoutBuzzer() {
@@ -810,10 +811,6 @@ public class GameSession {
         } else {
             startWaitingForBuzzer();
         }
-
-        // The answerer's turn is over, so they're removed if they left; a
-        // correct answer also takes control from a chooser who left.
-        removeDepartedPlayers();
     }
 
 }
