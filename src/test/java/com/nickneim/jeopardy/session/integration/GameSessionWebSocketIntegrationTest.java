@@ -1270,7 +1270,7 @@ class GameSessionWebSocketIntegrationTest {
             awaitMessage(receivedMessages);
         }
 
-        assertEquals(lastWager, session.getFinalJeopardyWager(playerId));
+        assertEquals(lastWager, session.getFinalJeopardy().getWager(playerId));
     }
 
     @Test

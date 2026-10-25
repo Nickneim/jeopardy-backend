@@ -729,12 +729,12 @@ class GameSessionTest {
         session.answerFinalJeopardy(player1.getId(), "The American Revolution");
         session.answerFinalJeopardy(player2.getId(), "what's the american revolutoin");
 
-        assertFalse(session.isFinalJeopardyAnswerCorrect(player1.getId()));
-        assertEquals(new AnswerCheck(false, false, null, null), session.checkFinalJeopardyAnswer(player1.getId()));
-        assertTrue(session.isFinalJeopardyAnswerCorrect(player2.getId()));
+        assertFalse(session.getFinalJeopardy().isCorrect(player1.getId()));
+        assertEquals(new AnswerCheck(false, false, null, null), session.getFinalJeopardy().check(player1.getId()));
+        assertTrue(session.getFinalJeopardy().isCorrect(player2.getId()));
         assertEquals(
                 new AnswerCheck(true, true, List.of("The American Revolution"), List.of()),
-                session.checkFinalJeopardyAnswer(player2.getId())
+                session.getFinalJeopardy().check(player2.getId())
         );
     }
 
@@ -744,7 +744,7 @@ class GameSessionTest {
         session.timeoutFinalJeopardyWagering();
         session.timeoutFinalJeopardyAnswering();
 
-        assertNull(session.checkFinalJeopardyAnswer(player1.getId()));
+        assertNull(session.getFinalJeopardy().check(player1.getId()));
     }
 
 
@@ -1688,8 +1688,8 @@ class GameSessionTest {
     void finalJeopardy_showsCategoryAndClueFromTheBoard() {
         reachFinalJeopardy();
 
-        assertEquals("FINAL HISTORY", session.getFinalJeopardyCategory().name());
-        assertEquals(finalJeopardyClue, session.getFinalJeopardyClue());
+        assertEquals("FINAL HISTORY", session.getBoard().getFinalJeopardyCategory().name());
+        assertEquals(finalJeopardyClue, session.getBoard().getFinalJeopardyClue());
     }
 
     @Test
@@ -1735,10 +1735,10 @@ class GameSessionTest {
         assertInvalidFinalWager(player1, 1001);
 
         session.placeFinalJeopardyWager(player1.getId(), 0);
-        assertEquals(0, session.getFinalJeopardyWager(player1.getId()));
+        assertEquals(0, session.getFinalJeopardy().getWager(player1.getId()));
 
         session.placeFinalJeopardyWager(player1.getId(), 1000);
-        assertEquals(1000, session.getFinalJeopardyWager(player1.getId()));
+        assertEquals(1000, session.getFinalJeopardy().getWager(player1.getId()));
     }
 
     @Test
@@ -1752,8 +1752,8 @@ class GameSessionTest {
         session.placeFinalJeopardyWager(player1.getId(), 0);
         session.placeFinalJeopardyWager(player2.getId(), 0);
 
-        assertTrue(session.hasFinalJeopardyWager(player1.getId()));
-        assertTrue(session.hasFinalJeopardyWager(player2.getId()));
+        assertTrue(session.getFinalJeopardy().hasWager(player1.getId()));
+        assertTrue(session.getFinalJeopardy().hasWager(player2.getId()));
     }
 
     @Test
@@ -1764,7 +1764,7 @@ class GameSessionTest {
         session.placeFinalJeopardyWager(player1.getId(), 300);
         session.placeFinalJeopardyWager(player1.getId(), 500);
 
-        assertEquals(500, session.getFinalJeopardyWager(player1.getId()));
+        assertEquals(500, session.getFinalJeopardy().getWager(player1.getId()));
     }
 
     @Test
@@ -1809,9 +1809,9 @@ class GameSessionTest {
         session.timeoutFinalJeopardyWagering();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_ANSWERING, session.getState());
-        assertEquals(600, session.getFinalJeopardyWager(player1.getId()));
-        assertTrue(session.hasFinalJeopardyWager(player2.getId()));
-        assertEquals(0, session.getFinalJeopardyWager(player2.getId()));
+        assertEquals(600, session.getFinalJeopardy().getWager(player1.getId()));
+        assertTrue(session.getFinalJeopardy().hasWager(player2.getId()));
+        assertEquals(0, session.getFinalJeopardy().getWager(player2.getId()));
     }
 
     @Test
@@ -1847,8 +1847,8 @@ class GameSessionTest {
         session.answerFinalJeopardy(player1.getId(), "The Civil War");
         session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
 
-        assertEquals("What is the American Revolution?", session.getFinalJeopardyAnswer(player1.getId()));
-        assertTrue(session.isFinalJeopardyAnswerCorrect(player1.getId()));
+        assertEquals("What is the American Revolution?", session.getFinalJeopardy().getAnswer(player1.getId()));
+        assertTrue(session.getFinalJeopardy().isCorrect(player1.getId()));
     }
 
     @Test

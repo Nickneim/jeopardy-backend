@@ -1243,7 +1243,7 @@ class GameSessionServiceTest {
 
         gameSessionService.placeFinalJeopardyWager(session.getId(), PLAYER_ID, 100);
 
-        assertEquals(100, session.getFinalJeopardyWager(PLAYER_ID));
+        assertEquals(100, session.getFinalJeopardy().getWager(PLAYER_ID));
         verify(broadcaster).broadcast(session);
         verifyPhaseTimerUntouched();
     }
@@ -1257,7 +1257,7 @@ class GameSessionServiceTest {
 
         gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "Final answer");
 
-        assertEquals("Final answer", session.getFinalJeopardyAnswer(PLAYER_ID));
+        assertEquals("Final answer", session.getFinalJeopardy().getAnswer(PLAYER_ID));
         verify(broadcaster).broadcast(session);
         verifyPhaseTimerUntouched();
     }

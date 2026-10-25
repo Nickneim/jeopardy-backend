@@ -3,7 +3,6 @@ package com.nickneim.jeopardy.session.model;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
-import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
@@ -56,10 +55,7 @@ public class GameSession {
     // chosen and when Final Jeopardy starts, so it never holds stale entries.
     private final List<ClueAnswer> clueAnswers = new ArrayList<>();
 
-    // Final Jeopardy submissions, keyed by player id. They stay secret until
-    // FINAL_JEOPARDY_REVEALING; see GameSessionResponse.
-    private final Map<Long, Integer> finalJeopardyWagers = new HashMap<>();
-    private final Map<Long, ClueAnswer> finalJeopardyAnswers = new HashMap<>();
+    private FinalJeopardy finalJeopardy = new FinalJeopardy();
 
     public GameSession(SessionCode id, GameBoard board) {
         this(id, board, GameSessionTimeouts.defaults(), Instant.now());
@@ -394,8 +390,7 @@ public class GameSession {
             players.remove(player);
             playersAlreadyBuzzed.remove(playerId);
             clueAnswers.removeIf(answer -> answer.playerId().equals(playerId));
-            finalJeopardyWagers.remove(playerId);
-            finalJeopardyAnswers.remove(playerId);
+            finalJeopardy.remove(playerId);
 
             // Only possible once the rounds with a chooser are over.
             if (playerId.equals(playerChoosingClue)) {
@@ -581,41 +576,27 @@ public class GameSession {
     // -------------------------------------------------------------------------
 
     private void startFinalJeopardy() {
-        BoardClue clue = getFinalJeopardyClue();
+        BoardClue clue = board.getFinalJeopardyClue();
 
         chosenClueId = clue.id();
         playedClues.add(clue.id());
         clueAnswers.clear();
-        finalJeopardyWagers.clear();
-        finalJeopardyAnswers.clear();
+        finalJeopardy = new FinalJeopardy();
         state = GameSessionState.FINAL_JEOPARDY_WAGERING;
     }
 
-    /**
-     * Wagers go from 0 up to the player's score, so a player with a score of
-     * 0 or less can only wager 0 but still plays. A player may change their
-     * wager until the wagering phase ends.
-     */
+    /** See {@link FinalJeopardy#placeWager} for the allowed wagers. */
     public void placeFinalJeopardyWager(Long playerId, int wager) {
         if (state != GameSessionState.FINAL_JEOPARDY_WAGERING) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager on Final Jeopardy right now!");
         }
 
-        GameSessionPlayer player = requireActivePlayer(playerId);
-
-        int maximumWager = Math.max(0, player.getScore());
-        if (wager < 0 || wager > maximumWager) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
-        }
-
-        finalJeopardyWagers.put(playerId, wager);
+        finalJeopardy.placeWager(requireActivePlayer(playerId), wager);
     }
 
     /** Players who didn't wager in time wager 0. */
     public void timeoutFinalJeopardyWagering() {
-        for (GameSessionPlayer player : players) {
-            finalJeopardyWagers.putIfAbsent(player.getId(), 0);
-        }
+        finalJeopardy.wagerZeroForMissing(players);
 
         state = GameSessionState.FINAL_JEOPARDY_ANSWERING;
     }
@@ -627,8 +608,8 @@ public class GameSession {
         }
         requireActivePlayer(playerId);
 
-        AnswerCheck check = answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
-        finalJeopardyAnswers.put(playerId, new ClueAnswer(playerId, answer, check));
+        AnswerCheck check = answer == null ? null : checkAnswer(board.getFinalJeopardyClue(), answer);
+        finalJeopardy.answer(new ClueAnswer(playerId, answer, check));
     }
 
     public void timeoutFinalJeopardyAnswering() {
@@ -638,15 +619,7 @@ public class GameSession {
     /** Applies every wager (no answer counts as wrong) and ends the game. */
     public void finishFinalJeopardyReveal() {
         // Applied together, so the join score sees the final scores at once.
-        Map<GameSessionPlayer, Integer> changes = new LinkedHashMap<>();
-
-        for (GameSessionPlayer player : players) {
-            int wager = getFinalJeopardyWager(player.getId());
-
-            changes.put(player, isFinalJeopardyAnswerCorrect(player.getId()) ? wager : -wager);
-        }
-
-        changeScores(changes);
+        changeScores(finalJeopardy.scoreChanges(players));
         state = GameSessionState.FINISHED_GAME;
     }
 
@@ -691,51 +664,9 @@ public class GameSession {
         }
     }
 
-    /** The Final Jeopardy category, or null if the board has none. */
-    public BoardCategory getFinalJeopardyCategory() {
-        return board.getRound(GameRound.FINAL_JEOPARDY)
-                .flatMap(finalRound -> finalRound.categories()
-                        .stream()
-                        .filter(category -> !category.clues().isEmpty())
-                        .findFirst())
-                .orElse(null);
-    }
-
-    public BoardClue getFinalJeopardyClue() {
-        BoardCategory category = getFinalJeopardyCategory();
-
-        return category == null ? null : category.clues().getFirst();
-    }
-
-    public boolean hasFinalJeopardyWager(Long playerId) {
-        return finalJeopardyWagers.containsKey(playerId);
-    }
-
-    public boolean hasFinalJeopardyAnswer(Long playerId) {
-        return finalJeopardyAnswers.containsKey(playerId);
-    }
-
-    public int getFinalJeopardyWager(Long playerId) {
-        return finalJeopardyWagers.getOrDefault(playerId, 0);
-    }
-
-    public String getFinalJeopardyAnswer(Long playerId) {
-        ClueAnswer answer = finalJeopardyAnswers.get(playerId);
-
-        return answer == null ? null : answer.answer();
-    }
-
-    public boolean isFinalJeopardyAnswerCorrect(Long playerId) {
-        AnswerCheck check = checkFinalJeopardyAnswer(playerId);
-
-        return check != null && check.correct();
-    }
-
-    /** The check of the player's Final Jeopardy answer, made when they gave it; null without an answer. */
-    public AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
-        ClueAnswer answer = finalJeopardyAnswers.get(playerId);
-
-        return answer == null ? null : answer.check();
+    /** What has been submitted for Final Jeopardy (nothing before it starts). */
+    public FinalJeopardy getFinalJeopardy() {
+        return finalJeopardy;
     }
 
     private void startWaitingForBuzzer() {
