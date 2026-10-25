@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.exception;
 
-import com.nickneim.jeopardy.game.dto.ApiErrorResponse;
+import com.nickneim.jeopardy.dto.ApiErrorResponse;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;

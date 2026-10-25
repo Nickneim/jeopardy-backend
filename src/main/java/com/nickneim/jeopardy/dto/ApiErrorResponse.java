@@ -1,4 +1,4 @@
-package com.nickneim.jeopardy.game.dto;
+package com.nickneim.jeopardy.dto;
 
 public record ApiErrorResponse(
         int status,

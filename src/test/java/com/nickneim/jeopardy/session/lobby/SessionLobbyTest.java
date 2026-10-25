@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.session.lobby;
 
-import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.model.GameSessionState;

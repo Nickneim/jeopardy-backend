@@ -6,7 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
-import com.nickneim.jeopardy.game.dto.PageResponse;
+import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
