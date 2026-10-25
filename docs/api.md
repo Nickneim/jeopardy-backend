@@ -61,7 +61,7 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 |---|---|---|
 | `page` | `0` | ≥ 0 (0-based) |
 | `size` | `20` | 1–100 |
-| `season` | (none) | Optional exact filter, for example `"40"` (values from `GET /api/games/seasons`) |
+| `season` | (none) | Optional exact filter, for example `"40"` (values from `GET /api/games/seasons`). Empty or blank means no filter. |
 | `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Empty or blank means no filter. |
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
@@ -655,7 +655,7 @@ interface GameResponse {
   jeopardyRound: GameCategoryResponse[];
   doubleJeopardyRound: GameCategoryResponse[];
   finalJeopardy: GameCategoryResponse | null;
-  dailyDoubleClueIds: number[];
+  dailyDoubleClueIds: number[];  // sorted by clue id
 }
 
 interface ClueResponse {

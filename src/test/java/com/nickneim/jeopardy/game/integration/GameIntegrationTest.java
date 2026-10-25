@@ -4,6 +4,12 @@ import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
+import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.Clue;
+import com.nickneim.jeopardy.game.entity.ClueType;
+import com.nickneim.jeopardy.game.entity.Game;
+import com.nickneim.jeopardy.game.entity.GameDailyDouble;
+import com.nickneim.jeopardy.game.repository.GameRepository;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -15,6 +21,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +44,32 @@ class GameIntegrationTest {
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
+    @Autowired
+    private GameRepository gameRepository;
+
+    @Test
+    void getGame_returnsSavedDailyDoublesInClueIdOrder() {
+        Game game = new Game("Game Integration Test Game Saved", LocalDate.of(2025, 3, 1), "40");
+        Category category = new Category("SAVED", (short) 1, null, game);
+        Clue first = new Clue("First", "Answer", (short) 1, ClueType.TEXT, null, category);
+        Clue second = new Clue("Second", "Answer", (short) 2, ClueType.TEXT, null, category);
+        category.getClues().addAll(List.of(first, second));
+        game.getCategories().add(category);
+        // Inserted in reverse, so the table's order isn't the clue id order.
+        game.getDailyDoubles().add(new GameDailyDouble(game, second));
+        game.getDailyDoubles().add(new GameDailyDouble(game, first));
+
+        Long id = gameRepository.save(game).getId();
+
+        restTestClient.get()
+                .uri("/api/games/{id}", id)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(GameResponse.class)
+                .value(body -> assertThat(body.dailyDoubleClueIds())
+                        .containsExactly(first.getId(), second.getId()));
+    }
 
     @Test
     void getGame_returnsGameFromDatabase() {
@@ -231,6 +264,29 @@ class GameIntegrationTest {
         // As wildcards, both would match every game.
         assertThat(titlesOf("/api/games?title={title}", "Game%Test")).isEmpty();
         assertThat(titlesOf("/api/games?title={title}", "Game_Integration")).isEmpty();
+    }
+
+    @Test
+    void getGames_matchesTitleCaseInsensitivelyBeyondAscii() {
+        gameRepository.save(new Game(
+                "Game Integration Test Game İstanbul",
+                LocalDate.of(2025, 3, 1),
+                "40"
+        ));
+
+        assertThat(titlesOf("/api/games?title={title}", "İSTANBUL"))
+                .containsExactly("Game Integration Test Game İstanbul");
+    }
+
+    @Test
+    void getGames_ignoresBlankSeason() {
+        restTestClient.get()
+                .uri("/api/games?season=")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .value(body -> assertThat(body.totalElements()).isEqualTo(25));
     }
 
     @Test

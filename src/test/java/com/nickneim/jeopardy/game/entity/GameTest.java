@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -73,7 +72,11 @@ class GameTest {
     }
 
     @Test
-    void getDailyDoubleClues_returnsOnlyDailyDoubleClues() {
-        assertEquals(List.of(dailyDoubleClue), game.getDailyDoubleClues());
+    void newDailyDouble_hasTheGameAndClueIds() {
+        ReflectionTestUtils.setField(game, "id", 7L);
+
+        GameDailyDouble dailyDouble = new GameDailyDouble(game, dailyDoubleClue);
+
+        assertEquals(new GameDailyDoubleId(7L, 102L), dailyDouble.getId());
     }
 }

@@ -16,6 +16,12 @@ class GameFilterTest {
     }
 
     @Test
+    void blankSeasonMeansNoSeasonFilter() {
+        assertNull(new GameFilter("", null, null, null, null).season());
+        assertNull(new GameFilter("   ", null, null, null, null).season());
+    }
+
+    @Test
     void keepsTitleAsGiven() {
         assertEquals(" Show ", new GameFilter(null, " Show ", null, null, null).title());
     }

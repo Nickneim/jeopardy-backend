@@ -1,12 +1,13 @@
 package com.nickneim.jeopardy.game.dto;
 
-import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Game;
-import com.nickneim.jeopardy.game.entity.GameDailyDouble;
-import com.nickneim.jeopardy.game.service.GameService;
+import com.nickneim.jeopardy.game.entity.GameRound;
 
 import java.time.LocalDate;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public record GameResponse(
         Long id,
@@ -21,23 +22,31 @@ public record GameResponse(
 ) {
 
     public static GameResponse from(Game game) {
+        // Categories come ordered by column, and each round keeps that order.
+        Map<GameRound, List<GameCategoryResponse>> rounds = game.getCategories()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        category -> GameRound.fromColumn(category.getColumnNumber()),
+                        () -> new EnumMap<>(GameRound.class),
+                        Collectors.mapping(GameCategoryResponse::from, Collectors.toList())
+                ));
 
-        List<GameCategoryResponse> jeopardyRound = game.getCategories().stream().filter(Category::isJeopardyRound).map(GameCategoryResponse::from).toList();
-        List<GameCategoryResponse> doubleJeopardyRound = game.getCategories().stream().filter(Category::isDoubleJeopardyRound).map(GameCategoryResponse::from).toList();
-        GameCategoryResponse finalJeopardy = game.getCategories().stream().filter(Category::isFinalJeopardy).map(GameCategoryResponse::from).findFirst().orElse(null);
-
-        List<Long> dailyDoubleClueIds = game.getDailyDoubles().stream().map(
-                gameDailyDouble -> { return gameDailyDouble.getClue().getId(); }
-        ).toList();
+        List<Long> dailyDoubleClueIds = game.getDailyDoubles()
+                .stream()
+                .map(dailyDouble -> dailyDouble.getClue().getId())
+                .toList();
 
         return new GameResponse(
                 game.getId(),
                 game.getTitle(),
                 game.getGameDate(),
                 game.getSeason(),
-                jeopardyRound,
-                doubleJeopardyRound,
-                finalJeopardy,
+                rounds.getOrDefault(GameRound.JEOPARDY, List.of()),
+                rounds.getOrDefault(GameRound.DOUBLE_JEOPARDY, List.of()),
+                rounds.getOrDefault(GameRound.FINAL_JEOPARDY, List.of())
+                        .stream()
+                        .findFirst()
+                        .orElse(null),
                 dailyDoubleClueIds
         );
     }

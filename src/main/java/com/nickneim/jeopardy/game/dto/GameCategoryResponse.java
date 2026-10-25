@@ -1,7 +1,6 @@
 package com.nickneim.jeopardy.game.dto;
 
 import com.nickneim.jeopardy.game.entity.Category;
-import com.nickneim.jeopardy.game.service.GameService;
 
 import java.util.List;
 

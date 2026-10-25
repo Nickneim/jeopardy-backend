@@ -59,6 +59,7 @@ public class Game {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @OrderBy("id.clueId ASC")
     private List<GameDailyDouble> dailyDoubles = new ArrayList<>();
 
     public List<Category> getCategories() {
@@ -72,11 +73,5 @@ public class Game {
     public boolean isDailyDouble(Long clueId) {
         return dailyDoubles.stream()
                 .anyMatch(dailyDouble -> dailyDouble.getClue().getId().equals(clueId));
-    }
-
-    public List<Clue> getDailyDoubleClues() {
-        return dailyDoubles.stream()
-                .map(GameDailyDouble::getClue)
-                .toList();
     }
 }

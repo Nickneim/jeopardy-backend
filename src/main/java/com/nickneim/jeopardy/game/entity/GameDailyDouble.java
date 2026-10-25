@@ -23,6 +23,8 @@ public class GameDailyDouble {
     }
 
     public GameDailyDouble(Game game, Clue clue) {
+        // @MapsId fills in ids that aren't generated yet when this is saved.
+        this.id = new GameDailyDoubleId(game.getId(), clue.getId());
         this.game = game;
         this.clue = clue;
     }

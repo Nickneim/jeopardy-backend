@@ -10,7 +10,6 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 final class GameSpecifications {
 
@@ -68,12 +67,17 @@ final class GameSpecifications {
     }
 
     // Case-insensitive substring match. %, _ and \ in the search text match
-    // themselves instead of acting as wildcards.
+    // themselves instead of acting as wildcards. The database lowercases both
+    // sides, since its lower() and Java's toLowerCase disagree on some
+    // characters (Java turns İ into two).
     private static Specification<Game> titleContains(String text) {
-        String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
+        String pattern = "%" + escapeLike(text) + "%";
 
-        return (game, query, builder) ->
-                builder.like(builder.lower(game.get("title")), pattern, LIKE_ESCAPE);
+        return (game, query, builder) -> builder.like(
+                builder.lower(game.get("title")),
+                builder.lower(builder.literal(pattern)),
+                LIKE_ESCAPE
+        );
     }
 
     private static Specification<Game> playedOnOrAfter(LocalDate from) {

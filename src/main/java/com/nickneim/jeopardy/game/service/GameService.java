@@ -2,7 +2,7 @@ package com.nickneim.jeopardy.game.service;
 
 
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
-import com.nickneim.jeopardy.game.dto.*;
+import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.repository.GameRepository;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
