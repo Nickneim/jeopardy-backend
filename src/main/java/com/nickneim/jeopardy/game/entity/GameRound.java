@@ -6,6 +6,9 @@ public enum GameRound {
     FINAL_JEOPARDY;
 
     public static GameRound fromColumn(short column) {
+        if (column < 1) {
+            throw new IllegalArgumentException("Invalid category column: " + column);
+        }
         if (column <= 6) {
             return JEOPARDY;
         }

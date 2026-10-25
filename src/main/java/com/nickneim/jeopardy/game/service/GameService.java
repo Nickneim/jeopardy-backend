@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -43,6 +44,15 @@ public class GameService {
     public Game getGame(Long id) {
         return gameRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
+    }
+
+    /**
+     * The whole game, for GET /api/games/{id}. The response reads the game's
+     * lazy collections, so it's built inside this transaction.
+     */
+    @Transactional(readOnly = true)
+    public GameResponse getGameResponse(Long id) {
+        return GameResponse.from(getGame(id));
     }
 
     public Page<Game> getGames(int page, int size, GameFilter filter) {

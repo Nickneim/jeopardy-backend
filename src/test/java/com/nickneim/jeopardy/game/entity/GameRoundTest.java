@@ -30,4 +30,12 @@ class GameRoundTest {
                 () -> GameRound.fromColumn((short) 14)
         );
     }
+
+    @Test
+    void fromColumn_rejectsColumnBeforeTheFirst() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> GameRound.fromColumn((short) 0)
+        );
+    }
 }

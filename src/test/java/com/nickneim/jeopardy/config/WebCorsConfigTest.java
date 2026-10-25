@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.config;
 
 import com.nickneim.jeopardy.game.controller.GameController;
+import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.controller.GameSessionController;
@@ -50,8 +51,8 @@ class WebCorsConfigTest {
 
     @Test
     void getFromTheFrontend_isAllowed() throws Exception {
-        when(gameService.getGame(1L))
-                .thenReturn(new Game("Show #1", LocalDate.of(2025, 1, 1), "40"));
+        when(gameService.getGameResponse(1L))
+                .thenReturn(GameResponse.from(new Game("Show #1", LocalDate.of(2025, 1, 1), "40")));
 
         mockMvc.perform(get("/api/games/1")
                         .header("Origin", FRONTEND))

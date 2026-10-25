@@ -15,6 +15,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    # No lazy loading outside a transaction: services build every response
+    # that reads lazy associations inside a read-only one.
+    open-in-view: false
 
   # Spring's default error body (for errors ApiExceptionHandler doesn't
   # handle) must not expose internals. These are already Spring's defaults,

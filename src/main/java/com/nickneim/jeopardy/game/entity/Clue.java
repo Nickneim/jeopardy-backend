@@ -89,20 +89,18 @@ public class Clue {
     }
 
     public int getValue() {
-        short column = category.getColumnNumber();
-        short row = rowNumber;
-        if (column <= 6) {
-            return 200 * row;
-        }
-
-        if (column <= 12) {
-            return 400 * row;
-        }
-
-        return 2000;
+        return switch (getRound()) {
+            case JEOPARDY -> 200 * rowNumber;
+            case DOUBLE_JEOPARDY -> 400 * rowNumber;
+            case FINAL_JEOPARDY -> 2000;
+        };
     }
 
     public boolean isFinalClue() {
-        return category.getColumnNumber() == 13;
+        return getRound() == GameRound.FINAL_JEOPARDY;
+    }
+
+    private GameRound getRound() {
+        return GameRound.fromColumn(category.getColumnNumber());
     }
 }

@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.game.controller;
 
+import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
@@ -117,8 +118,8 @@ class GameControllerTest {
         ReflectionTestUtils.setField(doubleJeopardyClue, "id", 1002L);
         ReflectionTestUtils.setField(finalClue, "id", 1003L);
 
-        when(gameService.getGame(123L))
-                .thenReturn(game);
+        when(gameService.getGameResponse(123L))
+                .thenReturn(GameResponse.from(game));
 
         mockMvc.perform(get("/api/games/123"))
                 .andExpect(status().isOk())
@@ -184,13 +185,13 @@ class GameControllerTest {
                     }
                     """));
 
-        verify(gameService).getGame(123L);
+        verify(gameService).getGameResponse(123L);
     }
 
 
     @Test
     void getGame_returnsNotFoundWhenGameDoesNotExist() throws Exception {
-        when(gameService.getGame(999L))
+        when(gameService.getGameResponse(999L))
                 .thenThrow(new GameNotFoundException(999L));
 
         mockMvc.perform(get("/api/games/999"))
@@ -202,7 +203,7 @@ class GameControllerTest {
                     }
                     """));
 
-        verify(gameService).getGame(999L);
+        verify(gameService).getGameResponse(999L);
     }
 
     @Test

@@ -31,7 +31,7 @@ public class GameController {
 
     @GetMapping("/{id}")
     public GameResponse getGame(@PathVariable Long id) {
-        return GameResponse.from(gameService.getGame(id));
+        return gameService.getGameResponse(id);
     }
 
     @GetMapping("/seasons")

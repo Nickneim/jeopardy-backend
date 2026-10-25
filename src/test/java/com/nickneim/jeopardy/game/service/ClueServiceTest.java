@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.game.service;
 
+import com.nickneim.jeopardy.game.dto.ClueResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
@@ -56,9 +57,9 @@ class ClueServiceTest {
                 .thenReturn(Optional.of(clue));
 
 
-        Clue returnedClue = clueService.getClue(123L);
+        ClueResponse returnedClue = clueService.getClue(123L);
 
-        assertEquals(clue, returnedClue);
+        assertEquals(ClueResponse.from(clue), returnedClue);
 
         verify(clueRepository).findById(123L);
     }

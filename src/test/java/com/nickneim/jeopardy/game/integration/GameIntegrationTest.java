@@ -4,6 +4,9 @@ import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -31,6 +34,9 @@ class GameIntegrationTest {
 
     @Autowired
     private RestTestClient restTestClient;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     void getGame_returnsGameFromDatabase() {
@@ -79,6 +85,28 @@ class GameIntegrationTest {
                     assertThat(body.dailyDoubleClueIds())
                             .containsExactly(scienceClueId);
                 });
+    }
+
+    @Test
+    void getGame_loadsEveryCategorysCluesInOneQuery() {
+        Statistics statistics = entityManagerFactory
+                .unwrap(SessionFactory.class)
+                .getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        try {
+            restTestClient.get()
+                    .uri("/api/games/1")
+                    .exchange()
+                    .expectStatus().isOk();
+
+            // The game, its categories, their clues (one batch for all four
+            // categories) and its Daily Doubles.
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(4);
+        } finally {
+            statistics.setStatisticsEnabled(false);
+        }
     }
 
     @Test

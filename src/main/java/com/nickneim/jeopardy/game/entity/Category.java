@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.game.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,9 @@ public class Category {
             orphanRemoval = true
     )
     @OrderBy("rowNumber ASC")
+    // Loads the clues of every category of a game in one query instead of
+    // one per category (a game has at most 13).
+    @BatchSize(size = 13)
     private List<Clue> clues = new ArrayList<>();
 
     protected Category() {

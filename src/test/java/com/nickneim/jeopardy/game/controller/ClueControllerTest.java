@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.game.controller;
 
+import com.nickneim.jeopardy.game.dto.ClueResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
@@ -59,7 +60,7 @@ class ClueControllerTest {
         ReflectionTestUtils.setField(clue, "id", 123L);
 
         when(clueService.getClue(123L))
-                .thenReturn(clue);
+                .thenReturn(ClueResponse.from(clue));
 
         mockMvc.perform(get("/api/clues/123"))
                 .andExpect(status().isOk())

@@ -33,6 +33,12 @@ class ClueTest {
     }
 
     @Test
+    void getValue_rejectsColumnOutsideTheBoard() {
+        assertThrows(IllegalArgumentException.class, () -> clueAt(14, 1).getValue());
+        assertThrows(IllegalArgumentException.class, () -> clueAt(0, 1).getValue());
+    }
+
+    @Test
     void isFinalClue_isTrueOnlyForColumn13() {
         assertTrue(clueAt(13, 1).isFinalClue());
         assertFalse(clueAt(12, 1).isFinalClue());

@@ -19,6 +19,6 @@ public class ClueController {
 
     @GetMapping("/{id}")
     public ClueResponse getClue(@PathVariable Long id) {
-        return ClueResponse.from(clueService.getClue(id));
+        return clueService.getClue(id);
     }
 }
