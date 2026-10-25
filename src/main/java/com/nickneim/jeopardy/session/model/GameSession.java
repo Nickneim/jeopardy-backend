@@ -59,7 +59,7 @@ public class GameSession {
     // Final Jeopardy submissions, keyed by player id. They stay secret until
     // FINAL_JEOPARDY_REVEALING; see GameSessionResponse.
     private final Map<Long, Integer> finalJeopardyWagers = new HashMap<>();
-    private final Map<Long, String> finalJeopardyAnswers = new HashMap<>();
+    private final Map<Long, ClueAnswer> finalJeopardyAnswers = new HashMap<>();
 
     public GameSession(SessionCode id, GameBoard board) {
         this(id, board, GameSessionTimeouts.defaults(), Instant.now());
@@ -627,7 +627,8 @@ public class GameSession {
         }
         requireActivePlayer(playerId);
 
-        finalJeopardyAnswers.put(playerId, answer);
+        AnswerCheck check = answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
+        finalJeopardyAnswers.put(playerId, new ClueAnswer(playerId, answer, check));
     }
 
     public void timeoutFinalJeopardyAnswering() {
@@ -719,7 +720,9 @@ public class GameSession {
     }
 
     public String getFinalJeopardyAnswer(Long playerId) {
-        return finalJeopardyAnswers.get(playerId);
+        ClueAnswer answer = finalJeopardyAnswers.get(playerId);
+
+        return answer == null ? null : answer.answer();
     }
 
     public boolean isFinalJeopardyAnswerCorrect(Long playerId) {
@@ -728,11 +731,11 @@ public class GameSession {
         return check != null && check.correct();
     }
 
-    /** The check of the player's Final Jeopardy answer; null without an answer. */
+    /** The check of the player's Final Jeopardy answer, made when they gave it; null without an answer. */
     public AnswerCheck checkFinalJeopardyAnswer(Long playerId) {
-        String answer = finalJeopardyAnswers.get(playerId);
+        ClueAnswer answer = finalJeopardyAnswers.get(playerId);
 
-        return answer == null ? null : checkAnswer(getFinalJeopardyClue(), answer);
+        return answer == null ? null : answer.check();
     }
 
     private void startWaitingForBuzzer() {
@@ -744,7 +747,7 @@ public class GameSession {
     }
 
     public void timeoutAnswer() {
-        resolveAnswer(new ClueAnswer(playerWhoBuzzed, null, false, null, null, null));
+        resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
     }
 
     /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
@@ -803,8 +806,7 @@ public class GameSession {
         }
 
         AnswerCheck check = checkAnswer(board.getClue(chosenClueId), answer);
-        resolveAnswer(new ClueAnswer(
-                playerId, answer, check.correct(), check.phrasedAsQuestion(), check.matchedAnswers(), check.alsoAccepted()));
+        resolveAnswer(new ClueAnswer(playerId, answer, check));
     }
 
     /**

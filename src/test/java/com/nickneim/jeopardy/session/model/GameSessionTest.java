@@ -682,7 +682,7 @@ class GameSessionTest {
 
         assertEquals(200, player2.getScore());
         assertEquals(
-                new ClueAnswer(player2.getId(), "washingtn george", true, false, List.of("George Washington"), List.of()),
+                new ClueAnswer(player2.getId(), "washingtn george", new AnswerCheck(true, false, List.of("George Washington"), List.of())),
                 session.getClueAnswers().getFirst()
         );
     }
@@ -699,7 +699,7 @@ class GameSessionTest {
 
         assertEquals(-400, player2.getScore());
         assertEquals(
-                new ClueAnswer(player2.getId(), "Mars", false, false, null, null),
+                new ClueAnswer(player2.getId(), "Mars", new AnswerCheck(false, false, null, null)),
                 session.getClueAnswers().getFirst()
         );
     }
@@ -716,7 +716,7 @@ class GameSessionTest {
 
         assertEquals(400, player2.getScore());
         assertEquals(
-                new ClueAnswer(player2.getId(), "waht is Mars", true, true, List.of("Mars"), List.of()),
+                new ClueAnswer(player2.getId(), "waht is Mars", new AnswerCheck(true, true, List.of("Mars"), List.of())),
                 session.getClueAnswers().getFirst()
         );
     }
@@ -1599,7 +1599,7 @@ class GameSessionTest {
 
         assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "Abraham Lincoln", false, false, null, null)),
+                List.of(new ClueAnswer(player1.getId(), "Abraham Lincoln", new AnswerCheck(false, false, null, null))),
                 session.getClueAnswers()
         );
 
@@ -1611,8 +1611,8 @@ class GameSessionTest {
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
         assertEquals(
                 List.of(
-                        new ClueAnswer(player1.getId(), "Abraham Lincoln", false, false, null, null),
-                        new ClueAnswer(player2.getId(), "George Washington", true, false, List.of("George Washington"), List.of())
+                        new ClueAnswer(player1.getId(), "Abraham Lincoln", new AnswerCheck(false, false, null, null)),
+                        new ClueAnswer(player2.getId(), "George Washington", new AnswerCheck(true, false, List.of("George Washington"), List.of()))
                 ),
                 session.getClueAnswers()
         );
@@ -1627,7 +1627,7 @@ class GameSessionTest {
         session.timeoutAnswer();
 
         assertEquals(
-                List.of(new ClueAnswer(player2.getId(), null, false, null, null, null)),
+                List.of(ClueAnswer.timedOut(player2.getId())),
                 session.getClueAnswers()
         );
     }
@@ -1640,7 +1640,7 @@ class GameSessionTest {
         session.answerClue(player1.getId(), "Thomas Jefferson");
 
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "Thomas Jefferson", false, false, null, null)),
+                List.of(new ClueAnswer(player1.getId(), "Thomas Jefferson", new AnswerCheck(false, false, null, null))),
                 session.getClueAnswers()
         );
     }
@@ -1656,7 +1656,7 @@ class GameSessionTest {
 
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
         assertEquals(
-                List.of(new ClueAnswer(player1.getId(), "George Washington", true, false, List.of("George Washington"), List.of())),
+                List.of(new ClueAnswer(player1.getId(), "George Washington", new AnswerCheck(true, false, List.of("George Washington"), List.of()))),
                 session.getClueAnswers()
         );
 
