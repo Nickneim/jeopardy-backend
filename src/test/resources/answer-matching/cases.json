@@ -449,6 +449,63 @@
       "reject": ["MMII", "MCMI"]
     },
     {
+      "answer": "Henry VIII",
+      "note": "Roman numerals must match exactly, like numbers: 'VII' is one letter from 'VIII' but another king.",
+      "accept": ["Henry VIII", "henry viii", "Henery VIII"],
+      "reject": ["Henry VII", "Henry VIIII", "Henry"]
+    },
+    {
+      "answer": "Louis XVIII",
+      "accept": ["Louis XVIII", "Luois XVIII"],
+      "reject": ["Louis XVII", "Louis XVI"]
+    },
+    {
+      "answer": "Super Bowl XXXIII",
+      "accept": ["Super Bowl XXXIII", "superbowl XXXIII"],
+      "reject": ["Super Bowl XXXII", "Super Bowl XXIII"]
+    },
+    {
+      "answer": "Vitamin A",
+      "note": "An 'a' after a word at the end (or before a comma) is the letter, not the article, so it must be said.",
+      "accept": ["Vitamin A", "vitamin a", "Vitamen A"],
+      "reject": ["Vitamin C", "vitamin B", "Vitamin"]
+    },
+    {
+      "answer": "hepatitis A",
+      "accept": ["Hepatitis A", "hepatitus A"],
+      "reject": ["Hepatitis B", "hepatitis"]
+    },
+    {
+      "answer": "Type A",
+      "accept": ["Type A", "a type A"],
+      "reject": ["Type B", "type"]
+    },
+    {
+      "answer": "Washington",
+      "note": "A word the answer doesn't have is wrong even when it's short: the allowance for spacing typos is that of the shortest word on either side.",
+      "accept": ["Washington", "Washingtn", "Washing ton"],
+      "reject": ["Washington DC", "Washington D.C.", "George Washington"]
+    },
+    {
+      "answer": "@",
+      "note": "An answer that is only a symbol ignores quotes and sentence punctuation around it.",
+      "accept": ["@", "@?", "\"@\""],
+      "reject": ["#", "@@"]
+    },
+    {
+      "answer": "@",
+      "round": "DOUBLE_JEOPARDY",
+      "accept": ["What is @?", "What is \"@\"?"],
+      "reject": ["@", "@?"]
+    },
+    {
+      "answer": "(1 of) who's | they're",
+      "round": "DOUBLE_JEOPARDY",
+      "note": "Only a wording that is itself a question can be said bare, and 'who's' alone isn't one (nothing follows the question form).",
+      "accept": ["What is who's?", "What is they're?"],
+      "reject": ["they're", "who's"]
+    },
+    {
       "answer": "bear/bare",
       "note": "A slash means either side (but not in a fraction like 8/12).",
       "accept": ["bear", "bare", "bear/bare"],

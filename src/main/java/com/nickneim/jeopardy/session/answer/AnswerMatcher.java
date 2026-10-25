@@ -18,7 +18,7 @@ import java.util.Optional;
  *
  * <p>When the question form is required (Double and Final Jeopardy), the
  * response must start with one ("What is ...", see {@link QuestionForm}),
- * unless the answer is itself a question and the response says it bare. When
+ * unless it starts with a wording that is itself a question, said bare. When
  * it isn't required, a question form is still allowed and ignored.
  */
 public final class AnswerMatcher {
@@ -41,17 +41,29 @@ public final class AnswerMatcher {
         if (afterQuestion.isPresent()) {
             List<Named> named = expected.match(AnswerText.wholeTokens(afterQuestion.get()));
             // "Who's the Boss?" for "Who's the Boss?": the question form is part of the answer.
-            if (named == null && (!questionRequired || expected.question())) {
-                named = expected.match(AnswerText.wholeTokens(response));
+            if (named == null) {
+                List<Named> saidAsItIs = expected.match(AnswerText.wholeTokens(response));
+                if (!questionRequired || startsWithQuestion(saidAsItIs)) {
+                    named = saidAsItIs;
+                }
             }
             return result(expected, named, true);
         }
 
-        // Said bare. An answer that is itself a question ("Who's the Boss?"),
-        // said as it is, counts as phrased as one.
+        // Said bare. A response that starts with a wording that is itself a
+        // question ("Who's the Boss?"), said as it is, counts as phrased as one.
         List<Named> saidAsItIs = expected.match(AnswerText.wholeTokens(response));
-        boolean phrasedAsQuestion = expected.question() && saidAsItIs != null;
+        boolean phrasedAsQuestion = startsWithQuestion(saidAsItIs);
         return result(expected, !questionRequired || phrasedAsQuestion ? saidAsItIs : null, phrasedAsQuestion);
+    }
+
+    /**
+     * True if the first option a response names is worded as a question, so
+     * the response starts with one ("Who's the Boss? and Taxi", not "Taxi"
+     * alone, for "(1 of) Who's the Boss? | Taxi").
+     */
+    private static boolean startsWithQuestion(List<Named> named) {
+        return named != null && named.getFirst().question();
     }
 
     private static AnswerCheck result(ExpectedAnswer expected, List<Named> named, boolean phrasedAsQuestion) {

@@ -24,15 +24,14 @@ import java.util.regex.Pattern;
  * either way. Words in parentheses are optional,
  * one by one, but an option always needs its words outside them:
  * "(Abraham) Lincoln" accepts "Lincoln" and "Abraham Lincoln", not "Abraham".
- *
- * @param question whether the answer is itself a question ("Who's the Boss?"),
- *                 which counts as the question form when said bare
  */
-record ExpectedAnswer(int required, List<Option> options, boolean question) {
+record ExpectedAnswer(int required, List<Option> options) {
 
     private static final Pattern LIST = Pattern.compile("^\\s*\\((\\d+) of\\)\\s*(.*)$", Pattern.DOTALL);
     // Longer responses are never right, and the cost of matching grows with length.
     private static final int MAX_RESPONSE_TOKENS = 60;
+    // Sets of options match() keeps per position in the response.
+    private static final int MAX_MASKS = 256;
 
     static ExpectedAnswer parse(String answer) {
         int required = 1;
@@ -49,13 +48,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                 .filter(option -> !option.variants().isEmpty())
                 .toList();
 
-        return new ExpectedAnswer(
-                Math.min(required, Math.max(1, options.size())),
-                options,
-                texts.stream()
-                        .flatMap(text -> expandBrackets(text).stream())
-                        .anyMatch(QuestionForm::isQuestion)
-        );
+        return new ExpectedAnswer(Math.min(required, Math.max(1, options.size())), options);
     }
 
     /**
@@ -63,6 +56,8 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
      * ... {@code close} and where {@code keep} holds for the separator's
      * index. A list splits at "|" outside "[...]" ("coroner | [coronet |
      * coronel]"); an option at "/" outside "(...)", except in a fraction.
+     * An {@code open} with no {@code close} after it is just text, as in
+     * {@link #expandBrackets}.
      */
     private static List<String> splitOutside(String text, char open, char close, char separator, IntPredicate keep) {
         List<String> parts = new ArrayList<>();
@@ -70,7 +65,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         int start = 0;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == open) {
+            if (c == open && text.indexOf(close, i) > i) {
                 depth++;
             } else if (c == close) {
                 depth = Math.max(0, depth - 1);
@@ -167,6 +162,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
             if (masks.isEmpty()) {
                 continue;
             }
+            keepLargest(masks);
             if (AnswerText.isSeparator(response.get(start))) {
                 for (long mask : masks.keySet()) {
                     reachable.get(start + 1).putIfAbsent(mask, new Step(start, mask, null));
@@ -214,6 +210,24 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         return named;
     }
 
+    /**
+     * Drops all but the {@link #MAX_MASKS} sets with the most options. Pieces
+     * that each match several options would otherwise multiply the sets
+     * without bound (a list of 50 similar names and a 30-word response ran
+     * out of memory). Only sets nothing has been reached from yet are
+     * dropped, so every kept step still leads back to the start.
+     */
+    private static void keepLargest(Map<Long, Step> masks) {
+        if (masks.size() <= MAX_MASKS) {
+            return;
+        }
+        List<Long> dropped = masks.keySet().stream()
+                .sorted(Comparator.comparingInt(Long::bitCount).reversed())
+                .skip(MAX_MASKS)
+                .toList();
+        dropped.forEach(masks::remove);
+    }
+
     /** The options a piece of a response matches, each with the wording it matches. */
     private List<Named> matchingOptions(List<String> piece) {
         // "and" and "or" can start or end an option ("or" is an answer), commas can't.
@@ -223,16 +237,20 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
         List<String> words = piece.stream().filter(token -> !token.equals(AnswerText.SEPARATOR)).toList();
         List<Named> matched = new ArrayList<>();
         for (int i = 0; i < options.size(); i++) {
-            String wording = options.get(i).matchingWording(words);
-            if (wording != null) {
-                matched.add(new Named(i, wording));
+            Variant variant = options.get(i).matchingVariant(words);
+            if (variant != null) {
+                matched.add(new Named(i, variant.wording(), variant.question()));
             }
         }
         return matched;
     }
 
-    /** An option a response names ({@code option} is its index), and the wording it matched. */
-    record Named(int option, String wording) {}
+    /**
+     * An option a response names ({@code option} is its index), the wording
+     * it matched, and whether that wording is itself a question ("Who's the
+     * Boss?"), which counts as the question form when said as it is.
+     */
+    record Named(int option, String wording, boolean question) {}
 
     /** How {@link #match} reached a set of options: from {@code previous} at token {@code start}, naming {@code named} (null for a separator). */
     private record Step(int start, long previous, Named named) {}
@@ -257,7 +275,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
          * than one ("coronel" is one letter from "coronet"), so a wording
          * that has every word as said comes first.
          */
-        String matchingWording(List<String> words) {
+        Variant matchingVariant(List<String> words) {
             List<Variant> matching = variants.stream().filter(variant -> variant.isMatchedBy(words)).toList();
             if (matching.isEmpty()) {
                 return null;
@@ -265,8 +283,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
             return matching.stream()
                     .filter(variant -> variant.hasEvery(words))
                     .findFirst()
-                    .orElse(matching.getFirst())
-                    .wording();
+                    .orElse(matching.getFirst());
         }
 
         /** Splits at slashes outside parentheses, except in a fraction like "8/12". */
@@ -284,9 +301,10 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
      * One way to say an option. Each word is required ({@code group} -1) or
      * belongs to a parenthesized group; {@code parents} gives each group's
      * enclosing group (-1 at the top level). {@code wording} is the text it
-     * was parsed from, to show to players.
+     * was parsed from, to show to players; {@code question} says whether it is
+     * itself a question ("Who's the Boss?").
      */
-    record Variant(List<Word> words, List<Integer> parents, String wording) {
+    record Variant(List<Word> words, List<Integer> parents, String wording, boolean question) {
 
         // Each group can be left in or out when the response is compared as
         // one string; past this many, only all-in and all-out are tried.
@@ -298,12 +316,13 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
             Deque<Integer> open = new ArrayDeque<>();
             StringBuilder segment = new StringBuilder();
 
-            for (char c : text.toCharArray()) {
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
                 if (c != '(' && c != ')') {
                     segment.append(c);
                     continue;
                 }
-                addWords(words, segment, open.isEmpty() ? -1 : open.peek());
+                addWords(words, segment, open.isEmpty() ? -1 : open.peek(), endsOutsideParentheses(text, i));
                 segment.setLength(0);
                 if (c == '(') {
                     parents.add(open.isEmpty() ? -1 : open.peek());
@@ -313,7 +332,7 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                 }
             }
             // An unclosed group runs to the end.
-            addWords(words, segment, open.isEmpty() ? -1 : open.peek());
+            addWords(words, segment, open.isEmpty() ? -1 : open.peek(), true);
 
             if (words.isEmpty()) {
                 // Nothing but articles or symbols ("A", "@").
@@ -325,15 +344,40 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
             if (words.stream().allMatch(Word::isOptional)) {
                 words = words.stream().map(word -> new Word(word.text(), -1)).toList();
             }
-            return new Variant(List.copyOf(words), List.copyOf(parents), text.strip().replaceAll("\\s+", " "));
+            return new Variant(
+                    List.copyOf(words),
+                    List.copyOf(parents),
+                    text.strip().replaceAll("\\s+", " "),
+                    QuestionForm.isQuestion(text)
+            );
         }
 
-        private static void addWords(List<Word> words, CharSequence segment, int group) {
-            for (String token : AnswerText.tokens(segment.toString())) {
+        private static void addWords(List<Word> words, CharSequence segment, int group, boolean endsText) {
+            for (String token : AnswerText.tokens(segment.toString(), endsText)) {
                 if (!token.equals(AnswerText.SEPARATOR)) {
                     words.add(new Word(token, group));
                 }
             }
+        }
+
+        /**
+         * True if no word follows position {@code i} outside parentheses: a
+         * segment before "(retinol)" in "Vitamin A (retinol)" ends the text,
+         * one before "(nice) day" in "Have a (nice) day" doesn't.
+         */
+        private static boolean endsOutsideParentheses(String text, int i) {
+            int depth = 0;
+            for (int j = i; j < text.length(); j++) {
+                char c = text.charAt(j);
+                if (c == '(') {
+                    depth++;
+                } else if (c == ')') {
+                    depth = Math.max(0, depth - 1);
+                } else if (depth == 0 && Character.isLetterOrDigit(c)) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /** True if each of the given words is one of this wording's words, spelled the same. */
@@ -406,11 +450,13 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
          * The response, joined without spaces, is within the typo allowance of
          * the option joined the same way, with some of its parenthesized groups
          * left out. Numbers must still be the same, in the same order. The
-         * allowance is that of the option's shortest word, so a short word
-         * can't go missing unnoticed ("Botha" isn't "P.W. Botha").
+         * allowance is that of the shortest word on either side, so a short
+         * word can't go missing or be added unnoticed ("Botha" isn't "P.W.
+         * Botha", and "Washington DC" isn't "Washington").
          */
         private boolean isMatchedAsOneString(List<String> given) {
             String joined = String.join("", given);
+            int shortestGiven = given.stream().mapToInt(String::length).min().orElse(0);
             List<String> givenExact = given.stream().filter(AnswerText::isExact).toList();
 
             int groups = parents.size();
@@ -433,7 +479,8 @@ record ExpectedAnswer(int required, List<Option> options, boolean question) {
                     continue;
                 }
                 String expected = String.join("", chosen);
-                int allowed = AnswerText.allowedEdits(chosen.stream().mapToInt(String::length).min().orElse(0));
+                int shortest = Math.min(shortestGiven, chosen.stream().mapToInt(String::length).min().orElse(0));
+                int allowed = AnswerText.allowedEdits(shortest);
                 if (AnswerText.distance(joined, expected, allowed) <= allowed) {
                     return true;
                 }

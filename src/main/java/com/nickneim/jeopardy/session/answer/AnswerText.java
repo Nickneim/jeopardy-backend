@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
  * <p>Both sides are normalized the same way: accents and case are dropped,
  * "&amp;" is "and", periods, apostrophes, quotes and hyphens join what's
  * around them ("U.S." is "us", "O'Rourke" is "orourke", "A-line" is "aline"),
- * and the articles a, an and the are left out. Numbers keep their sign,
+ * and the articles a, an and the are left out (except an "a" that names the
+ * letter: "Vitamin A"). Numbers keep their sign,
  * decimal point and fraction slash ("-4", "4.0", "2/3"); "1,001" is "1001",
  * and "$" and "%" (or the word "percent" after a number) are dropped. Commas,
  * semicolons and other slashes become {@link #SEPARATOR} tokens, where a
@@ -47,7 +48,16 @@ final class AnswerText {
             "[^\\p{L}\\p{N}," + DECIMAL_POINT + FRACTION_SLASH + MINUS + "]+"
     );
 
+    private static final Pattern SYMBOL_PUNCTUATION = Pattern.compile(
+            "^[\\s\"'‘’“”?!.]+|[\\s\"'‘’“”?!.]+$"
+    );
+
     private static final Pattern DECADE = Pattern.compile("(\\d\\d)?\\d0s");
+    // A Roman numeral long enough to allow typos ("VIII", "XVII"); shorter
+    // words allow none anyway. Real words aren't valid numerals ("civil", "mild").
+    private static final Pattern ROMAN_NUMERAL = Pattern.compile(
+            "(?=[ivxlcdm]{4})m{0,4}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})"
+    );
     private static final Pattern NUMBER = Pattern.compile("-?\\d+(?:[./]\\d+)?(?:st|nd|rd|th)?");
 
     private AnswerText() {
@@ -55,6 +65,14 @@ final class AnswerText {
 
     /** The normalized words of a text, with {@link #SEPARATOR} tokens where it lists items. */
     static List<String> tokens(String text) {
+        return tokens(text, true);
+    }
+
+    /**
+     * Like {@link #tokens(String)}, for a piece of a longer text; {@code endsText}
+     * says whether anything follows it, which decides if a last "a" is a letter.
+     */
+    static List<String> tokens(String text, boolean endsText) {
         String s = Normalizer.normalize(text, Normalizer.Form.NFKC).replace('\u2044', '/');
         s = MARKS.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("");
         s = s.toLowerCase(Locale.ROOT)
@@ -76,8 +94,10 @@ final class AnswerText {
         s = s.replace(DECIMAL_POINT, '.').replace(FRACTION_SLASH, '/').replace(MINUS, '-');
 
         List<String> tokens = new ArrayList<>();
-        for (String token : s.trim().split("\\s+")) {
-            if (token.isEmpty() || ARTICLES.contains(token)) {
+        String[] words = s.trim().split("\\s+");
+        for (int i = 0; i < words.length; i++) {
+            String token = words[i];
+            if (token.isEmpty() || ARTICLES.contains(token) && !isLetter(words, i, endsText)) {
                 continue;
             }
             if (!token.equals("percent") || tokens.isEmpty() || !hasDigit(tokens.getLast())) {
@@ -86,6 +106,17 @@ final class AnswerText {
         }
 
         return tokens;
+    }
+
+    /**
+     * True for an "a" that names the letter: after a word and at the end or
+     * before a separator ("Vitamin A", "type A, type B"). An article always
+     * comes before what it goes with.
+     */
+    private static boolean isLetter(String[] words, int i, boolean endsText) {
+        return words[i].equals("a")
+                && i > 0 && !isSeparator(words[i - 1])
+                && (i == words.length - 1 ? endsText : words[i + 1].equals(SEPARATOR));
     }
 
     /**
@@ -102,7 +133,9 @@ final class AnswerText {
         if (!articles.getFirst().isEmpty() && ARTICLES.containsAll(articles)) {
             return articles;
         }
-        return List.of(text.strip().toLowerCase(Locale.ROOT));
+        // "What is @?" says "@": quotes and sentence punctuation around a symbol aren't part of it.
+        String symbol = SYMBOL_PUNCTUATION.matcher(text).replaceAll("");
+        return List.of((symbol.isEmpty() ? text.strip() : symbol).replaceAll("\\s+", " ").toLowerCase(Locale.ROOT));
     }
 
     /** True for a token a response may use between the items of a list. */
@@ -110,9 +143,12 @@ final class AnswerText {
         return token.equals(SEPARATOR) || token.equals("and") || token.equals("or");
     }
 
-    /** True for a word that must be matched exactly: a number or a word like "million". */
+    /**
+     * True for a word that must be matched exactly: a number, a word like
+     * "million", or a Roman numeral ("Henry VII" isn't "Henry VIII").
+     */
     static boolean isExact(String token) {
-        return hasDigit(token) || MAGNITUDES.contains(token);
+        return hasDigit(token) || MAGNITUDES.contains(token) || ROMAN_NUMERAL.matcher(token).matches();
     }
 
     /** True for a number on its own: "1970", "-4", "4.0", "2/3", "50th". */

@@ -145,9 +145,43 @@ class AnswerMatcherTest {
     }
 
     @Test
+    void matches_onlyAWordingThatIsAQuestion_canBeSaidBare() {
+        assertFalse(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "The Boss", true));
+        assertTrue(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "What is the Boss", true));
+        assertFlags(true, true, AnswerMatcher.check("(2 of) Who's the Boss? | Taxi", "Who's the Boss and Taxi", true));
+        assertFlags(false, false, AnswerMatcher.check("(2 of) Who's the Boss? | Taxi", "Taxi and Who's the Boss", true));
+    }
+
+    @Test
     void matches_unclosedParenthesesRunToTheEnd() {
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Lincoln", false));
         assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Abraham Lincoln", false));
+    }
+
+    @Test
+    void acceptedAnswers_anUnclosedBracketDoesNotHideTheRestOfAList() {
+        assertEquals(
+                new AcceptedAnswers(2, List.of("Smith [Jones", "Brown", "Green")),
+                AnswerMatcher.acceptedAnswers("(2 of) Smith [Jones | Brown | Green")
+        );
+        assertTrue(AnswerMatcher.matches("(2 of) Smith [Jones | Brown | Green", "Brown and Green", false));
+    }
+
+    @Test
+    void matches_responsesThatFitManyOptionsStayFast() {
+        // Every response word is a typo of many options, so the ways to cut
+        // the response multiply; this used to run out of memory.
+        StringBuilder answer = new StringBuilder("(10 of) ");
+        for (int i = 0; i < 50; i++) {
+            answer.append(i == 0 ? "" : " | ").append("state").append((char) ('a' + i % 26)).append((char) ('a' + i / 26));
+        }
+        StringBuilder response = new StringBuilder();
+        for (int i = 0; i < 30; i++) {
+            response.append("statx").append((char) ('a' + i % 26)).append(' ');
+        }
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () ->
+                AnswerMatcher.check(answer.toString(), response.toString(), false));
     }
 
     @Test
