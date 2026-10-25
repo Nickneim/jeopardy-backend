@@ -10,7 +10,6 @@ public class GameSessionPlayer {
     // never add it to PlayerResponse or any other broadcast.
     private final String token;
     private int score;
-    private int wager;
     private boolean leaving;
 
     public GameSessionPlayer(Long id, String name) {
@@ -22,7 +21,6 @@ public class GameSessionPlayer {
         this.name = name;
         this.token = PlayerTokens.generate();
         this.score = score;
-        this.wager = 0;
     }
 
     public Long getId() {
@@ -43,14 +41,6 @@ public class GameSessionPlayer {
 
     public void addScore(int amount) {
         score += amount;
-    }
-
-    public int getWager() {
-        return wager;
-    }
-
-    public void setWager(int wager) {
-        this.wager = wager;
     }
 
     /**

@@ -43,6 +43,9 @@ public class GameSession {
 
     private Long playerChoosingClue;
     private Long chosenClueId;
+    // The wager on the clue in play, once placed if it's a Daily Double;
+    // null otherwise. Reset whenever a clue is chosen.
+    private Integer dailyDoubleWager;
 
     private final Set<Long> playersAlreadyBuzzed = new HashSet<>();
     // Every clue chosen so far, across all rounds. Which clues are still
@@ -172,13 +175,8 @@ public class GameSession {
 
     /** The wager on the Daily Double in play once it is placed, otherwise null. */
     public Integer getDailyDoubleWager() {
-        if (chosenClueId == null || !board.isDailyDouble(chosenClueId)) {
-            return null;
-        }
-
         return switch (state) {
-            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER ->
-                    getPlayer(playerWhoBuzzed).getWager();
+            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER -> dailyDoubleWager;
             default -> null;
         };
     }
@@ -462,6 +460,7 @@ public class GameSession {
 
     private void playClue(Long clueId) {
         chosenClueId = clueId;
+        dailyDoubleWager = null;
         playedClues.add(clueId);
         clueAnswers.clear();
         if (board.isDailyDouble(clueId)) {
@@ -521,12 +520,12 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
         }
 
-        getPlayer(playerId).setWager(wager);
+        dailyDoubleWager = wager;
         startRevealingClue();
     }
 
     public void timeoutDailyDoubleWager() {
-        getPlayer(playerChoosingClue).setWager(5);
+        dailyDoubleWager = 5;
         startRevealingClue();
     }
 
@@ -816,7 +815,7 @@ public class GameSession {
     private void resolveAnswer(ClueAnswer clueAnswer) {
         boolean dailyDouble = board.isDailyDouble(chosenClueId);
         GameSessionPlayer player = getPlayer(clueAnswer.playerId());
-        int stake = dailyDouble ? player.getWager() : board.getClue(chosenClueId).value();
+        int stake = dailyDouble ? dailyDoubleWager : board.getClue(chosenClueId).value();
 
         clueAnswers.add(clueAnswer);
         changeScore(player, clueAnswer.correct() ? stake : -stake);

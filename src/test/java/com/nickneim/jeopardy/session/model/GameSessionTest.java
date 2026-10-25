@@ -849,7 +849,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 500);
 
-        assertEquals(500, session.getPlayers().getFirst().getWager());
+        assertEquals(500, session.getDailyDoubleWager());
         assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
     }
 
@@ -930,7 +930,7 @@ class GameSessionTest {
                 session.getState()
         );
 
-        assertEquals(5, player1.getWager());
+        assertEquals(5, session.getDailyDoubleWager());
     }
 
     // -------------------------------------------------------------------------
@@ -956,7 +956,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 5);
 
-        assertEquals(5, player1.getWager());
+        assertEquals(5, session.getDailyDoubleWager());
         assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
     }
 
@@ -968,7 +968,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 1000);
 
-        assertEquals(1000, player1.getWager());
+        assertEquals(1000, session.getDailyDoubleWager());
     }
 
     @Test
@@ -980,7 +980,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 1500);
 
-        assertEquals(1500, player1.getWager());
+        assertEquals(1500, session.getDailyDoubleWager());
     }
 
     @Test
@@ -992,7 +992,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 1000);
 
-        assertEquals(1000, player1.getWager());
+        assertEquals(1000, session.getDailyDoubleWager());
     }
 
     @Test
@@ -1010,7 +1010,7 @@ class GameSessionTest {
 
         session.placeDailyDoubleWager(player1.getId(), 2000);
 
-        assertEquals(2000, player1.getWager());
+        assertEquals(2000, session.getDailyDoubleWager());
     }
 
     // -------------------------------------------------------------------------
@@ -1335,7 +1335,7 @@ class GameSessionTest {
 
         smallSession.placeDailyDoubleWager(player1.getId(), 300);
 
-        assertEquals(300, player1.getWager());
+        assertEquals(300, smallSession.getDailyDoubleWager());
     }
 
     @Test

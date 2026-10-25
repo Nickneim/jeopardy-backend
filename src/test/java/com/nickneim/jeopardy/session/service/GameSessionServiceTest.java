@@ -910,7 +910,7 @@ class GameSessionServiceTest {
         );
         assertEquals(
                 5,
-                session.getPlayers().getFirst().getWager()
+                session.getDailyDoubleWager()
         );
 
         verify(timer).schedule(
@@ -1091,7 +1091,7 @@ class GameSessionServiceTest {
         );
         assertEquals(
                 500,
-                session.getPlayers().getFirst().getWager()
+                session.getDailyDoubleWager()
         );
         verifyNoInteractions(timer, broadcaster);
     }
