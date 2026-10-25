@@ -3,6 +3,8 @@ package com.nickneim.jeopardy.session.board;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
+import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -29,6 +32,9 @@ public final class GameBoard {
     private final Map<Long, BoardClue> cluesById;
     // Built once: the available clues are derived from these on every broadcast.
     private final Map<GameRound, Set<Long>> clueIdsByRound;
+    // What players are told about each answer, parsed the first time a
+    // broadcast needs it rather than on every one.
+    private final Map<Long, AnswerHints> answerHints = new ConcurrentHashMap<>();
 
     public GameBoard(List<BoardRound> rounds) {
         this(null, null, rounds);
@@ -151,6 +157,27 @@ public final class GameBoard {
 
         return clue != null && clue.dailyDouble();
     }
+
+    /** Whether only an exact number is accepted for the clue ({@link AnswerMatcher#expectsNumber}). */
+    public boolean isNumberExpected(Long clueId) {
+        return answerHints(clueId).numberExpected();
+    }
+
+    /** The clue's answer as players should see it ({@link AnswerMatcher#acceptedAnswers}). */
+    public AcceptedAnswers getAcceptedAnswers(Long clueId) {
+        return answerHints(clueId).acceptedAnswers();
+    }
+
+    private AnswerHints answerHints(Long clueId) {
+        String answer = getClue(clueId).answer();
+
+        return answerHints.computeIfAbsent(clueId, id -> new AnswerHints(
+                AnswerMatcher.expectsNumber(answer),
+                AnswerMatcher.acceptedAnswers(answer)
+        ));
+    }
+
+    private record AnswerHints(boolean numberExpected, AcceptedAnswers acceptedAnswers) {}
 
     public Set<Long> getClueIds(GameRound round) {
         return clueIdsByRound.getOrDefault(round, Set.of());

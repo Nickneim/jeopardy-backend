@@ -17,6 +17,7 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlayerResponse;
+import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -34,6 +35,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
+import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -68,6 +70,9 @@ class GameSessionWebSocketIntegrationTest {
 
     @Autowired
     private GameSessionService gameSessionService;
+
+    @Autowired
+    private SimpleBrokerMessageHandler simpleBrokerMessageHandler;
 
     @LocalServerPort
     private int port;
@@ -1672,6 +1677,38 @@ class GameSessionWebSocketIntegrationTest {
                         }
                 )
                 .get(5, TimeUnit.SECONDS);
+    }
+
+    // The outbound channel is a thread pool: without preserved publish order,
+    // frames to one client can be written out of order. That reordering is
+    // too rare to reproduce reliably, so the setting itself is checked too.
+    @Test
+    void brokerPreservesPublishOrder() {
+        assertTrue(simpleBrokerMessageHandler.isPreservePublishOrder());
+    }
+
+    @Test
+    void broadcastsReachEachClientInOrder() throws Exception {
+        GameSession session = createSessionWithPlayer();
+        Long hostId = session.getHostPlayerId();
+        StompSession stompSession = connect();
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(stompSession, session.getId());
+        awaitSubscriptions(stompSession, session.getId());
+        messages.clear();
+
+        // Same-sized broadcasts, sent faster than one connection writes them.
+        int broadcasts = 100;
+        for (int i = 0; i < broadcasts; i++) {
+            gameSessionService.updateSettings(session.getId(), hostId, new SessionSettingsRequest(i % 2 == 0));
+        }
+
+        long previous = -1;
+        for (int i = 0; i < broadcasts; i++) {
+            long version = awaitMessage(messages).version();
+            assertTrue(version > previous, "version " + version + " arrived after " + previous);
+            previous = version;
+        }
     }
 
     // SUBSCRIBE has no reply, so wait until the server has registered the

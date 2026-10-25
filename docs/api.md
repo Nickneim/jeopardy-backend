@@ -152,7 +152,7 @@ Creates a live session from a stored game, **under a code the client chooses**. 
 - `sessionId`: a new **session code**, 5 random characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (Crockford's base32: digits and uppercase letters without I, L, O and U), for example `7KQ2M`. Pick each character with `crypto.getRandomValues()`. Codes are short so that people can read them out and type them; they aren't secret (the lobby lists every session, and only a player's token proves who they are).
 - Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
 - `201 { "id": "7KQ2M" }`: the same code.
-- Code already in use: `409 { "status": 409, "message": "Game session already exists: <code>" }`. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
+- Code already in use: `409 { "status": 409, "message": "Game session already exists: <code>" }`, checked before the game (so a code in use gets a 409 even with an unknown game). There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
 - A code that isn't valid (see below): `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }`.
 - Unknown game: 404.
 - Game without clues (some imported games, such as the newest ones, have none): `422 { "status": 422, "message": "Game 725 has no clues and can't be played" }`. The game itself is valid and can still be browsed.
@@ -256,6 +256,8 @@ Every action requires a player who hasn't left. A player who has left can't act 
 A successful action produces a broadcast. A failed one produces an error on `/user/queue/errors` and nothing else.
 
 **Messages from one connection are handled in the order they were sent.** For example, two `place-final-jeopardy-wager` messages sent back to back always leave the second wager in place, so there's no need to wait for a broadcast before sending the next message. There's no ordering between different connections: when two players act at the same moment, either can be first (see §7).
+
+**Frames to one connection arrive in the order the server sent them**: broadcasts in `version` order, and an error after the broadcasts sent before it. Keeping the highest `version` (§2) is still needed when you mix them with a `GET` of the state.
 
 ---
 

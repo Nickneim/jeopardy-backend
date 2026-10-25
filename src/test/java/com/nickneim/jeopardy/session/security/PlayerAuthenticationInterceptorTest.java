@@ -18,10 +18,12 @@ import java.util.stream.Collectors;
 
 import static com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor.TOKEN_HEADER;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class PlayerAuthenticationInterceptorTest {
 
@@ -109,6 +111,32 @@ class PlayerAuthenticationInterceptorTest {
         assertEquals("ws-session-1", error.getSessionId());
         assertEquals("Unknown player token", error.getMessage());
         assertFalse(error.toString().contains("forged-token"), error.toString());
+    }
+
+    // The player leaves between the token lookup and the connection being
+    // recorded, so the departure's close can't have seen this connection.
+    @Test
+    void connectWhoseTokenIsRevokedDuringTheConnect_isRejected() {
+        PlayerTokenRegistry racingRegistry = mock(PlayerTokenRegistry.class);
+        when(racingRegistry.find("valid-token"))
+                .thenReturn(Optional.of(player))
+                .thenReturn(Optional.empty());
+        interceptor = new PlayerAuthenticationInterceptor(racingRegistry, connections);
+
+        Message<?> result =
+                interceptor.preSend(message(StompCommand.CONNECT, "valid-token"), null);
+
+        assertNull(result);
+        ArgumentCaptor<Message<?>> sent = ArgumentCaptor.forClass(Message.class);
+        verify(clientOutboundChannel).send(sent.capture());
+        StompHeaderAccessor error = StompHeaderAccessor.wrap(sent.getValue());
+        assertEquals(StompCommand.ERROR, error.getCommand());
+        assertEquals("ws-session-1", error.getSessionId());
+
+        // Forgotten, so a later close doesn't send a second ERROR frame.
+        clearInvocations(clientOutboundChannel);
+        connections.close(player, "You were removed from the session by the host");
+        verifyNoInteractions(clientOutboundChannel);
     }
 
     @Test

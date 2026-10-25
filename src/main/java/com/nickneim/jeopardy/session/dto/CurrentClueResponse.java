@@ -1,8 +1,8 @@
 package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.ClueType;
-import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardClue;
+import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.model.GameSession;
 
 /**
@@ -51,7 +51,8 @@ public record CurrentClueResponse(
             }
         }
 
-        BoardClue clue = session.getBoard().getClue(session.getChosenClueId());
+        GameBoard board = session.getBoard();
+        BoardClue clue = board.getClue(session.getChosenClueId());
 
         return new CurrentClueResponse(
                 clue.id(),
@@ -61,9 +62,9 @@ public record CurrentClueResponse(
                 showQuestion ? clue.question() : null,
                 showQuestion ? clue.clueType() : null,
                 showQuestion ? clue.mediaUrl() : null,
-                showQuestion ? AnswerMatcher.expectsNumber(clue.answer()) : null,
+                showQuestion ? board.isNumberExpected(clue.id()) : null,
                 showAnswer ? clue.answer() : null,
-                showAnswer ? AcceptedAnswersResponse.from(AnswerMatcher.acceptedAnswers(clue.answer())) : null
+                showAnswer ? AcceptedAnswersResponse.from(board.getAcceptedAnswers(clue.id())) : null
         );
     }
 }

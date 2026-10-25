@@ -129,6 +129,17 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void requireUnusedId_rejectsOnlyAnIdInUse() {
+        SessionCode taken = gameSessionService.createSession(createBoard()).getId();
+
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.requireUnusedId(taken)
+        );
+        assertDoesNotThrow(() -> gameSessionService.requireUnusedId(SessionCode.random()));
+    }
+
+    @Test
     void createSession_startsInWaitingForStartState() {
         GameSession session = createSession();
 
@@ -1142,10 +1153,56 @@ class GameSessionServiceTest {
         verifyNoInteractions(timer, broadcaster);
     }
 
+    // A buzz and a wrong answer bring the clue back to WAITING_FOR_BUZZER
+    // while the first buzzer timeout may already be waiting for the lock.
     @Test
-    void timeoutAfterSessionRemoved_throwsSessionNotFound() {
-        // Documents current behaviour: removeSession cancels the timer, but a
-        // callback that is already running will fail to find the session.
+    void staleBuzzerTimeout_afterReturningToWaitingForBuzzer_doesNothing() {
+        GameSession session = createSessionWithPlayers(2);
+        Long first = session.getPlayers().get(0).getId();
+        Long second = session.getPlayers().get(1).getId();
+        gameSessionService.startGame(session.getId(), first);
+        gameSessionService.chooseClue(session.getId(), first, CLUE_ID);
+        clearInvocations(timer, broadcaster);
+        gameSessionService.finishRevealingClue(session.getId());
+
+        Runnable staleBuzzerTimeout =
+                captureScheduledRunnable(session, Duration.ofSeconds(10));
+
+        gameSessionService.buzz(session.getId(), first);
+        gameSessionService.answerClue(session.getId(), first, "Wrong answer");
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        clearInvocations(timer, broadcaster);
+
+        staleBuzzerTimeout.run();
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        verifyNoInteractions(timer, broadcaster);
+
+        // The new window still works.
+        gameSessionService.buzz(session.getId(), second);
+        assertEquals(second, session.getPlayerAnswering());
+    }
+
+    @Test
+    void currentBuzzerTimeout_afterReturningToWaitingForBuzzer_endsTheClue() {
+        GameSession session = createSessionWithPlayers(2);
+        Long first = session.getPlayers().get(0).getId();
+        gameSessionService.startGame(session.getId(), first);
+        gameSessionService.chooseClue(session.getId(), first, CLUE_ID);
+        gameSessionService.finishRevealingClue(session.getId());
+        gameSessionService.buzz(session.getId(), first);
+        clearInvocations(timer);
+        gameSessionService.answerClue(session.getId(), first, "Wrong answer");
+
+        captureScheduledRunnable(session, Duration.ofSeconds(10)).run();
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void timeoutAfterSessionRemoved_doesNothing() {
+        // removeSession cancels the timer, but a callback that is already
+        // running finds no session.
         GameSession session = createStartedSession();
 
         clearInvocations(timer, broadcaster);
@@ -1160,11 +1217,12 @@ class GameSessionServiceTest {
                 captureScheduledRunnable(session, Duration.ofSeconds(3));
 
         gameSessionService.removeSession(session.getId());
+        clearInvocations(timer, broadcaster);
 
-        assertThrows(
-                GameSessionNotFoundException.class,
-                clueRevealTimeout::run
-        );
+        clueRevealTimeout.run();
+
+        assertEquals(GameSessionState.REVEALING_CLUE, session.getState());
+        verifyNoInteractions(timer, broadcaster);
     }
 
     // -------------------------------------------------------------------------

@@ -39,6 +39,10 @@ public class GameSession {
     // arms one. The deadline is in System.nanoTime() terms, which never jumps.
     private Duration phaseDuration;
     private long phaseDeadlineNanos;
+    // Changes whenever a phase timer is armed or cleared, so a timeout can
+    // tell whether it is still the current one: the state alone can't, since
+    // a session can leave a state and come back before a stale timeout runs.
+    private long phaseTimerId;
 
     private Long playerChoosingClue;
     private Long chosenClueId;
@@ -248,11 +252,18 @@ public class GameSession {
     public void startPhaseTimer(Duration duration, long nowNanos) {
         phaseDuration = duration;
         phaseDeadlineNanos = nowNanos + duration.toNanos();
+        phaseTimerId++;
     }
 
     /** Records that the current phase has no timer. */
     public void clearPhaseTimer() {
         phaseDuration = null;
+        phaseTimerId++;
+    }
+
+    /** Identifies the phase timer armed last; see {@link #startPhaseTimer}. */
+    public long getPhaseTimerId() {
+        return phaseTimerId;
     }
 
     /** The full length of the current phase, or null if it has no timer. */

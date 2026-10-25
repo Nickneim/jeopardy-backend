@@ -6,6 +6,8 @@ import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.entity.GameRound;
+import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
+import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -59,6 +61,31 @@ class GameBoardTest {
         assertTrue(board.isDailyDouble(2L));
         assertFalse(board.isDailyDouble(1L));
         assertFalse(board.isDailyDouble(999L));
+    }
+
+    @Test
+    void answerHints_matchTheAnswerMatcher() {
+        GameBoard hinted = new GameBoard(List.of(round(
+                GameRound.JEOPARDY,
+                new BoardClue(1L, 1, "Year?", "1970", 200, false),
+                new BoardClue(2L, 2, "Gifts?", "(2 of) gold | frankincense | myrrh", 400, false)
+        )));
+
+        assertTrue(hinted.isNumberExpected(1L));
+        assertFalse(hinted.isNumberExpected(2L));
+        assertEquals(AnswerMatcher.acceptedAnswers("1970"), hinted.getAcceptedAnswers(1L));
+        assertEquals(
+                new AcceptedAnswers(2, List.of("gold", "frankincense", "myrrh")),
+                hinted.getAcceptedAnswers(2L)
+        );
+        // Parsed once and kept.
+        assertSame(hinted.getAcceptedAnswers(2L), hinted.getAcceptedAnswers(2L));
+    }
+
+    @Test
+    void answerHints_rejectUnknownClue() {
+        assertThrows(IllegalArgumentException.class, () -> board.isNumberExpected(999L));
+        assertThrows(IllegalArgumentException.class, () -> board.getAcceptedAnswers(999L));
     }
 
     @Test

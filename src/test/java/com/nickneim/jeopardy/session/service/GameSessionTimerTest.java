@@ -5,13 +5,20 @@ import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(OutputCaptureExtension.class)
 class GameSessionTimerTest {
 
     private GameSessionTimer timer;
@@ -146,6 +153,56 @@ class GameSessionTimerTest {
                         latch::countDown
                 )
         );
+    }
+
+    @Test
+    void failingAction_isLogged(CapturedOutput output) {
+        SessionCode sessionId = SessionCode.random();
+
+        timer.schedule(
+                sessionId,
+                Duration.ofMillis(10),
+                () -> {
+                    throw new IllegalStateException("boom");
+                }
+        );
+
+        await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> {
+            assertTrue(output.getOut().contains("A timer of session " + sessionId + " failed"));
+            assertTrue(output.getOut().contains("boom"));
+        });
+    }
+
+    @Test
+    void failingCleanup_isLogged(CapturedOutput output) {
+        SessionCode sessionId = SessionCode.random();
+
+        timer.scheduleCleanup(
+                sessionId,
+                Duration.ofMillis(10),
+                () -> {
+                    throw new IllegalStateException("cleanup failed");
+                }
+        );
+
+        await().atMost(Duration.ofSeconds(1)).untilAsserted(() ->
+                assertTrue(output.getOut().contains("cleanup failed")));
+    }
+
+    @Test
+    void closingTheApplicationContext_stopsTheScheduler() {
+        new ApplicationContextRunner()
+                .withBean(GameSessionTimer.class)
+                .run(context -> {
+                    GameSessionTimer contextTimer = context.getBean(GameSessionTimer.class);
+
+                    context.close();
+
+                    assertThrows(
+                            RejectedExecutionException.class,
+                            () -> contextTimer.schedule(SessionCode.random(), Duration.ofMillis(50), () -> {})
+                    );
+                });
     }
 
 }

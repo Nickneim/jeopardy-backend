@@ -81,8 +81,19 @@ public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
             return null;
         }
 
-        accessor.setUser(player);
         connections.connected(accessor.getSessionId(), player);
+
+        // The player may have left (or been kicked) since the lookup, after
+        // PlayerConnections.close had looked for their connections and missed
+        // this one. A departure revokes the token before closing connections,
+        // so if it's still valid now, any later close will see this one.
+        if (playerTokens.find(token).isEmpty()) {
+            connections.disconnected(accessor.getSessionId());
+            connections.sendError(accessor.getSessionId(), UNKNOWN_TOKEN_MESSAGE);
+            return null;
+        }
+
+        accessor.setUser(player);
 
         return message;
     }

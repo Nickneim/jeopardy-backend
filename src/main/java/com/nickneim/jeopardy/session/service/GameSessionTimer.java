@@ -1,6 +1,9 @@
 package com.nickneim.jeopardy.session.service;
 
 import com.nickneim.jeopardy.session.model.SessionCode;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -13,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class GameSessionTimer {
+
+    private static final Logger log = LoggerFactory.getLogger(GameSessionTimer.class);
 
     private final ScheduledExecutorService scheduler =
             Executors.newScheduledThreadPool(4);
@@ -57,12 +62,23 @@ public class GameSessionTimer {
         cancel(timers, sessionId);
 
         ScheduledFuture<?> future = scheduler.schedule(
-                action,
+                () -> run(sessionId, action),
                 delay.toMillis(),
                 TimeUnit.MILLISECONDS
         );
 
         timers.put(sessionId, future);
+    }
+
+    // The executor keeps a task's exception in its future, which nobody
+    // reads, so without this a failing timeout would stall its session
+    // without a trace.
+    private static void run(SessionCode sessionId, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException exception) {
+            log.error("A timer of session {} failed", sessionId, exception);
+        }
     }
 
     private void cancel(Map<SessionCode, ScheduledFuture<?>> timers, SessionCode sessionId) {
@@ -73,6 +89,9 @@ public class GameSessionTimer {
         }
     }
 
+    // Spring doesn't call this by itself on a component; without it the
+    // scheduler's threads outlive the application context.
+    @PreDestroy
     public void shutdown() {
         scheduler.shutdown();
     }

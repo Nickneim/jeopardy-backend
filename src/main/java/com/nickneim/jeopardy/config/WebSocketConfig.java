@@ -51,6 +51,11 @@ public class WebSocketConfig
         registry.enableSimpleBroker("/topic", "/queue");
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
+        // The outbound channel runs on a thread pool too, so without this the
+        // frames to one client can be written out of order: a broadcast
+        // before the one it replaced, or an error before the broadcast of
+        // the change that caused it. Order is kept per connection.
+        registry.setPreservePublishOrder(true);
     }
 
     @Override

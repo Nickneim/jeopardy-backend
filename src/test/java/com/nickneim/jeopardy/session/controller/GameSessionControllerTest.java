@@ -118,6 +118,24 @@ class GameSessionControllerTest {
     }
 
     @Test
+    void createSession_withATakenId_doesNotLoadTheGame() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+
+        doThrow(new GameSessionAlreadyExistsException(sessionId))
+                .when(gameSessionService).requireUnusedId(sessionId);
+
+        mockMvc.perform(put("/api/game-sessions/{id}", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "gameId": 123 }
+                        """))
+                .andExpect(status().isConflict());
+
+        verifyNoInteractions(gameBoardService);
+        verify(gameSessionService, never()).createSession(any(), any());
+    }
+
+    @Test
     void createSession_returnsNotFoundWhenGameDoesNotExist()
             throws Exception {
 
@@ -136,7 +154,7 @@ class GameSessionControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(gameBoardService).loadBoard(gameId);
-        verifyNoInteractions(gameSessionService);
+        verify(gameSessionService, never()).createSession(any(), any());
     }
 
     @Test
@@ -161,7 +179,7 @@ class GameSessionControllerTest {
                         }
                         """, JsonCompareMode.STRICT));
 
-        verifyNoInteractions(gameSessionService);
+        verify(gameSessionService, never()).createSession(any(), any());
     }
 
     @Test

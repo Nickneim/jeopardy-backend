@@ -68,6 +68,9 @@ public class GameSessionController {
             @PathVariable SessionCode sessionId,
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
+        // Checked first, so a taken code (which the client retries) doesn't
+        // load the whole game for nothing. createSession still guards a race.
+        gameSessionService.requireUnusedId(sessionId);
         GameBoard board = gameBoardService.loadBoard(request.gameId());
         GameSession session = gameSessionService.createSession(sessionId, board);
 

@@ -2,7 +2,6 @@ package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AnswerCheck;
-import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.model.FinalJeopardy;
@@ -85,9 +84,9 @@ public record FinalJeopardyResponse(
                 category.name(),
                 category.comments(),
                 showQuestion ? clue.question() : null,
-                showQuestion ? AnswerMatcher.expectsNumber(clue.answer()) : null,
+                showQuestion ? session.getBoard().isNumberExpected(clue.id()) : null,
                 showResults ? clue.answer() : null,
-                showResults ? AcceptedAnswersResponse.from(AnswerMatcher.acceptedAnswers(clue.answer())) : null,
+                showResults ? AcceptedAnswersResponse.from(session.getBoard().getAcceptedAnswers(clue.id())) : null,
                 players
         );
     }

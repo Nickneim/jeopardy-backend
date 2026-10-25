@@ -92,6 +92,18 @@ public class GameSessionService {
     }
 
     /**
+     * A cheap check before building a board for {@link #createSession}; the
+     * create itself is what guarantees the id is unique.
+     *
+     * @throws GameSessionAlreadyExistsException if the id is taken
+     */
+    public void requireUnusedId(SessionCode id) {
+        if (sessions.containsKey(id)) {
+            throw new GameSessionAlreadyExistsException(id);
+        }
+    }
+
+    /**
      * A summary of every session this instance holds, finished ones included,
      * in no particular order. Each is built under its session's lock. The
      * lobby list (SessionLobby) merges these with the other instances'.
@@ -130,7 +142,13 @@ public class GameSessionService {
         }
     }
 
-    /** Forgets a session at once, without a broadcast. */
+    /**
+     * Forgets a session at once, without the CLOSED broadcast, as if this
+     * instance had lost it (as a restart does). Only tests use this, to set
+     * up that situation. The app itself always ends a session through
+     * {@link #closeSession}, so that clients see why it ended; don't call
+     * this from application code.
+     */
     public void removeSession(SessionCode sessionId) {
         timer.cancel(sessionId);
         timer.cancelCleanup(sessionId);
@@ -318,8 +336,9 @@ public class GameSessionService {
     }
 
     /**
-     * A phase timer firing. It only acts if the session is still in the state
-     * the timer was armed for, so a stale timer is a no-op.
+     * Ends a reveal as its timer would, without waiting for it (the reveals
+     * are short, and tests skip them this way). It does nothing outside
+     * {@code armedIn}. Real timers go through {@link #onPhaseTimeout}.
      */
     private void onTimeout(SessionCode sessionId, GameSessionState armedIn, Consumer<GameSession> action) {
         GameSession session = getSession(sessionId);
@@ -441,7 +460,40 @@ public class GameSessionService {
         // Recorded on the session so every response can say how long the
         // phase has left.
         session.startPhaseTimer(timeout.duration(), System.nanoTime());
-        timer.schedule(sessionId, timeout.duration(), () -> onTimeout(sessionId, state, timeout.action()));
+        long timerId = session.getPhaseTimerId();
+        timer.schedule(sessionId, timeout.duration(), () -> onPhaseTimeout(sessionId, state, timerId, timeout.action()));
+    }
+
+    /**
+     * A phase timer firing. Cancelling a timer can't stop one that is already
+     * waiting for the lock, so it only acts if the session (still there) is
+     * in the state it was armed in and no timer was armed or cleared since.
+     * The state alone isn't enough: a buzz and a quick wrong answer return to
+     * WAITING_FOR_BUZZER, and the old buzzer timeout would end the new
+     * buzzing window at once.
+     */
+    private void onPhaseTimeout(
+            SessionCode sessionId,
+            GameSessionState armedIn,
+            long timerId,
+            Consumer<GameSession> action
+    ) {
+        GameSession session = sessions.get(sessionId);
+
+        if (session == null) {
+            return;
+        }
+
+        synchronized (session) {
+            if (session.getState() != armedIn || session.getPhaseTimerId() != timerId) {
+                return;
+            }
+
+            action.accept(session);
+
+            scheduleTimeout(session);
+            broadcast(session);
+        }
     }
 
     private record PhaseTimeout(Duration duration, Consumer<GameSession> action) {}
