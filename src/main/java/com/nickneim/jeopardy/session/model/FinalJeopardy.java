@@ -41,13 +41,6 @@ public class FinalJeopardy {
         return Math.max(0, player.getScore());
     }
 
-    /** Players who didn't wager in time wager 0. */
-    void wagerZeroForMissing(List<GameSessionPlayer> players) {
-        for (GameSessionPlayer player : players) {
-            wagers.putIfAbsent(player.getId(), 0);
-        }
-    }
-
     /** A player may change their answer until the answering phase ends. */
     void answer(ClueAnswer answer) {
         answers.put(answer.playerId(), answer);
@@ -79,6 +72,7 @@ public class FinalJeopardy {
         return answers.containsKey(playerId);
     }
 
+    /** The player's wager; a player who didn't wager wagers 0. */
     public int getWager(Long playerId) {
         return wagers.getOrDefault(playerId, 0);
     }

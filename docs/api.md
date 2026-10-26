@@ -301,7 +301,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`. |
 | `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
 | `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
-| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Can be `null` in Final Jeopardy if the last chooser left (§6.4). |
+| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses. |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
@@ -352,7 +352,7 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `question` | `FINAL_JEOPARDY_ANSWERING` |
 | `numberExpected` (only an exact number is accepted, §6.7) | `FINAL_JEOPARDY_ANSWERING` |
 | `answer` (the correct response, written as in §6.7) and `acceptedAnswers` (the same, ready to show, as in §5.2) | `FINAL_JEOPARDY_REVEALING` |
-| `players[]` → `playerId`, `hasWagered`, `hasAnswered` | always |
+| `players[]` → `playerId`, `hasWagered`, `hasAnswered` (only `true` for a player who actually wagered or answered; a missing wager still counts as 0) | always |
 | `players[]` → `maxWager` (the most that player can wager: their score, or 0) | only in `FINAL_JEOPARDY_WAGERING`; `null` otherwise |
 | `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. |
 
@@ -414,7 +414,7 @@ The durations shown are the defaults; each session can change them (§6.3).
 - **Choosing a clue:** the player in control has 30 s (by default) to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser is `away`. A chooser who has *left* loses control instead (§6.4).
 - **Scoring:** a correct answer adds the clue's value and gives that player control of the board. A wrong answer, or running out of time to answer, subtracts it. Not buzzing costs nothing.
 - **Wrong answers:** the other players who haven't buzzed yet can buzz. When everyone has buzzed, the answer is revealed. "Everyone" means every player who hasn't left and isn't `away`: players marked `leaving` can't buzz, and neither they nor `away` players are waited for (an `away` player who reconnects in time can still buzz). If a player leaves while everyone else still in the game has already buzzed, the answer is revealed at once. A player going `away` never ends a phase by itself; it counts from the next answer on.
-- **Rounds:** when every clue in a round has been played, the next round starts. Rounds with no clues are skipped. After Double Jeopardy comes Final Jeopardy if the game has one; otherwise the game finishes. As on the show, **Double Jeopardy starts with the lowest score in control** (the lowest id on a tie, among players who haven't left).
+- **Rounds:** when every clue in a round has been played, the next round starts. Rounds with no clues are skipped. After Double Jeopardy comes Final Jeopardy if the game has one; otherwise the game finishes. As on the show, **Double Jeopardy starts with the lowest score in control** (the lowest id on a tie, among players who haven't left; an `away` player only gets control if everyone is `away`).
 - **Daily Double:** only the player who chose it plays. Their wager must be between 5 and the larger of their score and the round's highest clue value (normally 1000 in Jeopardy and 2000 in Double Jeopardy). On a board whose values are so low that this maximum is under 5, the minimum is the maximum instead. While they wager, `currentClue.minWager` and `currentClue.maxWager` give the range; a wager outside it gets `INVALID_WAGER` with the range in the message, for example `"Your wager must be between 5 and 2000!"`. Not wagering in time means the minimum wager (5). Right or wrong, the wager is added or subtracted, and the chooser keeps control.
 - **Final Jeopardy:**
   - Every player wagers between 0 and their score (`finalJeopardy.players[].maxWager` while wagering). A score of 0 or less can only wager 0, but that player still plays. A wager outside the range gets `INVALID_WAGER`, for example `"Your wager must be between 0 and 3400!"`.
@@ -465,7 +465,7 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 
 **Kicking.** The host sends `kick` with another player's id. The kicked player is treated **exactly** like a player who leaves (below). Kicking yourself is rejected with `INVALID_REQUEST` (use `leave`). Kicking an id that isn't an active player in the session, including one who has already left, is rejected with `PLAYER_NOT_FOUND`.
 
-**Away.** A closed tab or a dropped connection is not leaving: the player keeps their place, score and role, the timers act for them, and they can reconnect with their token. While a player who had connected has no open connection, they're marked `away: true` (in a broadcast of its own), and it turns `false` when they reconnect. A player who joined but hasn't connected yet isn't `away`. The buzzer doesn't wait for `away` players (§6.2), and when every player who hasn't left is `away` for 2 minutes, the session is closed (§6.5). An `away` chooser keeps control.
+**Away.** A closed tab or a dropped connection is not leaving: the player keeps their place, score and role, the timers act for them, and they can reconnect with their token. While a player who had connected has no open connection, they're marked `away: true` (in a broadcast of its own), and it turns `false` when they reconnect. A player who joined but hasn't connected yet isn't `away`. The buzzer doesn't wait for `away` players (§6.2), and when every player who hasn't left is `away` for 2 minutes during a game, the session is closed (§6.5). An `away` chooser keeps control, but control that passes to someone new (the start of Double Jeopardy, or a chooser leaving) skips `away` players unless everyone is `away`.
 
 **Leaving.** A player leaves only by sending `leave` (or being kicked).
 
@@ -479,13 +479,13 @@ As soon as a player leaves:
 |---|---|
 | `WAITING_FOR_START` | Removed at once |
 | During the clue rounds, without a role | Removed at once |
-| While they're `playerChoosingClue` in `CHOOSING_CLUE` | Control passes at once to the player with the lowest score (the lowest id on a tie) among those who haven't left, with a fresh clue-choice timer, and they're removed. |
+| While they're `playerChoosingClue` in `CHOOSING_CLUE` | Control passes at once to the player with the lowest score (the lowest id on a tie) among those who haven't left, skipping `away` players unless everyone is `away`, with a fresh clue-choice timer, and they're removed. |
 | While they're `playerChoosingClue` during a clue (one they chose, a Daily Double, or the reveal) | Stay with `leaving: true` until the clue ends. If someone answers correctly, that player takes control as usual; otherwise control passes as in the row above when the reveal ends (or, at the end of a round, to the next round's lowest score, §6.2). Until then the timers wager for them on a Daily Double. |
 | While they're `playerAnswering` (the buzzer, or the chooser on a Daily Double) | Stay with `leaving: true` until their answer time runs out, which counts as a wrong answer (or a wrong Daily Double). If they're also the chooser, they stay until control passes, as above. |
 | `FINAL_JEOPARDY_WAGERING`, `FINAL_JEOPARDY_ANSWERING` | Removed at once. There are no roles in Final Jeopardy. |
 | `FINAL_JEOPARDY_REVEALING`, `FINISHED_GAME` | Stay in `players` with `leaving: true`, so the results still show them. A player who leaves during the reveal is still scored. |
 
-A chooser marked `leaving` when Final Jeopardy starts is removed then, and `playerChoosingClue` becomes `null`. One still marked `leaving` when a game without Final Jeopardy finishes stays in the results, like everyone else who leaves then.
+A chooser marked `leaving` when Final Jeopardy starts is removed then; `playerChoosingClue` is `null` from Final Jeopardy on anyway. One still marked `leaving` when a game without Final Jeopardy finishes stays in the results, like everyone else who leaves then.
 
 **Score and answers.** While a player is marked `leaving` they stay in `players` and their score still changes: running out of time on an answer subtracts the clue's value (or their Daily Double wager, which the timer sets to 5). When a player is removed, they disappear from the snapshot entirely: from `players` (their score is gone), from `clueAnswers` (their answers to the current clue are deleted), from `playersLockedOut`, and from `finalJeopardy.players` (any Final Jeopardy wager or answer is discarded; they aren't scored). Nobody is removed from `FINAL_JEOPARDY_REVEALING` on, so the final standings always show everyone who was still playing when Final Jeopardy's answers closed.
 
@@ -493,7 +493,7 @@ A chooser marked `leaving` when Final Jeopardy starts is removed then, and `play
 
 **Rejoining.** Someone who left can join again with `POST /api/game-sessions/{id}/players`, under any name, as a new player (new id, new token, starting at the current `joinScore`, §3.2 and §6.6), unless the host blocked joining after the start.
 
-**The last player.** When the last player who hasn't left leaves (or every remaining player is marked `leaving`), the session is closed at once, even in the lobby (§6.5).
+**The last player.** When the last player who hasn't left leaves (or every remaining player is marked `leaving`), the session is closed at once, even in the lobby (§6.5). The exception is `FINISHED_GAME`: leaving is how players get back to the lobby, so the results stay until the finished-game timeout.
 
 ### 6.5 Session cleanup
 
@@ -501,8 +501,8 @@ Sessions live in memory and are removed automatically:
 
 | Session | Removed | `closeReason` |
 |---|---|---|
-| Every player has left, or every remaining player is marked `leaving` | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
-| Every player who hasn't left is `away` (§6.4), in any state | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting or joining stops it) | `ABANDONED` |
+| Every player has left, or every remaining player is marked `leaving`, except in `FINISHED_GAME` (see its row) | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
+| Every player who hasn't left is `away` (§6.4), during a game (not in `WAITING_FOR_START` or `FINISHED_GAME`, which have their own timeouts below) | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting or joining stops it) | `ABANDONED` |
 | `WAITING_FOR_START` with no change for **30 minutes** (a change is anything that's broadcast: a join, a leave, a kick, new timers). A session nobody joins counts from its creation. | After 30 minutes without a change | `IDLE` |
 | `FINISHED_GAME` with no change for **10 minutes** (counted from the end of the game, or from the last player leaving after it) | After 10 minutes without a change | `FINISHED` |
 
@@ -829,7 +829,7 @@ interface ClueAnswerResponse {
 
 interface FinalJeopardyPlayerResponse {
   playerId: number;
-  hasWagered: boolean;
+  hasWagered: boolean;     // placed a wager; a missing one counts as 0
   hasAnswered: boolean;
   maxWager: number | null;  // the most they can wager, only in FINAL_JEOPARDY_WAGERING
   wager: number | null;     // revealed in FINAL_JEOPARDY_REVEALING

@@ -133,7 +133,7 @@ class FinalJeopardyResponseTest {
                         null,
                         List.of(
                                 new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null, null, null, null),
-                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null, null, null, null, null)
+                                new FinalJeopardyPlayerResponse(2L, false, true, null, null, null, null, null, null, null)
                         )
                 ),
                 response.finalJeopardy()

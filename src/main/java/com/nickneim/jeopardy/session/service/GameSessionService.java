@@ -274,7 +274,9 @@ public class GameSessionService {
     /**
      * The departing player's token stops working at once and their open
      * connections are closed, so a client that reconnects is rejected like
-     * any unknown token. If nobody active is left, the session is closed.
+     * any unknown token. If nobody active is left, the session is closed,
+     * except a finished game: leaving is how players get back to the lobby,
+     * so its results stay up until the finished-session timeout.
      */
     private void depart(
             PlayerPrincipal actor,
@@ -290,7 +292,7 @@ public class GameSessionService {
 
             playerTokens.unregister(departed.getToken());
 
-            if (session.getActivePlayers().isEmpty()) {
+            if (session.getActivePlayers().isEmpty() && session.getState() != GameSessionState.FINISHED_GAME) {
                 closeSession(session, SessionCloseReason.ABANDONED);
             } else {
                 // A departure usually leaves the phase alone, and re-arming
@@ -368,12 +370,23 @@ public class GameSessionService {
     }
 
     // For tests, through TestGameSessions: real reveals end on their timers.
+    // Each does nothing outside its reveal.
     void finishRevealingClue(SessionCode sessionId) {
-        onTimeout(sessionId, GameSessionState.REVEALING_CLUE, GameSession::finishRevealingClue);
+        mutate(
+                getSession(sessionId),
+                session -> session.getState() == GameSessionState.REVEALING_CLUE,
+                GameSession::finishRevealingClue,
+                true
+        );
     }
 
     void finishRevealingAnswer(SessionCode sessionId) {
-        onTimeout(sessionId, GameSessionState.REVEALING_ANSWER, GameSession::finishRevealingAnswer);
+        mutate(
+                getSession(sessionId),
+                session -> session.getState() == GameSessionState.REVEALING_ANSWER,
+                GameSession::finishRevealingAnswer,
+                true
+        );
     }
 
     /**
@@ -399,15 +412,6 @@ public class GameSessionService {
     /** For actions that leave the state alone: re-arming the timer would restart the phase. */
     private void actKeepingTimer(PlayerPrincipal player, Consumer<GameSession> action) {
         mutate(sessionOf(player), session -> true, action, false);
-    }
-
-    /**
-     * Ends a reveal as its timer would, without waiting for it (the reveals
-     * are short, and tests skip them this way). It does nothing outside
-     * {@code armedIn}. Real timers go through {@link #onPhaseTimeout}.
-     */
-    private void onTimeout(SessionCode sessionId, GameSessionState armedIn, Consumer<GameSession> action) {
-        mutate(getSession(sessionId), session -> session.getState() == armedIn, action, true);
     }
 
     /**
@@ -447,13 +451,13 @@ public class GameSessionService {
      * Arms the session's cleanup timers after every change: a lobby or a
      * finished game is removed once it has gone without changes for its
      * timeout (a game in progress always moves on by itself, so it has
-     * none), and any open session once every player has been away for
+     * none), and a game in progress once every player has been away for
      * {@link #EVERYONE_AWAY_TIMEOUT}. Called with the session's lock held.
      */
     private void scheduleCleanup(GameSession session) {
         SessionCode sessionId = session.getId();
 
-        if (session.isEveryoneAway() && session.getState() != GameSessionState.CLOSED) {
+        if (isInProgress(session) && session.isEveryoneAway()) {
             timer.scheduleAbandonment(sessionId, EVERYONE_AWAY_TIMEOUT, () -> abandonSession(session));
         } else {
             timer.cancelAbandonment(sessionId);
@@ -494,11 +498,22 @@ public class GameSessionService {
         }
     }
 
-    // A stale abandonment (someone came back, or the session is gone) is a
-    // no-op. Like expireSession, it holds the session itself, not its id.
+    // Whether the game is being played: the lobby and a finished game have
+    // their own, longer cleanup timeouts, and a host waiting in the lobby on
+    // a phone that went to sleep (which drops its connection) mustn't lose it.
+    private static boolean isInProgress(GameSession session) {
+        return switch (session.getState()) {
+            case WAITING_FOR_START, FINISHED_GAME, CLOSED -> false;
+            default -> true;
+        };
+    }
+
+    // A stale abandonment (someone came back, the game ended, or the
+    // session is gone) is a no-op. Like expireSession, it holds the session
+    // itself, not its id.
     private void abandonSession(GameSession session) {
         synchronized (session) {
-            if (sessions.get(session.getId()) == session && session.isEveryoneAway()) {
+            if (sessions.get(session.getId()) == session && isInProgress(session) && session.isEveryoneAway()) {
                 closeSession(session, SessionCloseReason.ABANDONED);
             }
         }

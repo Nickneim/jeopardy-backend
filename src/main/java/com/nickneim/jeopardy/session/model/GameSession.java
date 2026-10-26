@@ -441,11 +441,8 @@ public class GameSession {
             playersAlreadyBuzzed.remove(playerId);
             clueAnswers.removeIf(answer -> answer.playerId().equals(playerId));
             finalJeopardy.remove(playerId);
-
-            // Only possible once the rounds with a chooser are over.
-            if (playerId.equals(playerChoosingClue)) {
-                playerChoosingClue = null;
-            }
+            // Never the chooser: they hold a role in the clue rounds, and
+            // there is none from Final Jeopardy on.
         }
     }
 
@@ -462,11 +459,13 @@ public class GameSession {
     }
 
     // The active player with the lowest score, the lowest id on a tie, or
-    // the fallback if nobody is active.
+    // the fallback if nobody is active. Players who are away come last, so
+    // nobody waits for one to pick unless everyone is away.
     private Long lowestScoringActivePlayer(Long fallback) {
         return getActivePlayers()
                 .stream()
-                .min(Comparator.comparingInt(GameSessionPlayer::getScore)
+                .min(Comparator.comparing(GameSessionPlayer::isAway)
+                        .thenComparingInt(GameSessionPlayer::getScore)
                         .thenComparing(GameSessionPlayer::getId))
                 .map(GameSessionPlayer::getId)
                 .orElse(fallback);
@@ -670,6 +669,8 @@ public class GameSession {
     private void startFinalJeopardy() {
         BoardClue clue = board.getFinalJeopardyClue();
 
+        // Nobody chooses from here on.
+        playerChoosingClue = null;
         chosenClueId = clue.id();
         playedClues.add(clue.id());
         clueAnswers.clear();
@@ -686,11 +687,9 @@ public class GameSession {
         finalJeopardy.placeWager(requireActivePlayer(playerId), wager);
     }
 
-    /** Players who didn't wager in time wager 0. */
+    /** Players who didn't wager in time wager 0 (see {@link FinalJeopardy#getWager}). */
     public void timeoutFinalJeopardyWagering() {
         requirePhase(GameSessionState.FINAL_JEOPARDY_WAGERING);
-
-        finalJeopardy.wagerZeroForMissing(players);
 
         setState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
     }

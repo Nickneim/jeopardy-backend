@@ -1540,6 +1540,19 @@ class GameSessionServiceTest {
         verifyNoMoreInteractions(timer);
     }
 
+    // The last clue's chooser holds no role any more.
+    @Test
+    void lastChooserLeavingDuringFinalJeopardy_keepsThePhaseTimer() {
+        GameSession session = createSessionInFinalJeopardy();
+        gameSessionService.joinSession(session.getId(), "Late");
+        clearInvocations(timer);
+
+        gameSessionService.leave(player(session.getId(), PLAYER_ID));
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+        verifyPhaseTimerUntouched();
+    }
+
     @Test
     void staleFinalJeopardyWagerTimeout_doesNothing() {
         GameSession session = createSessionInFinalJeopardy();
@@ -1912,6 +1925,7 @@ class GameSessionServiceTest {
     @Test
     void someoneComingBack_cancelsTheGracePeriod() {
         GameSession session = createSessionWithPlayers(2);
+        gameSessionService.startGame(player(session.getId(), 1L));
         goAway(session, 1L);
         goAway(session, 2L);
         Runnable abandonment = captureAbandonment(session);
@@ -1926,6 +1940,19 @@ class GameSessionServiceTest {
         // A late run finds someone back and does nothing.
         abandonment.run();
         assertSame(session, gameSessionService.getSession(session.getId()));
+    }
+
+    // Both have their own, longer cleanup timeouts.
+    @Test
+    void everyoneAway_inTheLobbyOrAFinishedGame_closesNothing() {
+        GameSession lobby = createSessionWithPlayers(2);
+        goAway(lobby, 1L);
+        goAway(lobby, 2L);
+
+        GameSession finished = createFinishedSession();
+        goAway(finished, finished.getPlayers().getFirst().getId());
+
+        verify(timer, never()).scheduleAbandonment(any(), any(), any());
     }
 
     private void goAway(GameSession session, Long playerId) {
@@ -2062,6 +2089,40 @@ class GameSessionServiceTest {
 
     @Test
     void finishedSession_isRemovedAfterTheFinishedTimeout() {
+        GameSession session = createFinishedSession();
+        GameSessionPlayer player = session.getPlayers().getFirst();
+
+        Runnable cleanup = captureCleanup(session, GameSessionService.FINISHED_SESSION_TIMEOUT);
+        assertClosedOnNextBroadcast(session, SessionCloseReason.FINISHED);
+
+        cleanup.run();
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
+    }
+
+    // Leaving is how players get back to the lobby, so the results stay up.
+    @Test
+    void everyoneLeavingAFinishedGame_keepsItUntilTheFinishedTimeout() {
+        GameSession session = createFinishedSession();
+        GameSessionPlayer player = session.getPlayers().getFirst();
+        clearInvocations(timer);
+
+        gameSessionService.leave(player(session.getId(), player.getId()));
+
+        assertSame(session, gameSessionService.getSession(session.getId()));
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
+        Runnable cleanup = captureCleanup(session, GameSessionService.FINISHED_SESSION_TIMEOUT);
+        assertClosedOnNextBroadcast(session, SessionCloseReason.FINISHED);
+
+        cleanup.run();
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+    }
+
+    // A one-clue game won by its only player, who joined (so has a token).
+    private GameSession createFinishedSession() {
         GameSession session = gameSessionService.createSession(
                 board(new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false))
         );
@@ -2075,13 +2136,7 @@ class GameSessionServiceTest {
         gameSessionService.finishRevealingAnswer(session.getId());
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
 
-        Runnable cleanup = captureCleanup(session, GameSessionService.FINISHED_SESSION_TIMEOUT);
-        assertClosedOnNextBroadcast(session, SessionCloseReason.FINISHED);
-
-        cleanup.run();
-
-        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
-        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
+        return session;
     }
 
     @Test

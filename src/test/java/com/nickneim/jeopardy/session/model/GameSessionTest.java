@@ -590,6 +590,53 @@ class GameSessionTest {
     }
 
     @Test
+    void doubleJeopardy_skipsALowestScoreWhoIsAway() {
+        // As above: player 1 ends on 200, player 2 on -600.
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Wrong");
+        session.buzz(player2.getId());
+        session.timeoutAnswer();
+        session.finishRevealingAnswer();
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), jeopardyClue2.answer());
+        session.setAway(player2.getId(), true);
+
+        session.finishRevealingAnswer();
+
+        assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void doubleJeopardy_withEveryoneAway_startsWithTheLowestScore() {
+        // Player 2 answers wrong once, so ends lowest.
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+        session.timeoutChoosingClue();
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.setAway(player1.getId(), true);
+        session.setAway(player2.getId(), true);
+
+        session.finishRevealingAnswer();
+
+        assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
     void doubleJeopardy_onATie_startsWithTheLowestId() {
         session.startGame(player1.getId());
         session.chooseClue(player1.getId(), jeopardyClue1.id());
@@ -2039,7 +2086,14 @@ class GameSessionTest {
     }
 
     @Test
-    void timeoutFinalJeopardyWagering_givesMissingWagersZeroAndRevealsClue() {
+    void finalJeopardy_hasNoChooser() {
+        reachFinalJeopardy();
+
+        assertNull(session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void timeoutFinalJeopardyWagering_countsMissingWagersAsZeroAndRevealsClue() {
         reachFinalJeopardy();
         player1.addScore(1000);
         session.placeFinalJeopardyWager(player1.getId(), 600);
@@ -2048,7 +2102,8 @@ class GameSessionTest {
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_ANSWERING, session.getState());
         assertEquals(600, session.getFinalJeopardy().getWager(player1.getId()));
-        assertTrue(session.getFinalJeopardy().hasWager(player2.getId()));
+        // Still shown as not having wagered.
+        assertFalse(session.getFinalJeopardy().hasWager(player2.getId()));
         assertEquals(0, session.getFinalJeopardy().getWager(player2.getId()));
     }
 
@@ -2058,7 +2113,7 @@ class GameSessionTest {
         GameSessionPlayer duringWagering = session.addPlayer("Early", PlayerTokens.generate());
         session.timeoutFinalJeopardyWagering();
 
-        assertTrue(session.getFinalJeopardy().hasWager(duringWagering.getId()));
+        assertFalse(session.getFinalJeopardy().hasWager(duringWagering.getId()));
         assertEquals(0, session.getFinalJeopardy().getWager(duringWagering.getId()));
         // Joining after the wagering is covered in GameSessionJoiningTest.
     }
