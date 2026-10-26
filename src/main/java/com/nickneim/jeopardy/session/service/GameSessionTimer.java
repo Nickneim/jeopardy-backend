@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -19,8 +19,7 @@ public class GameSessionTimer {
 
     private static final Logger log = LoggerFactory.getLogger(GameSessionTimer.class);
 
-    private final ScheduledExecutorService scheduler =
-            Executors.newScheduledThreadPool(4);
+    private final ScheduledExecutorService scheduler = newScheduler();
 
     // Each session has one phase timer and, separately, one cleanup timer
     // that removes the session once it has been idle for too long.
@@ -28,6 +27,15 @@ public class GameSessionTimer {
             new ConcurrentHashMap<>();
     private final Map<SessionCode, ScheduledFuture<?>> cleanupTimers =
             new ConcurrentHashMap<>();
+
+    // By default the executor still runs every delayed task after shutdown,
+    // so timers (lobby cleanups wait 30 minutes) would fire against a
+    // closed context, e.g. after a devtools restart.
+    private static ScheduledExecutorService newScheduler() {
+        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(4);
+        scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        return scheduler;
+    }
 
     public void schedule(
             SessionCode sessionId,

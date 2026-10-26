@@ -159,10 +159,12 @@ public class GameSessionService {
         timer.cancel(sessionId);
         timer.cancelCleanup(sessionId);
 
-        GameSession session = sessions.remove(sessionId);
+        GameSession session = sessions.get(sessionId);
 
         if (session != null) {
+            // Tokens first, as in closeSession.
             session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
+            sessions.remove(sessionId, session);
         }
     }
 
@@ -390,19 +392,17 @@ public class GameSessionService {
         }
 
         long version = session.getVersion();
-        timer.scheduleCleanup(sessionId, timeout, () -> expireSession(sessionId, version));
+        timer.scheduleCleanup(sessionId, timeout, () -> expireSession(session, version));
     }
 
-    // A stale cleanup (the session changed since it was armed) is a no-op.
-    private void expireSession(SessionCode sessionId, long version) {
-        GameSession session = sessions.get(sessionId);
-
-        if (session == null) {
-            return;
-        }
-
+    /**
+     * A stale cleanup (the session changed since it was armed, or is gone)
+     * is a no-op. It holds the session itself, not its id: a later session
+     * can take the id, and its version could match.
+     */
+    private void expireSession(GameSession session, long version) {
         synchronized (session) {
-            if (session.getVersion() != version) {
+            if (sessions.get(session.getId()) != session || session.getVersion() != version) {
                 return;
             }
 
@@ -430,8 +430,11 @@ public class GameSessionService {
         session.close(reason);
         broadcast(session);
 
-        sessions.remove(sessionId);
+        // Tokens before the id is freed: a player still connecting could
+        // otherwise pass the interceptor's second token check after a new
+        // session took the id, and act as that session's player.
         session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
+        sessions.remove(sessionId);
     }
 
     private void scheduleTimeout(GameSession session) {
@@ -469,31 +472,28 @@ public class GameSessionService {
         // phase has left.
         session.startPhaseTimer(timeout.duration(), System.nanoTime());
         long timerId = session.getPhaseTimerId();
-        timer.schedule(sessionId, timeout.duration(), () -> onPhaseTimeout(sessionId, state, timerId, timeout.action()));
+        timer.schedule(sessionId, timeout.duration(), () -> onPhaseTimeout(session, state, timerId, timeout.action()));
     }
 
     /**
      * A phase timer firing. Cancelling a timer can't stop one that is already
-     * waiting for the lock, so it only acts if the session (still there) is
-     * in the state it was armed in and no timer was armed or cleared since.
+     * waiting for the lock, so it only acts if the session is still there,
+     * in the state it was armed in, and no timer was armed or cleared since.
      * The state alone isn't enough: a buzz and a quick wrong answer return to
      * WAITING_FOR_BUZZER, and the old buzzer timeout would end the new
-     * buzzing window at once.
+     * buzzing window at once. It holds the session itself, not its id: a
+     * later session can take the id, and its state and timer id could match.
      */
     private void onPhaseTimeout(
-            SessionCode sessionId,
+            GameSession session,
             GameSessionState armedIn,
             long timerId,
             Consumer<GameSession> action
     ) {
-        GameSession session = sessions.get(sessionId);
-
-        if (session == null) {
-            return;
-        }
-
         synchronized (session) {
-            if (session.getState() != armedIn || session.getPhaseTimerId() != timerId) {
+            if (sessions.get(session.getId()) != session
+                    || session.getState() != armedIn
+                    || session.getPhaseTimerId() != timerId) {
                 return;
             }
 

@@ -155,6 +155,21 @@ class GameSessionTimerTest {
         );
     }
 
+    // Otherwise a lobby's cleanup would fire against a closed context, up
+    // to 30 minutes later.
+    @Test
+    void shutdown_dropsTimersThatHaveNotFiredYet() throws InterruptedException {
+        CountDownLatch phase = new CountDownLatch(1);
+        CountDownLatch cleanup = new CountDownLatch(1);
+        timer.schedule(SessionCode.random(), Duration.ofMillis(100), phase::countDown);
+        timer.scheduleCleanup(SessionCode.random(), Duration.ofMillis(100), cleanup::countDown);
+
+        timer.shutdown();
+
+        assertFalse(phase.await(300, TimeUnit.MILLISECONDS));
+        assertFalse(cleanup.await(0, TimeUnit.MILLISECONDS));
+    }
+
     @Test
     void failingAction_isLogged(CapturedOutput output) {
         SessionCode sessionId = SessionCode.random();

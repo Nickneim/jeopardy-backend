@@ -162,6 +162,100 @@ class GameSessionServiceTest {
         assertEquals(id, gameSessionService.createSession(id, createBoard()).getId());
     }
 
+    // A player still connecting passes the interceptor's second token check
+    // as long as their token is registered, so the id must stay taken
+    // until every token is revoked.
+    @Test
+    void closingASession_revokesEveryTokenBeforeTheIdIsFree() {
+        PlayerTokenRegistry tokens = new PlayerTokenRegistry() {
+            @Override
+            public void unregister(String token) {
+                find(token).ifPresent(player -> assertThrows(
+                        GameSessionAlreadyExistsException.class,
+                        () -> gameSessionService.requireUnusedId(player.sessionId())
+                ));
+                super.unregister(token);
+            }
+        };
+        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, clock);
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+
+        // The idle cleanup closes it with the player's token still registered.
+        captureCleanup(session, GameSessionService.IDLE_LOBBY_TIMEOUT).run();
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertEquals(Optional.empty(), tokens.find(player.getToken()));
+    }
+
+    @Test
+    void removingASession_revokesEveryTokenBeforeTheIdIsFree() {
+        PlayerTokenRegistry tokens = new PlayerTokenRegistry() {
+            @Override
+            public void unregister(String token) {
+                find(token).ifPresent(player -> assertThrows(
+                        GameSessionAlreadyExistsException.class,
+                        () -> gameSessionService.requireUnusedId(player.sessionId())
+                ));
+                super.unregister(token);
+            }
+        };
+        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, clock);
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+
+        gameSessionService.removeSession(session.getId());
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        assertEquals(Optional.empty(), tokens.find(player.getToken()));
+    }
+
+    // Cancelling can't stop a timer that is already running, and a new
+    // session under the same id reaches the same state and timer id.
+    @Test
+    void phaseTimerOfAClosedSession_leavesANewSessionUnderItsIdAlone() {
+        SessionCode id = SessionCode.random();
+        Duration clueChoice = GameSessionTimeouts.defaults().clueChoice();
+        GameSession old = gameSessionService.createSession(id, createBoard());
+        GameSessionPlayer oldPlayer = gameSessionService.joinSession(id, "Nico");
+        gameSessionService.startGame(id, oldPlayer.getId());
+        Runnable oldTimeout = captureScheduledRunnable(old, clueChoice);
+        long armedTimerId = old.getPhaseTimerId();
+        gameSessionService.leave(id, oldPlayer.getId());
+
+        GameSession current = gameSessionService.createSession(id, createBoard());
+        GameSessionPlayer player = gameSessionService.joinSession(id, "John");
+        gameSessionService.startGame(id, player.getId());
+        assertEquals(armedTimerId, current.getPhaseTimerId());
+        clearInvocations(timer, broadcaster);
+
+        oldTimeout.run();
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, current.getState());
+        verifyNoInteractions(timer, broadcaster);
+    }
+
+    @Test
+    void cleanupOfAClosedSession_leavesANewSessionUnderItsIdAlone() {
+        SessionCode id = SessionCode.random();
+        GameSession old = gameSessionService.createSession(id, createBoard());
+        GameSessionPlayer oldPlayer = gameSessionService.joinSession(id, "Nico");
+        Runnable oldCleanup = captureCleanup(old, GameSessionService.IDLE_LOBBY_TIMEOUT);
+        long oldVersion = old.getVersion();
+        gameSessionService.leave(id, oldPlayer.getId());
+
+        GameSession current = gameSessionService.createSession(id, createBoard());
+        gameSessionService.joinSession(id, "John");
+        assertEquals(oldVersion, current.getVersion());
+        clearInvocations(broadcaster);
+
+        oldCleanup.run();
+
+        assertSame(current, gameSessionService.getSession(id));
+        assertEquals(GameSessionState.WAITING_FOR_START, current.getState());
+        verifyNoInteractions(broadcaster);
+    }
+
     @Test
     void createSession_startsInWaitingForStartState() {
         GameSession session = createSession();
