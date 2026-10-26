@@ -12,7 +12,7 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
-import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
+import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.lobby.SessionLobby;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -435,7 +435,7 @@ class GameSessionControllerTest {
         SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
-                .thenThrow(new LateJoinNotAllowedException("This game has already started and doesn't accept new players"));
+                .thenThrow(new SessionNotJoinableException("This game has already started and doesn't accept new players"));
 
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -7,9 +7,9 @@ package com.nickneim.jeopardy.session.exception;
  * a REST call, so this maps to an HTTP error (409) rather than a
  * GameErrorCode.
  */
-public class LateJoinNotAllowedException extends RuntimeException {
+public class SessionNotJoinableException extends RuntimeException {
 
-    public LateJoinNotAllowedException(String message) {
+    public SessionNotJoinableException(String message) {
         super(message);
     }
 }

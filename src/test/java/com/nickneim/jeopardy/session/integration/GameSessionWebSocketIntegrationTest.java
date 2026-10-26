@@ -20,7 +20,7 @@ import com.nickneim.jeopardy.session.dto.PlayerResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
-import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
+import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -1496,7 +1496,7 @@ class GameSessionWebSocketIntegrationTest {
         awaitMessage(messages);
 
         assertThrows(
-                LateJoinNotAllowedException.class,
+                SessionNotJoinableException.class,
                 () -> gameSessionService.joinSession(session.getId(), "Late")
         );
     }

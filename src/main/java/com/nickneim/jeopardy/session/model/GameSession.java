@@ -7,7 +7,7 @@ import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
-import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
+import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -195,7 +195,7 @@ public class GameSession {
      */
     public GameSessionPlayer addPlayer(String name, String token) {
         if (!isJoinable()) {
-            throw new LateJoinNotAllowedException(switch (state) {
+            throw new SessionNotJoinableException(switch (state) {
                 case FINAL_JEOPARDY_ANSWERING, FINAL_JEOPARDY_REVEALING ->
                         "Final Jeopardy is underway and doesn't accept new players";
                 case FINISHED_GAME -> "This game has finished and doesn't accept new players";

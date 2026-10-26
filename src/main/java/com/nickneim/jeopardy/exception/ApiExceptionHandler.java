@@ -5,12 +5,13 @@ import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
-import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
-import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
+import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
+import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -25,12 +26,32 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({
             GameNotFoundException.class,
-            ClueNotFoundException.class,
-            GameSessionNotFoundException.class
+            ClueNotFoundException.class
     })
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiErrorResponse handleNotFound(RuntimeException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    /**
+     * A game rule broken by a REST call. The only one today is a missing
+     * session (GameSessionNotFoundException, 404); the rest are STOMP
+     * errors, mapped here so that one reaching REST is a 4xx, not a 500.
+     */
+    @ExceptionHandler(InvalidGameActionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidGameAction(
+            InvalidGameActionException exception
+    ) {
+        HttpStatus status = switch (exception.getCode()) {
+            case SESSION_NOT_FOUND, PLAYER_NOT_FOUND, CLUE_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case INVALID_STATE, CLUE_ALREADY_PLAYED -> HttpStatus.CONFLICT;
+            case NOT_YOUR_TURN, NOT_HOST, PLAYER_NOT_IN_SESSION -> HttpStatus.FORBIDDEN;
+            case UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED;
+            case INVALID_REQUEST, INVALID_WAGER -> HttpStatus.BAD_REQUEST;
+            case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
+
+        return ResponseEntity.status(status).body(error(status, exception.getMessage()));
     }
 
     // 422 rather than 409: the request is well formed and the game exists, but
@@ -43,10 +64,10 @@ public class ApiExceptionHandler {
     }
 
     // 409: the request is fine, but the session's state doesn't allow it:
-    // it has started with late joining blocked by the host, or (for a
-    // create) its id is already in use.
+    // it doesn't take new players right now (GameSession.isJoinable), or
+    // (for a create) its id is already in use.
     @ExceptionHandler({
-            LateJoinNotAllowedException.class,
+            SessionNotJoinableException.class,
             GameSessionAlreadyExistsException.class
     })
     @ResponseStatus(HttpStatus.CONFLICT)

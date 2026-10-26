@@ -436,7 +436,7 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 
 **Host**
 
-- The first player to join is the host (`hostPlayerId`). Only the host can `start`, `update-timers` and `kick`; anyone else gets `NOT_HOST`.
+- The first player to join is the host (`hostPlayerId`). Only the host can `start`, `update-timers`, `update-settings` and `kick`; anyone else gets `NOT_HOST`.
 - When the host leaves or is kicked, the remaining player with the **lowest id** who hasn't left becomes host at once, in the same broadcast. (So the host is always the active player with the lowest id.)
 - When nobody is left, the session closes (§6.5).
 
@@ -548,7 +548,7 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `SESSION_NOT_FOUND` | The session no longer exists (§6.5) |
 | `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed, or changing timers after the start) |
 | `NOT_YOUR_TURN` | Another player is choosing or answering, or you already buzzed on this clue |
-| `NOT_HOST` | Only the host can do that: `start`, `update-timers` or `kick` (§6.4) |
+| `NOT_HOST` | Only the host can do that: `start`, `update-timers`, `update-settings` or `kick` (§6.4) |
 | `PLAYER_NOT_FOUND` | The player you tried to kick isn't in the session or has already left |
 | `CLUE_NOT_FOUND` | That clue isn't on this round's board |
 | `CLUE_ALREADY_PLAYED` | That clue was already chosen |
