@@ -228,6 +228,41 @@ class GameSessionControllerTest {
     }
 
     @Test
+    void joinSession_trimsInvisibleCharactersAroundTheName() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+        GameSessionPlayer player = new GameSessionPlayer(1L, "Nico", PlayerTokens.generate());
+
+        when(gameSessionService.joinSession(sessionId, "Nico"))
+                .thenReturn(player);
+
+        // A non-breaking space, a zero-width space and an ordinary space.
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"\\u00a0Nico\\u200b \"}"))
+                .andExpect(status().isCreated());
+
+        verify(gameSessionService).joinSession(sessionId, "Nico");
+    }
+
+    @Test
+    void joinSession_rejectsANameWithNothingVisible() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"\\u00a0\\u200b\\u3000\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "playerName must not be blank"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
     void joinSession_rejectsTooLongName() throws Exception {
         SessionCode sessionId = SessionCode.random();
 
@@ -400,7 +435,7 @@ class GameSessionControllerTest {
         SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.joinSession(sessionId, "Nico"))
-                .thenThrow(new LateJoinNotAllowedException());
+                .thenThrow(new LateJoinNotAllowedException("This game has already started and doesn't accept new players"));
 
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)

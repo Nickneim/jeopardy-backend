@@ -18,6 +18,7 @@ import com.nickneim.jeopardy.session.dto.PlaceDailyDoubleWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlayerResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
+import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.LateJoinNotAllowedException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -280,7 +281,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -307,7 +308,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "SESSION_NOT_FOUND",
+                GameErrorCode.SESSION_NOT_FOUND,
                 error.code()
         );
     }
@@ -328,7 +329,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSessionErrorResponse error =
                 awaitError(errors);
 
-        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
         assertEquals("Invalid session code: expected 5 letters and digits", error.message());
     }
 
@@ -353,7 +354,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "PLAYER_NOT_IN_SESSION",
+                GameErrorCode.PLAYER_NOT_IN_SESSION,
                 error.code()
         );
     }
@@ -378,7 +379,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "UNAUTHENTICATED",
+                GameErrorCode.UNAUTHENTICATED,
                 error.code()
         );
     }
@@ -504,7 +505,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "NOT_YOUR_TURN",
+                GameErrorCode.NOT_YOUR_TURN,
                 error.code()
         );
     }
@@ -576,7 +577,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "CLUE_ALREADY_PLAYED",
+                GameErrorCode.CLUE_ALREADY_PLAYED,
                 error.code()
         );
     }
@@ -603,7 +604,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -635,7 +636,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "CLUE_NOT_FOUND",
+                GameErrorCode.CLUE_NOT_FOUND,
                 error.code()
         );
     }
@@ -722,7 +723,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -765,7 +766,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "PLAYER_NOT_IN_SESSION",
+                GameErrorCode.PLAYER_NOT_IN_SESSION,
                 error.code()
         );
     }
@@ -951,7 +952,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "NOT_YOUR_TURN",
+                GameErrorCode.NOT_YOUR_TURN,
                 error.code()
         );
     }
@@ -979,7 +980,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -1070,7 +1071,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_WAGER",
+                GameErrorCode.INVALID_WAGER,
                 error.code()
         );
     }
@@ -1099,7 +1100,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "NOT_YOUR_TURN",
+                GameErrorCode.NOT_YOUR_TURN,
                 error.code()
         );
     }
@@ -1126,7 +1127,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -1151,7 +1152,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_REQUEST",
+                GameErrorCode.INVALID_REQUEST,
                 error.code()
         );
     }
@@ -1299,7 +1300,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_WAGER",
+                GameErrorCode.INVALID_WAGER,
                 error.code()
         );
     }
@@ -1330,7 +1331,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -1399,7 +1400,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_STATE",
+                GameErrorCode.INVALID_STATE,
                 error.code()
         );
     }
@@ -1424,7 +1425,7 @@ class GameSessionWebSocketIntegrationTest {
                 awaitError(errors);
 
         assertEquals(
-                "INVALID_REQUEST",
+                GameErrorCode.INVALID_REQUEST,
                 error.code()
         );
     }
@@ -1447,7 +1448,7 @@ class GameSessionWebSocketIntegrationTest {
 
         startGame(stompSession, session.getId());
 
-        assertEquals("NOT_HOST", awaitError(errors).code());
+        assertEquals(GameErrorCode.NOT_HOST, awaitError(errors).code());
         assertEquals(GameSessionState.WAITING_FOR_START, session.getState());
     }
 
@@ -1517,7 +1518,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSessionErrorResponse error = awaitError(errors);
 
-        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
         assertEquals("buzzerMs must be between 1000 and 300000", error.message());
     }
 
@@ -1538,7 +1539,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSessionErrorResponse error = awaitError(errors);
 
-        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
         assertEquals("Invalid request: the body isn't valid JSON for this action", error.message());
     }
 
@@ -1561,7 +1562,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSessionErrorResponse error = awaitError(errors);
 
-        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
         assertEquals("Payload value must not be empty", error.message());
     }
 
@@ -1580,7 +1581,7 @@ class GameSessionWebSocketIntegrationTest {
                 Map.of("wager", 99_999_999_999L)
         );
 
-        assertEquals("INVALID_REQUEST", awaitError(errors).code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, awaitError(errors).code());
     }
 
     @Test
@@ -1601,7 +1602,7 @@ class GameSessionWebSocketIntegrationTest {
 
         GameSessionErrorResponse error = awaitError(errors);
 
-        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
         assertEquals("answer must be at most 200 characters", error.message());
     }
 

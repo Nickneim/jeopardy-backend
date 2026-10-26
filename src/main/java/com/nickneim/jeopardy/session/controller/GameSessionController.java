@@ -74,7 +74,7 @@ public class GameSessionController {
         GameBoard board = gameBoardService.loadBoard(request.gameId());
         GameSession session = gameSessionService.createSession(sessionId, board);
 
-        return new CreateGameSessionResponse(session.getId());
+        return CreateGameSessionResponse.from(session);
     }
 
     /**

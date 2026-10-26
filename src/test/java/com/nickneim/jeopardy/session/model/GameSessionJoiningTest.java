@@ -204,8 +204,7 @@ class GameSessionJoiningTest {
     }
 
     @Test
-    void blockedJoining_appliesToAFinishedGame() {
-        session.updateLateJoin(ana.getId(), false);
+    void finishedGame_isNeverJoinable() {
         session.startGame(ana.getId());
         for (int i = 0; i < 10; i++) {
             session.timeoutChoosingClue();
@@ -215,7 +214,21 @@ class GameSessionJoiningTest {
         }
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
 
-        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
+        // Late joining is allowed, but there is nothing left to play.
+        assertFalse(session.isJoinable());
+        LateJoinNotAllowedException exception =
+                assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
+        assertEquals("This game has finished and doesn't accept new players", exception.getMessage());
+    }
+
+    @Test
+    void blockedJoining_saysTheGameHasStarted() {
+        session.updateLateJoin(ana.getId(), false);
+        session.startGame(ana.getId());
+
+        LateJoinNotAllowedException exception =
+                assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
+        assertEquals("This game has already started and doesn't accept new players", exception.getMessage());
     }
 
     @Test
@@ -238,6 +251,39 @@ class GameSessionJoiningTest {
         session.startGame(ana.getId());
 
         assertError(GameErrorCode.INVALID_STATE, () -> session.updateLateJoin(ana.getId(), false));
+    }
+
+    @Test
+    void finalJeopardy_takesNewPlayersOnlyWhileWagering() {
+        BoardClue jeopardyClue = new BoardClue(1L, 1, "Question", "Answer", 200, false);
+        BoardClue finalClue = new BoardClue(2L, 1, "Final question", "Final answer", 2000, false);
+        session = new GameSession(SessionCode.random(), new GameBoard(List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory("HISTORY", List.of(jeopardyClue)))),
+                new BoardRound(GameRound.FINAL_JEOPARDY, List.of(new BoardCategory("FINAL", List.of(finalClue))))
+        )));
+        ana = session.addPlayer("Ana", PlayerTokens.generate());
+        session.startGame(ana.getId());
+        session.chooseClue(ana.getId(), jeopardyClue.id());
+        session.finishRevealingClue();
+        session.timeoutBuzzer();
+        session.finishRevealingAnswer();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+        assertTrue(session.isJoinable());
+        session.addPlayer("Ben", PlayerTokens.generate());
+
+        // Too late to wager, so too late to play; they can still watch.
+        session.timeoutFinalJeopardyWagering();
+        assertFalse(session.isJoinable());
+        LateJoinNotAllowedException exception =
+                assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Cy", PlayerTokens.generate()));
+        assertEquals("Final Jeopardy is underway and doesn't accept new players", exception.getMessage());
+
+        session.timeoutFinalJeopardyAnswering();
+        assertFalse(session.isJoinable());
+        assertThrows(LateJoinNotAllowedException.class, () -> session.addPlayer("Cy", PlayerTokens.generate()));
+
+        assertEquals(2, session.getPlayers().size());
     }
 
     @Test

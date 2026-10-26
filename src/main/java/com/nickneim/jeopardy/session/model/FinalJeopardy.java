@@ -1,6 +1,5 @@
 package com.nickneim.jeopardy.session.model;
 
-import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
@@ -76,22 +75,17 @@ public class FinalJeopardy {
         return wagers.getOrDefault(playerId, 0);
     }
 
-    public String getAnswer(Long playerId) {
-        ClueAnswer answer = answers.get(playerId);
-
-        return answer == null ? null : answer.answer();
-    }
-
     public boolean isCorrect(Long playerId) {
-        AnswerCheck check = check(playerId);
-
-        return check != null && check.correct();
+        return answerOf(playerId).correct();
     }
 
-    /** The check of the player's answer, made when they gave it; null without an answer. */
-    public AnswerCheck check(Long playerId) {
+    /**
+     * The player's answer, checked when they gave it, or a timed-out one
+     * (no text, no check) if they didn't answer.
+     */
+    public ClueAnswer answerOf(Long playerId) {
         ClueAnswer answer = answers.get(playerId);
 
-        return answer == null ? null : answer.check();
+        return answer == null ? ClueAnswer.timedOut(playerId) : answer;
     }
 }

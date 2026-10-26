@@ -731,11 +731,11 @@ class GameSessionTest {
         session.answerFinalJeopardy(player2.getId(), "what's the american revolutoin");
 
         assertFalse(session.getFinalJeopardy().isCorrect(player1.getId()));
-        assertEquals(new AnswerCheck(false, false, null, null), session.getFinalJeopardy().check(player1.getId()));
+        assertEquals(new AnswerCheck(false, false, null, null), session.getFinalJeopardy().answerOf(player1.getId()).check());
         assertTrue(session.getFinalJeopardy().isCorrect(player2.getId()));
         assertEquals(
                 new AnswerCheck(true, true, List.of("The American Revolution"), List.of()),
-                session.getFinalJeopardy().check(player2.getId())
+                session.getFinalJeopardy().answerOf(player2.getId()).check()
         );
     }
 
@@ -745,7 +745,7 @@ class GameSessionTest {
         session.timeoutFinalJeopardyWagering();
         session.timeoutFinalJeopardyAnswering();
 
-        assertNull(session.getFinalJeopardy().check(player1.getId()));
+        assertNull(session.getFinalJeopardy().answerOf(player1.getId()).check());
     }
 
 
@@ -1901,19 +1901,14 @@ class GameSessionTest {
     }
 
     @Test
-    void playerJoiningAfterFinalJeopardyWagering_wagersZero() {
+    void playerJoiningDuringFinalJeopardyWagering_wagersZeroWithoutAWager() {
         reachFinalJeopardy();
         GameSessionPlayer duringWagering = session.addPlayer("Early", PlayerTokens.generate());
         session.timeoutFinalJeopardyWagering();
 
-        GameSessionPlayer duringAnswering = session.addPlayer("Late", PlayerTokens.generate());
-        session.timeoutFinalJeopardyAnswering();
-        GameSessionPlayer duringReveal = session.addPlayer("Later", PlayerTokens.generate());
-
-        for (GameSessionPlayer player : List.of(duringWagering, duringAnswering, duringReveal)) {
-            assertTrue(session.getFinalJeopardy().hasWager(player.getId()), player.getName());
-            assertEquals(0, session.getFinalJeopardy().getWager(player.getId()));
-        }
+        assertTrue(session.getFinalJeopardy().hasWager(duringWagering.getId()));
+        assertEquals(0, session.getFinalJeopardy().getWager(duringWagering.getId()));
+        // Joining after the wagering is covered in GameSessionJoiningTest.
     }
 
     @Test
@@ -1960,7 +1955,7 @@ class GameSessionTest {
         session.answerFinalJeopardy(player1.getId(), "The Civil War");
         session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
 
-        assertEquals("What is the American Revolution?", session.getFinalJeopardy().getAnswer(player1.getId()));
+        assertEquals("What is the American Revolution?", session.getFinalJeopardy().answerOf(player1.getId()).answer());
         assertTrue(session.getFinalJeopardy().isCorrect(player1.getId()));
     }
 

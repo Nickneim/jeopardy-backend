@@ -137,7 +137,7 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
 | `hostName` | The host's name, or `null` before anyone has joined |
 | `createdAt` | When the session was created, an ISO-8601 UTC timestamp such as `"2026-10-09T12:30:00Z"` |
-| `joinable` | Whether a join would be accepted right now: always `true` in the lobby, and after the start only if `allowLateJoin` |
+| `joinable` | Whether a join would be accepted right now: always `true` in the lobby, and during the game only if `allowLateJoin`, except never in `FINAL_JEOPARDY_ANSWERING`, `FINAL_JEOPARDY_REVEALING` or `FINISHED_GAME` (§6.6) |
 | `allowLateJoin` | Whether the host allows joining after the start (§6.6) |
 | `joinScore` | The score a player who joins now starts with (§6.6) |
 
@@ -167,7 +167,7 @@ The session's current state: the same `GameSessionResponse` as the latest broadc
 
 Joins a session.
 
-- Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters)
+- Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters). Spaces and invisible characters at either end (ordinary, non-breaking and zero-width spaces, control characters) are removed first, so `" Nico "` joins as `"Nico"`, a name of only such characters counts as blank, and the length is that of the trimmed name.
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
 - The first player to join becomes the host (§6.4).
 - Unknown (or removed) session: `404 { "status": 404, "message": "Game session not found: <id>" }`
@@ -176,7 +176,7 @@ Joins a session.
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 
-Players can join at any time, including mid-game and after the game has finished, unless the host has blocked joining after the start (`allowLateJoin: false`, §6.6). Then a join after `WAITING_FOR_START` returns `409 { "status": 409, "message": "This game has already started and doesn't accept new players" }`. Joining the lobby is always allowed.
+Players can join in the lobby and mid-game, unless the host has blocked joining after the start (`allowLateJoin: false`, §6.6). Then a join after `WAITING_FOR_START` returns `409 { "status": 409, "message": "This game has already started and doesn't accept new players" }`. Joining the lobby is always allowed. Whatever `allowLateJoin` says, nobody can join once Final Jeopardy's wagering is over, `409 { "status": 409, "message": "Final Jeopardy is underway and doesn't accept new players" }`, or once the game has finished, `409 { "status": 409, "message": "This game has finished and doesn't accept new players" }` (§6.6). Watching (§4.1) never needs a join.
 
 Every new player starts with the session's current `joinScore` (0 until someone's score drops below 0, §6.6), shown in their `PlayerResponse.score`. Someone who left can join again the same way, under any name (even the same one): they become a new player with a new id and token and the current `joinScore`, and nothing else from their old self carries over.
 
@@ -489,7 +489,7 @@ A game in progress is never removed by a timer: every phase is timed, so even a 
 
 ### 6.6 Joining after the start and the join score
 
-**Late joining.** By default anyone can join at any time: in the lobby, during the game and after it has finished. Before the start, the host can block joining after the start with `update-settings` `{ "allowLateJoin": false }` (and allow it again with `true`). Once the game starts the setting is fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`. With late joining blocked, every join after `WAITING_FOR_START` returns `409`, including from someone who left and wants to come back. A player who joined mid-game plays like anyone else, starting with the next clue they can buzz on; in Final Jeopardy they can wager (0 up to their score) and answer if the phase hasn't ended. Someone who joins after wagering has ended wagers 0, like a player who didn't wager in time (`hasWagered` is `true`).
+**Late joining.** By default anyone can join in the lobby and during the game, until Final Jeopardy's wagering ends. Before the start, the host can block joining after the start with `update-settings` `{ "allowLateJoin": false }` (and allow it again with `true`). Once the game starts the setting is fixed (`INVALID_STATE`); anyone but the host gets `NOT_HOST`. With late joining blocked, every join after `WAITING_FOR_START` returns `409`, including from someone who left and wants to come back. A player who joined mid-game plays like anyone else, starting with the next clue they can buzz on; in Final Jeopardy they can join while wagering is open, and then wager (0 up to their score) and answer like everyone else. **Nobody can join in `FINAL_JEOPARDY_ANSWERING`, `FINAL_JEOPARDY_REVEALING` or `FINISHED_GAME`**, whatever `allowLateJoin` says: a new player couldn't wager, and then there's nothing left to play. A join returns `409` with the messages in §3.2, and `joinable` is `false`. Anyone can still watch (an anonymous connection, §4.1).
 
 **Join score.** Every player who joins starts with `joinScore`, not with 0. It's there so that leaving and joining again never gives anyone a better score than staying would have. It starts at 0 and follows these rules after every score change:
 
@@ -721,7 +721,7 @@ interface GameSessionSummaryResponse {
   joinScore: number;          // a new player's starting score, never above 0
 }
 
-interface JoinSessionRequest { playerName: string; }  // 1–30 characters, not blank
+interface JoinSessionRequest { playerName: string; }  // 1–30 characters, not blank, after trimming spaces and invisible characters
 interface JoinSessionResponse {
   playerId: number;      // 1, 2, 3... within the session
   token: string;         // secret: only for the CONNECT header

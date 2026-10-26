@@ -6,9 +6,9 @@ import org.hibernate.validator.constraints.Range;
 import java.time.Duration;
 
 /**
- * Phase durations in milliseconds, used when creating a session and by the
- * host's update-timers action. Every field is optional: one that is left out
- * (or null) keeps its current value, which for a new session is the default.
+ * Phase durations in milliseconds, for the host's update-timers action in
+ * the lobby. Every field is optional: one that is left out (or null) keeps
+ * its current value, which until the host changes it is the default.
  */
 public record SessionTimersRequest(
         @Range(min = MIN, max = MAX, message = MESSAGE) Long clueChoiceMs,

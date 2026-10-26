@@ -1433,7 +1433,7 @@ class GameSessionServiceTest {
 
         gameSessionService.answerFinalJeopardy(session.getId(), PLAYER_ID, "Final answer");
 
-        assertEquals("Final answer", session.getFinalJeopardy().getAnswer(PLAYER_ID));
+        assertEquals("Final answer", session.getFinalJeopardy().answerOf(PLAYER_ID).answer());
         verify(broadcaster).broadcast(session);
         verifyPhaseTimerUntouched();
     }

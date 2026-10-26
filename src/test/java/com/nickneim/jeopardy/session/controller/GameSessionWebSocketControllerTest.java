@@ -34,7 +34,7 @@ class GameSessionWebSocketControllerTest {
         GameSessionErrorResponse error = (GameSessionErrorResponse) handler.invoke(controller, exception);
 
         assertEquals("handleUnexpected", handler.getName());
-        assertEquals(GameErrorCode.INTERNAL_ERROR.name(), error.code());
+        assertEquals(GameErrorCode.INTERNAL_ERROR, error.code());
         // The exception's own message could hold internal details.
         assertEquals("Something went wrong on the server. Please try again.", error.message());
     }

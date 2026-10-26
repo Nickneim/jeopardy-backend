@@ -1,5 +1,8 @@
 package com.nickneim.jeopardy.session.dto;
 
+import com.nickneim.jeopardy.session.model.ClueAnswer;
+import com.nickneim.jeopardy.session.model.FinalJeopardy;
+
 import java.util.List;
 
 /**
@@ -20,4 +23,32 @@ public record FinalJeopardyPlayerResponse(
         Boolean phrasedAsQuestion,
         List<String> matchedAnswers,
         List<String> alsoAccepted
-) {}
+) {
+
+    /** Only whether the player has wagered and answered, before the reveal. */
+    static FinalJeopardyPlayerResponse submitted(Long playerId, FinalJeopardy finalJeopardy) {
+        return new FinalJeopardyPlayerResponse(
+                playerId,
+                finalJeopardy.hasWager(playerId),
+                finalJeopardy.hasAnswer(playerId),
+                null, null, null, null, null, null
+        );
+    }
+
+    /** Everything, from the reveal on. No answer counts as a wrong one. */
+    static FinalJeopardyPlayerResponse revealed(Long playerId, FinalJeopardy finalJeopardy) {
+        ClueAnswer answer = finalJeopardy.answerOf(playerId);
+
+        return new FinalJeopardyPlayerResponse(
+                playerId,
+                finalJeopardy.hasWager(playerId),
+                finalJeopardy.hasAnswer(playerId),
+                finalJeopardy.getWager(playerId),
+                answer.answer(),
+                answer.correct(),
+                answer.phrasedAsQuestion(),
+                answer.matchedAnswers(),
+                answer.alsoAccepted()
+        );
+    }
+}

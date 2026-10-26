@@ -1,6 +1,8 @@
 package com.nickneim.jeopardy.session.dto;
 
+import com.nickneim.jeopardy.session.exception.GameErrorCode;
+
 public record GameSessionErrorResponse(
-        String code,
+        GameErrorCode code,
         String message
 ) {}

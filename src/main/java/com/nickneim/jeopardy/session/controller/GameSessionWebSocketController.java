@@ -208,7 +208,7 @@ public class GameSessionWebSocketController {
             InvalidGameActionException exception
     ) {
         return new GameSessionErrorResponse(
-                exception.getCode().name(),
+                exception.getCode(),
                 exception.getMessage()
         );
     }
@@ -225,7 +225,7 @@ public class GameSessionWebSocketController {
         }
 
         return new GameSessionErrorResponse(
-                GameErrorCode.INVALID_REQUEST.name(),
+                GameErrorCode.INVALID_REQUEST,
                 "Invalid session code: expected " + SessionCode.LENGTH + " letters and digits"
         );
     }
@@ -249,7 +249,7 @@ public class GameSessionWebSocketController {
                         .collect(Collectors.joining(", "));
 
         return new GameSessionErrorResponse(
-                GameErrorCode.INVALID_REQUEST.name(),
+                GameErrorCode.INVALID_REQUEST,
                 message
         );
     }
@@ -263,7 +263,7 @@ public class GameSessionWebSocketController {
             MessageConversionException exception
     ) {
         return new GameSessionErrorResponse(
-                GameErrorCode.INVALID_REQUEST.name(),
+                GameErrorCode.INVALID_REQUEST,
                 "Invalid request: the body isn't valid JSON for this action"
         );
     }
@@ -278,7 +278,7 @@ public class GameSessionWebSocketController {
         log.error("A STOMP action failed", exception);
 
         return new GameSessionErrorResponse(
-                GameErrorCode.INTERNAL_ERROR.name(),
+                GameErrorCode.INTERNAL_ERROR,
                 "Something went wrong on the server. Please try again."
         );
     }

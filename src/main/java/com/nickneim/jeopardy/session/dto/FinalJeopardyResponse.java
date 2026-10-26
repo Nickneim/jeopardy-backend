@@ -1,11 +1,11 @@
 package com.nickneim.jeopardy.session.dto;
 
 import com.nickneim.jeopardy.game.entity.GameRound;
-import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.model.FinalJeopardy;
 import com.nickneim.jeopardy.session.model.GameSession;
+import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 
 import java.util.List;
 
@@ -62,20 +62,10 @@ public record FinalJeopardyResponse(
 
         List<FinalJeopardyPlayerResponse> players = session.getPlayers()
                 .stream()
-                .map(player -> {
-                    AnswerCheck check = showResults ? finalJeopardy.check(player.getId()) : null;
-                    return new FinalJeopardyPlayerResponse(
-                            player.getId(),
-                            finalJeopardy.hasWager(player.getId()),
-                            finalJeopardy.hasAnswer(player.getId()),
-                            showResults ? finalJeopardy.getWager(player.getId()) : null,
-                            showResults ? finalJeopardy.getAnswer(player.getId()) : null,
-                            showResults ? check != null && check.correct() : null,
-                            check == null ? null : check.phrasedAsQuestion(),
-                            check == null ? null : check.matchedAnswers(),
-                            check == null ? null : check.alsoAccepted()
-                    );
-                })
+                .map(GameSessionPlayer::getId)
+                .map(playerId -> showResults
+                        ? FinalJeopardyPlayerResponse.revealed(playerId, finalJeopardy)
+                        : FinalJeopardyPlayerResponse.submitted(playerId, finalJeopardy))
                 .toList();
 
         BoardCategory category = session.getBoard().getFinalJeopardyCategory();

@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCode;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * One session in the lobby list. Like every other session response it is
@@ -29,7 +30,8 @@ public record GameSessionSummaryResponse(
 
     public static GameSessionSummaryResponse from(GameSession session) {
         Long hostId = session.getHostPlayerId();
-        String hostName = session.getActivePlayers()
+        List<GameSessionPlayer> activePlayers = session.getActivePlayers();
+        String hostName = activePlayers
                 .stream()
                 .filter(player -> player.getId().equals(hostId))
                 .map(GameSessionPlayer::getName)
@@ -42,7 +44,7 @@ public record GameSessionSummaryResponse(
                 session.getBoard().getTitle(),
                 session.getState(),
                 session.getRound(),
-                session.getActivePlayers().size(),
+                activePlayers.size(),
                 hostName,
                 session.getCreatedAt(),
                 session.isJoinable(),

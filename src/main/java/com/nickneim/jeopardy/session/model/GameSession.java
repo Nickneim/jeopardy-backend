@@ -195,30 +195,30 @@ public class GameSession {
      */
     public GameSessionPlayer addPlayer(String name, String token) {
         if (!isJoinable()) {
-            throw new LateJoinNotAllowedException();
+            throw new LateJoinNotAllowedException(switch (state) {
+                case FINAL_JEOPARDY_ANSWERING, FINAL_JEOPARDY_REVEALING ->
+                        "Final Jeopardy is underway and doesn't accept new players";
+                case FINISHED_GAME -> "This game has finished and doesn't accept new players";
+                default -> "This game has already started and doesn't accept new players";
+            });
         }
 
         GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore, token);
         addPlayer(player);
 
-        // Too late to wager on Final Jeopardy: they wager 0, like everyone
-        // who didn't wager in time.
-        if (state == GameSessionState.FINAL_JEOPARDY_ANSWERING
-                || state == GameSessionState.FINAL_JEOPARDY_REVEALING) {
-            finalJeopardy.wagerZeroForMissing(List.of(player));
-        }
-
         return player;
     }
 
     /**
-     * Whether someone can join right now: always in the lobby, and after the
-     * start (finished games included) unless the host blocked it.
+     * Whether someone can join right now: always in the lobby, and during the
+     * game unless the host blocked it. Never once Final Jeopardy's wagering
+     * is over (a new player couldn't wager) or the game has finished (there
+     * is nothing left to play). Anyone can still watch without joining.
      */
     public boolean isJoinable() {
         return switch (state) {
             case WAITING_FOR_START -> true;
-            case CLOSED -> false;
+            case FINAL_JEOPARDY_ANSWERING, FINAL_JEOPARDY_REVEALING, FINISHED_GAME, CLOSED -> false;
             default -> allowLateJoin;
         };
     }
