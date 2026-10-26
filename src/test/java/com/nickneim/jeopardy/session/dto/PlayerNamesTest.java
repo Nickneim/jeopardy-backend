@@ -33,6 +33,23 @@ class PlayerNamesTest {
     }
 
     @Test
+    void removedOrZeroWidthCharacters_dontStartTheMarkCountAgain() {
+        String accent = "́";
+
+        // NULs are removed, so the groups would stack on the same "a".
+        assertEquals("a" + accent.repeat(4), PlayerNames.clean("a" + (accent.repeat(4) + "\u0000").repeat(3)));
+        // A direction mark is removed too.
+        assertEquals("a" + accent.repeat(4), PlayerNames.clean("a" + accent.repeat(4) + "‎" + accent.repeat(4)));
+        // A zero-width space or joiner stays, but the marks after it still
+        // land on the "a", so they still count.
+        assertEquals("a" + accent.repeat(4) + "​‍",
+                PlayerNames.clean("a" + accent.repeat(4) + "​" + accent.repeat(4) + "‍" + accent));
+        // A space does take up space, so the count starts again after it.
+        String afterASpace = "a" + accent.repeat(4) + " " + accent + "b";
+        assertEquals(afterASpace, PlayerNames.clean(afterASpace));
+    }
+
+    @Test
     void realStackedMarks_fit() {
         // Vietnamese e with circumflex and tilde.
         assertEquals("Nguyễn", PlayerNames.clean("Nguyễn"));

@@ -31,19 +31,30 @@ public final class PlayerNames {
 
     public static String clean(String name) {
         StringBuilder cleaned = new StringBuilder(name.length());
+
+        // Marks on the last character that takes up space. Only such a
+        // character starts the count again: a removed one (a NUL, say) or a
+        // zero-width one between two groups of marks would otherwise let
+        // them stack on the same spot.
         int marks = 0;
 
         for (int codePoint : name.codePoints().toArray()) {
             int type = Character.getType(codePoint);
-            boolean mark = type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK;
-            marks = mark ? marks + 1 : 0;
 
             if (Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint) || codePoint == NEXT_LINE) {
                 cleaned.append(' ');
-            } else if (!Character.isISOControl(codePoint)
-                    && !isDirectionControl(codePoint)
-                    && marks <= MAX_MARKS_PER_CHARACTER) {
+                marks = 0;
+            } else if (Character.isISOControl(codePoint) || isDirectionControl(codePoint)) {
+                continue;
+            } else if (type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK) {
+                if (++marks <= MAX_MARKS_PER_CHARACTER) {
+                    cleaned.appendCodePoint(codePoint);
+                }
+            } else {
                 cleaned.appendCodePoint(codePoint);
+                if (type != Character.FORMAT) {
+                    marks = 0;
+                }
             }
         }
 
