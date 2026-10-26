@@ -23,6 +23,8 @@ import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpHeaders;
@@ -247,24 +249,65 @@ class GameSessionControllerTest {
         verify(gameSessionService).joinSession(sessionId, "Nico");
     }
 
-    @Test
-    void joinSession_removesControlAndFormatCharactersInsideTheName() throws Exception {
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            # A newline and a tab separate words, as a space.
+            Mary\\nJane\\tDoe                          | Mary Jane Doe
+            # A right-to-left override, a direction mark, a zero-width space and a NUL go.
+            N\\u202Ei\\u200Fc\\u200Bo\\u0000          | Nico
+            # The joiner in an emoji stays: woman, joiner, laptop.
+            Nico \\uD83D\\uDC69\\u200D\\uD83D\\uDCBB  | Nico 👩‍💻
+            # The zero-width non-joiner of Persian spelling stays.
+            \\u0645\\u06CC\\u200C\\u062E\\u0648\\u0627\\u0647\\u0645 | می‌خواهم
+            # So do the tags of a flag (Scotland), at the end of the name.
+            Ana \\uD83C\\uDFF4\\uDB40\\uDC67\\uDB40\\uDC62\\uDB40\\uDC73\\uDB40\\uDC63\\uDB40\\uDC74\\uDB40\\uDC7F | Ana 🏴󠁧󠁢󠁳󠁣󠁴󠁿
+            """)
+    void joinSession_cleansTheInsideOfTheName(String sent, String joinedAs) throws Exception {
         SessionCode sessionId = SessionCode.random();
-        // A woman technologist: woman, zero-width joiner, laptop.
-        String emoji = "👩‍💻";
-        GameSessionPlayer player = new GameSessionPlayer(1L, "Nico" + emoji, PlayerTokens.generate());
 
-        when(gameSessionService.joinSession(sessionId, "Nico" + emoji))
-                .thenReturn(player);
+        when(gameSessionService.joinSession(sessionId, joinedAs))
+                .thenReturn(new GameSessionPlayer(1L, joinedAs, PlayerTokens.generate()));
 
-        // A newline, a right-to-left override and a zero-width space inside,
-        // and the joiner inside the emoji, which stays.
+        // sent holds JSON escapes, which Jackson reads.
         mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"playerName\": \"N\\ni\\u202Ec\\u200bo\\ud83d\\udc69\\u200d\\ud83d\\udcbb\"}"))
+                        .content("{\"playerName\": \"" + sent + "\"}"))
                 .andExpect(status().isCreated());
 
-        verify(gameSessionService).joinSession(sessionId, "Nico" + emoji);
+        verify(gameSessionService).joinSession(sessionId, joinedAs);
+    }
+
+    @Test
+    void joinSession_rejectsANameOfOnlyJoiners() throws Exception {
+        mockMvc.perform(post("/api/game-sessions/" + SessionCode.random() + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \" \\u200D\\u200C \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("playerName must not be blank"));
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    // Counted in code points, as JavaScript's [...name].length does.
+    @Test
+    void joinSession_countsAnEmojiAsOneCharacter() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+        // 30 code points, 60 UTF-16 units.
+        String name = "😀".repeat(30);
+
+        when(gameSessionService.joinSession(sessionId, name))
+                .thenReturn(new GameSessionPlayer(1L, name, PlayerTokens.generate()));
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"" + name + "\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"" + name + "x\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("playerName must be at most 30 characters"));
     }
 
     @Test

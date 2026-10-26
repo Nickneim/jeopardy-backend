@@ -1,14 +1,15 @@
 package com.nickneim.jeopardy.session.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.CodePointLength;
 
 // Explicit messages aren't localized, so error responses read the same
 // whatever the client's Accept-Language. The name is in every broadcast, so
-// its length is capped.
+// its length is capped, in code points (what JavaScript's [...name].length
+// counts), so an emoji counts as 1, not as its 2 UTF-16 units.
 public record JoinSessionRequest(
         @NotBlank(message = "must not be blank")
-        @Size(max = MAX_NAME_LENGTH, message = "must be at most " + MAX_NAME_LENGTH + " characters")
+        @CodePointLength(max = MAX_NAME_LENGTH, message = "must be at most " + MAX_NAME_LENGTH + " characters")
         String playerName
 ) {
     public static final int MAX_NAME_LENGTH = 30;
@@ -17,46 +18,49 @@ public record JoinSessionRequest(
     // it (a non-breaking or zero-width space, say) is blank, and "Bob " can't
     // pass for "Bob". @NotBlank alone only ignores ASCII spaces and controls.
     public JoinSessionRequest {
-        playerName = playerName == null ? null : trimInvisible(removeControls(playerName));
+        playerName = playerName == null ? null : clean(playerName);
     }
 
-    // Controls and format characters anywhere in the name go, since every
-    // client shows it: a newline breaks layouts, and a direction override
-    // (U+202E) reverses the text after it, which could make a name read as
-    // someone else's. The zero-width joiner stays, for emoji like 👩‍💻.
-    private static String removeControls(String name) {
-        StringBuilder kept = new StringBuilder(name.length());
+    /**
+     * Every client shows the name, so: any whitespace (a tab, a newline, a
+     * non-breaking space) becomes a plain space, so it still separates words
+     * but can't break a layout; the spaces at either end go; other controls,
+     * direction marks and overrides (U+202E reverses the text after it, which
+     * could make a name read as someone else's) and invisible spaces go
+     * everywhere. Other format characters stay, since names and emoji need
+     * them: the zero-width non-joiner in Persian or Hindi spelling, the joiner
+     * in 👩‍💻, the tags of a flag like 🏴󠁧󠁢󠁳󠁣󠁴󠁿. A name with nothing visible left is
+     * blank.
+     */
+    private static String clean(String name) {
+        StringBuilder cleaned = new StringBuilder(name.length());
 
-        name.codePoints()
-                .filter(codePoint -> codePoint == ZERO_WIDTH_JOINER
-                        || !Character.isISOControl(codePoint) && Character.getType(codePoint) != Character.FORMAT)
-                .forEach(kept::appendCodePoint);
+        name.codePoints().forEach(codePoint -> {
+            if (Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint)) {
+                cleaned.append(' ');
+            } else if (!Character.isISOControl(codePoint) && !isRemovedFormat(codePoint)) {
+                cleaned.appendCodePoint(codePoint);
+            }
+        });
 
-        return kept.toString();
+        String trimmed = cleaned.toString().strip();
+
+        return trimmed.codePoints().anyMatch(JoinSessionRequest::isVisible) ? trimmed : "";
     }
 
-    private static final int ZERO_WIDTH_JOINER = 0x200D;
-
-    private static String trimInvisible(String name) {
-        int start = 0;
-        int end = name.length();
-
-        while (start < end && isInvisible(name.codePointAt(start))) {
-            start += Character.charCount(name.codePointAt(start));
-        }
-        while (end > start && isInvisible(name.codePointBefore(end))) {
-            end -= Character.charCount(name.codePointBefore(end));
-        }
-
-        return name.substring(start, end);
+    // Direction marks, embeddings, overrides and isolates, and the invisible
+    // spaces (zero-width space, word joiner, byte order mark).
+    private static boolean isRemovedFormat(int codePoint) {
+        return codePoint == 0x061C
+                || codePoint == 0x200B
+                || codePoint == 0x200E || codePoint == 0x200F
+                || codePoint >= 0x202A && codePoint <= 0x202E
+                || codePoint == 0x2060
+                || codePoint >= 0x2066 && codePoint <= 0x2069
+                || codePoint == 0xFEFF;
     }
 
-    // Whitespace, other spaces (such as U+00A0), controls, and format
-    // characters (such as the zero-width space U+200B).
-    private static boolean isInvisible(int codePoint) {
-        return Character.isWhitespace(codePoint)
-                || Character.isSpaceChar(codePoint)
-                || Character.isISOControl(codePoint)
-                || Character.getType(codePoint) == Character.FORMAT;
+    private static boolean isVisible(int codePoint) {
+        return codePoint != ' ' && Character.getType(codePoint) != Character.FORMAT;
     }
 }

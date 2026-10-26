@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -19,7 +18,7 @@ public class GameSessionTimer {
 
     private static final Logger log = LoggerFactory.getLogger(GameSessionTimer.class);
 
-    private final ScheduledExecutorService scheduler = newScheduler();
+    private final ScheduledThreadPoolExecutor scheduler = newScheduler();
 
     // Each session has one phase timer and, separately, one cleanup timer
     // that removes the session once it has been idle for too long.
@@ -34,7 +33,7 @@ public class GameSessionTimer {
     // also stay queued until its delay ran out, keeping its session (board,
     // players, tokens) in memory: every lobby broadcast cancels a 30-minute
     // cleanup, so they piled up.
-    private static ScheduledExecutorService newScheduler() {
+    private static ScheduledThreadPoolExecutor newScheduler() {
         ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(4);
         scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         scheduler.setRemoveOnCancelPolicy(true);
@@ -99,6 +98,11 @@ public class GameSessionTimer {
         if (future != null) {
             future.cancel(false);
         }
+    }
+
+    /** Tasks waiting to run, cancelled ones included if they weren't removed. For tests. */
+    int queuedTasks() {
+        return scheduler.getQueue().size();
     }
 
     // Spring doesn't call this by itself on a component; without it the

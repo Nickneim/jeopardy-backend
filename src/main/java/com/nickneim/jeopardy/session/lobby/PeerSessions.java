@@ -139,8 +139,10 @@ public class PeerSessions {
                             .exceptionally(failure -> {
                                 Throwable cause = failure instanceof CompletionException ? failure.getCause() : failure;
                                 // An answer that's just late still counts.
-                                if (failing.putIfAbsent(address, watch(address, answer)) == null) {
+                                CompletableFuture<?> late = answer.orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS);
+                                if (failing.putIfAbsent(address, late) == null) {
                                     log.warn("Leaving out the sessions of {} until it answers: {}", address, cause.toString());
+                                    watch(address, late);
                                 }
                                 return List.of();
                             });
@@ -166,42 +168,44 @@ public class PeerSessions {
     /**
      * If the instance's last answer failed, asks it again in the background
      * (unless that's already happening) and returns true: it isn't waited for.
-     * An entry whose request already succeeded is dropped, and the instance
-     * is asked as usual: {@link #watch} can't always take it off, since a
-     * request that is already done may finish its callback before the entry
-     * is stored.
+     * A request that has just succeeded, whose {@link #watch} hasn't taken
+     * the entry off yet, counts as an answer: the instance is asked as usual.
      */
     private boolean retryIfFailing(String address) {
-        return failing.computeIfPresent(address, (key, retry) -> {
-            if (!retry.isDone()) {
-                return retry;
-            }
-            if (!retry.isCompletedExceptionally()) {
-                log.info("{} answers again; listing its sessions", key);
-                return null;
-            }
-            return retry(key);
-        }) != null;
-    }
+        CompletableFuture<?> last = failing.get(address);
 
-    private CompletableFuture<?> retry(String address) {
-        return watch(address, fetchAsync(address));
+        if (last == null) {
+            return false;
+        }
+        if (last.isDone() && !last.isCompletedExceptionally()) {
+            if (failing.remove(address, last)) {
+                log.info("{} answers again; listing its sessions", address);
+            }
+            return false;
+        }
+        if (last.isDone()) {
+            CompletableFuture<?> retry = fetchAsync(address)
+                    .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS);
+            // Only one lobby request starts the retry.
+            if (failing.replace(address, last, retry)) {
+                watch(address, retry);
+            }
+        }
+        return true;
     }
 
     /**
-     * Takes the instance off {@link #failing} if this request to it succeeds.
-     * The future it returns succeeds exactly when the request does, which
-     * {@link #retryIfFailing} relies on.
+     * Takes the instance off {@link #failing} once this request, already
+     * stored there, succeeds. Attached only after it's stored, so even a
+     * request that is already done finds its entry; and it removes only that
+     * entry, never a later one.
      */
-    private CompletableFuture<?> watch(String address, CompletableFuture<?> answer) {
-        return answer
-                .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
-                // Async: the map may still be being updated when this is created.
-                .whenCompleteAsync((result, failure) -> {
-                    if (failure == null && failing.remove(address) != null) {
-                        log.info("{} answers again; listing its sessions", address);
-                    }
-                }, executor);
+    private void watch(String address, CompletableFuture<?> request) {
+        request.whenComplete((result, failure) -> {
+            if (failure == null && failing.remove(address, request)) {
+                log.info("{} answers again; listing its sessions", address);
+            }
+        });
     }
 
     private CompletableFuture<List<GameSessionSummaryResponse>> fetchAsync(String address) {

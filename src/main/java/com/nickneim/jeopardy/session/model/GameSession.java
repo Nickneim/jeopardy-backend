@@ -641,7 +641,7 @@ public class GameSession {
         }
         requireActivePlayer(playerId);
 
-        AnswerCheck check = checkAnswer(board.getFinalJeopardyClue(), answer);
+        AnswerCheck check = checkAnswer(answer);
         finalJeopardy.answer(new ClueAnswer(playerId, answer, check));
     }
 
@@ -722,9 +722,13 @@ public class GameSession {
         resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
     }
 
-    /** Double and Final Jeopardy need the question form ("What is ..."); the Jeopardy round doesn't. */
-    private AnswerCheck checkAnswer(BoardClue clue, String answer) {
-        return board.checkAnswer(clue.id(), answer, round != GameRound.JEOPARDY);
+    /**
+     * Checks an answer to the clue in play (in Final Jeopardy, its clue).
+     * Double and Final Jeopardy need the question form ("What is ..."); the
+     * Jeopardy round doesn't.
+     */
+    private AnswerCheck checkAnswer(String answer) {
+        return board.checkAnswer(chosenClueId, answer, round != GameRound.JEOPARDY);
     }
 
     // Players who have left can't buzz, so they don't count.
@@ -784,7 +788,7 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
         }
 
-        AnswerCheck check = checkAnswer(board.getClue(chosenClueId), answer);
+        AnswerCheck check = checkAnswer(answer);
         resolveAnswer(new ClueAnswer(playerId, answer, check));
     }
 

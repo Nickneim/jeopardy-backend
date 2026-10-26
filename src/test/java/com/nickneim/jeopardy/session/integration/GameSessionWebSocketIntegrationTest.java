@@ -20,6 +20,7 @@ import com.nickneim.jeopardy.session.dto.PlaceFinalJeopardyWagerRequest;
 import com.nickneim.jeopardy.session.dto.PlayerResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
+import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.model.GameSession;
@@ -48,6 +49,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,7 +60,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -1761,6 +1765,31 @@ class GameSessionWebSocketIntegrationTest {
         assertEquals(SessionCloseReason.ABANDONED, response.closeReason());
         assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
         assertThrows(ExecutionException.class, () -> connect(token));
+    }
+
+    // A spectator showing the closed game would otherwise receive the
+    // broadcasts of a new session under the same code. Asked of the real
+    // broker, so its subscriptions are what counts.
+    @Test
+    void closedSessionsCode_staysTakenWhileASpectatorIsSubscribed()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        SessionCode id = session.getId();
+
+        StompSession watcher = connect();
+        subscribeToSession(watcher, id);
+        awaitSubscriptions(watcher, createSession().getId());
+
+        gameSessionService.leave(id, session.getPlayers().getFirst().getId());
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(id));
+        assertThrows(GameSessionAlreadyExistsException.class, () -> gameSessionService.requireUnusedId(id));
+
+        watcher.disconnect();
+
+        await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertDoesNotThrow(() -> gameSessionService.requireUnusedId(id)));
     }
 
     // The server closes a connection by sending an ERROR frame.

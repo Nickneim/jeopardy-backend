@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
+import com.nickneim.jeopardy.session.controller.SessionWatchers;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
@@ -55,6 +56,7 @@ class GameSessionServiceTest {
     private GameSessionTimer timer;
     private GameSessionBroadcaster broadcaster;
     private PlayerConnections connections;
+    private SessionWatchers watchers;
     private PlayerTokenRegistry playerTokens;
     private Clock clock;
 
@@ -72,6 +74,7 @@ class GameSessionServiceTest {
         broadcaster = mock(GameSessionBroadcaster.class);
 
         connections = mock(PlayerConnections.class);
+        watchers = mock(SessionWatchers.class);
         playerTokens = new PlayerTokenRegistry();
         clock = mock(Clock.class);
         when(clock.instant()).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
@@ -81,6 +84,7 @@ class GameSessionServiceTest {
                 broadcaster,
                 playerTokens,
                 connections,
+                watchers,
                 clock
         );
     }
@@ -164,6 +168,27 @@ class GameSessionServiceTest {
         assertEquals(id, gameSessionService.createSession(id, createBoard()).getId());
     }
 
+    // A spectator still showing the closed game would otherwise receive the
+    // new session's broadcasts as that game's.
+    @Test
+    void closedSessionsId_staysTakenWhileAnyoneWatchesIt() {
+        SessionCode id = SessionCode.random();
+        when(watchers.hasWatchers(id)).thenReturn(true);
+
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.requireUnusedId(id)
+        );
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.createSession(id, createBoard())
+        );
+
+        when(watchers.hasWatchers(id)).thenReturn(false);
+
+        assertEquals(id, gameSessionService.createSession(id, createBoard()).getId());
+    }
+
     // A player still connecting passes the interceptor's second token check
     // as long as their token is registered, so the id must stay taken
     // until every token is revoked.
@@ -179,7 +204,7 @@ class GameSessionServiceTest {
                 super.unregister(token);
             }
         };
-        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, clock);
+        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, watchers, clock);
         GameSession session = createSession();
         GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
 
@@ -202,7 +227,7 @@ class GameSessionServiceTest {
                 super.unregister(token);
             }
         };
-        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, clock);
+        gameSessionService = new GameSessionService(timer, broadcaster, tokens, connections, watchers, clock);
         GameSession session = createSession();
         GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
 

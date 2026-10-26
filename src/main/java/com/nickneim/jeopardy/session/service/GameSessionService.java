@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.service;
 
 import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.controller.GameSessionBroadcaster;
+import com.nickneim.jeopardy.session.controller.SessionWatchers;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
@@ -46,6 +47,7 @@ public class GameSessionService {
     private final GameSessionBroadcaster broadcaster;
     private final PlayerTokenRegistry playerTokens;
     private final PlayerConnections connections;
+    private final SessionWatchers watchers;
     private final Clock clock;
 
     public GameSessionService(
@@ -53,12 +55,14 @@ public class GameSessionService {
             GameSessionBroadcaster broadcaster,
             PlayerTokenRegistry playerTokens,
             PlayerConnections connections,
+            SessionWatchers watchers,
             Clock clock
     ) {
         this.timer = timer;
         this.broadcaster = broadcaster;
         this.playerTokens = playerTokens;
         this.connections = connections;
+        this.watchers = watchers;
         this.clock = clock;
     }
 
@@ -77,14 +81,17 @@ public class GameSessionService {
      * connected. Those connections stay open after the close, and player ids
      * start at 1 in every session, so in a new session under the same id
      * each one would act as the new player with its old id. Nothing can add
-     * such a connection after the close, since the tokens are revoked.
+     * such a connection after the close, since the tokens are revoked. It
+     * also stays taken while anyone is subscribed to its topic: a spectator
+     * still showing the closed game would otherwise receive the new one's
+     * broadcasts as if they were that session's.
      *
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
     public GameSession createSession(SessionCode id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
-        if (connections.hasPlayersConnected(id) || sessions.putIfAbsent(id, session) != null) {
+        if (isHeldByClosedSession(id) || sessions.putIfAbsent(id, session) != null) {
             throw new GameSessionAlreadyExistsException(id);
         }
 
@@ -103,9 +110,14 @@ public class GameSessionService {
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
     public void requireUnusedId(SessionCode id) {
-        if (sessions.containsKey(id) || connections.hasPlayersConnected(id)) {
+        if (sessions.containsKey(id) || isHeldByClosedSession(id)) {
             throw new GameSessionAlreadyExistsException(id);
         }
+    }
+
+    // See createSession(SessionCode, GameBoard).
+    private boolean isHeldByClosedSession(SessionCode id) {
+        return connections.hasPlayersConnected(id) || watchers.hasWatchers(id);
     }
 
     /**
