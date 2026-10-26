@@ -139,6 +139,29 @@ class GameSessionServiceTest {
         assertDoesNotThrow(() -> gameSessionService.requireUnusedId(SessionCode.random()));
     }
 
+    // Their connections stay open after the close, and player ids start at
+    // 1 again, so in a new session under the id they'd act as its players.
+    @Test
+    void closedSessionsId_staysTakenWhileItsPlayersAreConnected() {
+        SessionCode id = SessionCode.random();
+        when(connections.hasPlayersConnected(id)).thenReturn(true);
+
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.requireUnusedId(id)
+        );
+        assertThrows(
+                GameSessionAlreadyExistsException.class,
+                () -> gameSessionService.createSession(id, createBoard())
+        );
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(id));
+
+        when(connections.hasPlayersConnected(id)).thenReturn(false);
+
+        assertDoesNotThrow(() -> gameSessionService.requireUnusedId(id));
+        assertEquals(id, gameSessionService.createSession(id, createBoard()).getId());
+    }
+
     @Test
     void createSession_startsInWaitingForStartState() {
         GameSession session = createSession();
@@ -1560,7 +1583,7 @@ class GameSessionServiceTest {
         GameSession session = createSession();
         GameSessionPlayer host = gameSessionService.joinSession(session.getId(), "Nico");
         GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
-        clearInvocations(timer, broadcaster);
+        clearInvocations(timer, broadcaster, connections);
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1749,7 +1772,7 @@ class GameSessionServiceTest {
 
         assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
         // The connections stay open, so clients see the CLOSED broadcast.
-        verifyNoInteractions(connections);
+        verify(connections, never()).close(any(), any());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.session.security;
 
+import com.nickneim.jeopardy.session.model.SessionCode;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
@@ -38,9 +39,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>To deliver it reliably, this is also an interceptor on the client
  * outbound channel (see WebSocketConfig) that tracks the frames of each
  * player connection that have been sent but not yet written. Closing a
- * connection stops any new frames to it, lets the ones in flight finish (so
- * the departure broadcast still arrives), and only then sends the ERROR
- * frame, which is then the only thing being written to that connection.
+ * connection lets the frames in flight finish (so the departure broadcast
+ * still arrives), and once none is left sends the ERROR frame, which is then
+ * the only thing being written to that connection. Frames sent after the
+ * ERROR frame are dropped.
+ *
+ * <p>Frames are only dropped after the ERROR frame, not from the close on,
+ * because with publish order preserved (WebSocketConfig) Spring holds a
+ * connection's later frames in a queue in front of the channel: the
+ * departure broadcast may still be waiting there behind an earlier frame
+ * when the connection is closed, and reaches this interceptor only after
+ * that. It isn't lost to the ERROR frame either: Spring's ordering
+ * interceptor is added to the channel after this one, so its
+ * afterMessageHandled runs first and passes the next queued frame on (into
+ * {@code inFlight}) before this one checks whether any frame is left. A
+ * frame sent after the close but before the ERROR frame is delivered too,
+ * since it can't be told apart from one sent before.
  */
 @Component
 public class PlayerConnections implements ExecutorChannelInterceptor {
@@ -66,10 +80,17 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
         connections.remove(connectionId);
     }
 
+    /** Whether any player of a session with this id is still connected. */
+    public boolean hasPlayersConnected(SessionCode sessionId) {
+        return connections.values()
+                .stream()
+                .anyMatch(connection -> connection.player.sessionId().equals(sessionId));
+    }
+
     /**
      * Closes every connection of this player, with {@code message} in the
      * ERROR frame. Frames already sent to them are delivered first; anything
-     * sent afterwards is dropped.
+     * sent after the ERROR frame is dropped.
      */
     public void close(PlayerPrincipal player, String message) {
         List<String> readyToClose = new ArrayList<>();
@@ -85,11 +106,12 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
                 }
 
                 connection.closing = true;
-                connection.closeMessage = message;
 
                 if (connection.inFlight.isEmpty()) {
-                    connection.closeMessage = null;
+                    connection.errorSent = true;
                     readyToClose.add(connectionId);
+                } else {
+                    connection.closeMessage = message;
                 }
             }
         });
@@ -126,7 +148,7 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
         }
 
         synchronized (connection) {
-            if (connection.closing) {
+            if (connection.errorSent) {
                 return null;
             }
 
@@ -179,9 +201,11 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
         synchronized (connection) {
             if (connection.inFlight.remove(message)
                     && connection.closing
+                    && !connection.errorSent
                     && connection.inFlight.isEmpty()) {
                 closeMessage = connection.closeMessage;
                 connection.closeMessage = null;
+                connection.errorSent = true;
             }
         }
 
@@ -212,7 +236,11 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
         private final Set<Message<?>> inFlight =
                 Collections.newSetFromMap(new IdentityHashMap<>());
 
+        // close was called.
         private boolean closing;
+
+        // The ERROR frame has been sent; later frames are dropped.
+        private boolean errorSent;
 
         // The ERROR frame's message, until it's sent.
         private @Nullable String closeMessage;

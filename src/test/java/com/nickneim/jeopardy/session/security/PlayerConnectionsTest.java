@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.security;
 
 import com.nickneim.jeopardy.session.model.SessionCode;
 
+import org.apache.commons.logging.LogFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -10,10 +11,16 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.broker.OrderedMessageChannelDecorator;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ExecutorSubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -82,7 +89,23 @@ class PlayerConnectionsTest {
     }
 
     @Test
-    void framesSentAfterClosing_areDropped_butTheErrorFrameGoesThrough() {
+    void frameSentAfterClosingWhileOthersAreInFlight_isStillDelivered() {
+        Message<?> inFlight = broadcastTo(CONNECTION);
+        connections.preSend(inFlight, clientOutboundChannel);
+        connections.close(player, "You left the session");
+
+        Message<?> queued = broadcastTo(CONNECTION);
+        assertSame(queued, connections.preSend(queued, clientOutboundChannel));
+
+        connections.afterMessageHandled(inFlight, clientOutboundChannel, handler, null);
+        verifyNoInteractions(clientOutboundChannel);
+
+        connections.afterMessageHandled(queued, clientOutboundChannel, handler, null);
+        assertErrorSent("You left the session");
+    }
+
+    @Test
+    void framesSentAfterTheErrorFrame_areDropped_butTheErrorFrameGoesThrough() {
         connections.close(player, "You left the session");
 
         assertNull(connections.preSend(broadcastTo(CONNECTION), clientOutboundChannel));
@@ -100,6 +123,56 @@ class PlayerConnectionsTest {
         connections.afterSendCompletion(broadcast, clientOutboundChannel, false, new RuntimeException("rejected"));
 
         assertErrorSent("You left the session");
+    }
+
+    // The setup in WebSocketConfig: publish order preserved, so Spring holds
+    // the departure broadcast in its queue while an earlier frame is being
+    // written, where it isn't in flight yet. It reaches preSend only after
+    // the close, and Spring's ordering interceptor (added after this one)
+    // passes it on before this one decides whether the ERROR frame can go.
+    @Test
+    void departureBroadcastQueuedBehindAnotherFrame_arrivesBeforeTheErrorFrame() {
+        Queue<Runnable> writes = new ArrayDeque<>();
+        ExecutorSubscribableChannel outbound = new ExecutorSubscribableChannel(writes::add);
+        List<Message<?>> written = new ArrayList<>();
+        outbound.subscribe(written::add);
+        outbound.addInterceptor(new PlayerConnections(outbound));
+        connections = (PlayerConnections) outbound.getInterceptors().getFirst();
+        OrderedMessageChannelDecorator.configureInterceptor(outbound, true);
+        OrderedMessageChannelDecorator ordered =
+                new OrderedMessageChannelDecorator(outbound, LogFactory.getLog(getClass()));
+        connections.connected(CONNECTION, player);
+
+        Message<?> earlier = broadcastTo(CONNECTION);
+        Message<?> departure = broadcastTo(CONNECTION);
+        ordered.send(earlier);
+        ordered.send(departure);
+        connections.close(player, "You left the session");
+
+        while (!writes.isEmpty()) {
+            writes.remove().run();
+        }
+
+        assertEquals(3, written.size(), written.toString());
+        assertSame(earlier, written.get(0));
+        assertSame(departure, written.get(1));
+        StompHeaderAccessor error = StompHeaderAccessor.wrap(written.get(2));
+        assertEquals(StompCommand.ERROR, error.getCommand());
+        assertEquals("You left the session", error.getMessage());
+
+        // Nothing goes out after the ERROR frame.
+        ordered.send(broadcastTo(CONNECTION));
+        assertTrue(writes.isEmpty());
+    }
+
+    @Test
+    void hasPlayersConnected_looksAtTheSessionOfEachConnectedPlayer() {
+        assertTrue(connections.hasPlayersConnected(player.sessionId()));
+        assertFalse(connections.hasPlayersConnected(SessionCode.random()));
+
+        connections.disconnected(CONNECTION);
+
+        assertFalse(connections.hasPlayersConnected(player.sessionId()));
     }
 
     @Test
@@ -127,6 +200,8 @@ class PlayerConnectionsTest {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
         accessor.setSessionId(connectionId);
         accessor.setDestination("/topic/sessions/x");
+        // Spring's ordered publishing adds a header, as the broker allows.
+        accessor.setLeaveMutable(true);
 
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }

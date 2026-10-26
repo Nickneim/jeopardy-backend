@@ -139,6 +139,27 @@ class PlayerAuthenticationInterceptorTest {
         verifyNoInteractions(clientOutboundChannel);
     }
 
+    // STOMP 1.2 clients may open with a STOMP frame instead of CONNECT, and
+    // Spring accepts either.
+    @Test
+    void stompFrame_isAuthenticatedLikeConnect() {
+        Message<?> valid =
+                interceptor.preSend(message(StompCommand.STOMP, "valid-token", "ws-1"), null);
+
+        assertEquals(player, userOf(valid));
+
+        Message<?> unknown =
+                interceptor.preSend(message(StompCommand.STOMP, "forged-token", "ws-2"), null);
+
+        assertNull(unknown);
+        ArgumentCaptor<Message<?>> sent = ArgumentCaptor.forClass(Message.class);
+        verify(clientOutboundChannel).send(sent.capture());
+        StompHeaderAccessor error = StompHeaderAccessor.wrap(sent.getValue());
+        assertEquals(StompCommand.ERROR, error.getCommand());
+        assertEquals("ws-2", error.getSessionId());
+        assertEquals("Unknown player token", error.getMessage());
+    }
+
     @Test
     void connectWithoutToken_staysAnonymous() {
         Message<?> result =

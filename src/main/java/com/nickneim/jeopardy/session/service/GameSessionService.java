@@ -74,12 +74,18 @@ public class GameSessionService {
      * several instances can route the create, like every later request about
      * the session, to the instance that will hold it (docs/api.md §3.2).
      *
+     * <p>A closed session's id stays taken while any of its players is still
+     * connected. Those connections stay open after the close, and player ids
+     * start at 1 in every session, so in a new session under the same id
+     * each one would act as the new player with its old id. Nothing can add
+     * such a connection after the close, since the tokens are revoked.
+     *
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
     public GameSession createSession(SessionCode id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
-        if (sessions.putIfAbsent(id, session) != null) {
+        if (connections.hasPlayersConnected(id) || sessions.putIfAbsent(id, session) != null) {
             throw new GameSessionAlreadyExistsException(id);
         }
 
@@ -98,7 +104,7 @@ public class GameSessionService {
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
     public void requireUnusedId(SessionCode id) {
-        if (sessions.containsKey(id)) {
+        if (sessions.containsKey(id) || connections.hasPlayersConnected(id)) {
             throw new GameSessionAlreadyExistsException(id);
         }
     }
@@ -413,7 +419,9 @@ public class GameSessionService {
      * Sends a last broadcast with state CLOSED, then forgets the session and
      * every token in it. Connections stay open so clients can show the
      * closed session; a reconnect is rejected because the token is gone, and
-     * GET /api/game-sessions/{id} returns 404. Called with the lock held.
+     * GET /api/game-sessions/{id} returns 404. The id can't be reused while
+     * they're open (see {@link #createSession(SessionCode, GameBoard)}).
+     * Called with the lock held.
      */
     private void closeSession(GameSession session, SessionCloseReason reason) {
         SessionCode sessionId = session.getId();

@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.security;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -10,7 +11,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Identifies a player once, when their STOMP connection opens, from the
- * secret token in the {@value #TOKEN_HEADER} CONNECT header. The player is
+ * secret token in the {@value #TOKEN_HEADER} CONNECT header (or STOMP header:
+ * STOMP 1.2 clients may open with a STOMP frame, which Spring accepts as a
+ * CONNECT). The player is
  * attached to the connection as a {@link PlayerPrincipal}, so later messages
  * never need to say who sent them.
  *
@@ -63,7 +66,7 @@ public class PlayerAuthenticationInterceptor implements ChannelInterceptor {
             return message;
         }
 
-        if (accessor.getCommand() != StompCommand.CONNECT) {
+        if (accessor.getMessageType() != SimpMessageType.CONNECT) {
             return message;
         }
 
