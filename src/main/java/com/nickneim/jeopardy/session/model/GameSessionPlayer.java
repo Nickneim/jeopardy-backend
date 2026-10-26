@@ -11,6 +11,7 @@ public class GameSessionPlayer {
     private final String token;
     private int score;
     private boolean leaving;
+    private boolean away;
 
     public GameSessionPlayer(Long id, String name, String token) {
         this(id, name, 0, token);
@@ -53,5 +54,18 @@ public class GameSessionPlayer {
 
     public void markLeaving() {
         leaving = true;
+    }
+
+    /**
+     * True while the player has no open connection, after having had one
+     * (a closed tab, a lost network). Unlike leaving, it ends when they
+     * reconnect. A player who joined but hasn't connected yet isn't away.
+     */
+    public boolean isAway() {
+        return away;
+    }
+
+    public void setAway(boolean away) {
+        this.away = away;
     }
 }

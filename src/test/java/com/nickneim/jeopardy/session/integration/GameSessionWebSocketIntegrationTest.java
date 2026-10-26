@@ -1641,6 +1641,27 @@ class GameSessionWebSocketIntegrationTest {
         assertEquals("answer must be at most 200 characters", error.message());
     }
 
+    // Counted in code points, like player names: 200 emoji are 400 UTF-16 units.
+    @Test
+    void anAnswerOf200Emoji_passesValidation()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest("😀".repeat(200))
+        );
+
+        // Rejected by the game (nobody is answering), not by validation.
+        assertEquals(GameErrorCode.INVALID_STATE, awaitError(errors).code());
+    }
+
     // STOMP has no Accept-Language, so default messages would follow the
     // server's default locale.
     @Test
@@ -1769,6 +1790,31 @@ class GameSessionWebSocketIntegrationTest {
 
         await().atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> assertDoesNotThrow(() -> gameSessionService.requireUnusedId(id)));
+    }
+
+    @Test
+    void playerWithoutAConnection_isAway_untilTheyReconnect()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer player = session.getPlayers().getFirst();
+        StompSession watcher = connect();
+        BlockingQueue<GameSessionResponse> messages = subscribeToSession(watcher, session.getId());
+        awaitSubscriptions(watcher, session.getId());
+        messages.clear();
+
+        StompSession connection = connect(tokenOf(session));
+        assertFalse(player.isAway());
+
+        connection.disconnect();
+
+        await().atMost(Duration.ofSeconds(5)).until(player::isAway);
+        assertTrue(awaitMessage(messages).players().getFirst().away());
+
+        connect(tokenOf(session));
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> !player.isAway());
+        assertFalse(awaitMessage(messages).players().getFirst().away());
     }
 
     // The server closes a connection by sending an ERROR frame.

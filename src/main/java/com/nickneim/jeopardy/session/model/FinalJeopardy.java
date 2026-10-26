@@ -25,12 +25,20 @@ public class FinalJeopardy {
      * wager until the wagering phase ends.
      */
     void placeWager(GameSessionPlayer player, int wager) {
-        int maximumWager = Math.max(0, player.getScore());
+        int maximumWager = maximumWager(player);
         if (wager < 0 || wager > maximumWager) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
+            throw new InvalidGameActionException(
+                    GameErrorCode.INVALID_WAGER,
+                    "Your wager must be between 0 and " + maximumWager + "!"
+            );
         }
 
         wagers.put(player.getId(), wager);
+    }
+
+    /** The most a player can wager: their score, or 0 if it isn't positive. */
+    public static int maximumWager(GameSessionPlayer player) {
+        return Math.max(0, player.getScore());
     }
 
     /** Players who didn't wager in time wager 0. */

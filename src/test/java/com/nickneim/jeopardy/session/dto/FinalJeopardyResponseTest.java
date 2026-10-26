@@ -99,8 +99,8 @@ class FinalJeopardyResponseTest {
                         null,
                         null,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null, null, null),
-                                new FinalJeopardyPlayerResponse(2L, false, false, null, null, null, null, null, null)
+                                new FinalJeopardyPlayerResponse(1L, true, false, 1000, null, null, null, null, null, null),
+                                new FinalJeopardyPlayerResponse(2L, false, false, 0, null, null, null, null, null, null)
                         )
                 ),
                 response.finalJeopardy()
@@ -132,8 +132,8 @@ class FinalJeopardyResponseTest {
                         null,
                         null,
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null, null, null),
-                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null, null, null, null)
+                                new FinalJeopardyPlayerResponse(1L, true, false, null, null, null, null, null, null, null),
+                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null, null, null, null, null)
                         )
                 ),
                 response.finalJeopardy()
@@ -182,8 +182,8 @@ class FinalJeopardyResponseTest {
                         FINAL_ANSWER,
                         new AcceptedAnswersResponse(1, List.of(FINAL_ANSWER)),
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, true, SECRET_WAGER, FINAL_RESPONSE, true, true, List.of(FINAL_ANSWER), List.of()),
-                                new FinalJeopardyPlayerResponse(2L, true, true, 0, WRONG_ANSWER, false, true, null, null)
+                                new FinalJeopardyPlayerResponse(1L, true, true, null, SECRET_WAGER, FINAL_RESPONSE, true, true, List.of(FINAL_ANSWER), List.of()),
+                                new FinalJeopardyPlayerResponse(2L, true, true, null, 0, WRONG_ANSWER, false, true, null, null)
                         )
                 ),
                 response.finalJeopardy()

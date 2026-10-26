@@ -380,8 +380,13 @@ public class GameSession {
 
         // If everyone still playing has already buzzed, nobody can buzz any
         // more, just as after the last wrong answer.
-        if (state == GameSessionState.WAITING_FOR_BUZZER && haveAllActivePlayersBuzzed()) {
-            startRevealingAnswer();
+        if (state == GameSessionState.WAITING_FOR_BUZZER && haveAllPresentPlayersBuzzed()) {
+            setState(GameSessionState.REVEALING_ANSWER);
+        }
+
+        // Nobody has to wait for a departed chooser to pick.
+        if (state == GameSessionState.CHOOSING_CLUE) {
+            handOverControlIfDeparted();
         }
 
         // Leaving usually doesn't change the state, so setState may not
@@ -415,8 +420,15 @@ public class GameSession {
      * for them) until it passes to someone else, so the game never has a
      * missing chooser or answerer. Removing a player removes every trace of
      * them, so each player id in a response belongs to someone in it.
+     *
+     * <p>From the Final Jeopardy reveal on nobody is removed: everyone who
+     * played stays in the results, marked as leaving if they left.
      */
     private void removeDepartedPlayers() {
+        if (state == GameSessionState.FINAL_JEOPARDY_REVEALING || state == GameSessionState.FINISHED_GAME) {
+            return;
+        }
+
         List<GameSessionPlayer> departed = players.stream()
                 .filter(GameSessionPlayer::isLeaving)
                 .filter(player -> !holdsRole(player.getId()))
@@ -435,6 +447,29 @@ public class GameSession {
                 playerChoosingClue = null;
             }
         }
+    }
+
+    /**
+     * A chooser who left loses control once it's time to pick: it goes to
+     * the active player with the lowest score (the lowest id on a tie).
+     */
+    private void handOverControlIfDeparted() {
+        GameSessionPlayer chooser = getPlayer(playerChoosingClue);
+
+        if (chooser != null && chooser.isLeaving()) {
+            playerChoosingClue = lowestScoringActivePlayer(playerChoosingClue);
+        }
+    }
+
+    // The active player with the lowest score, the lowest id on a tie, or
+    // the fallback if nobody is active.
+    private Long lowestScoringActivePlayer(Long fallback) {
+        return getActivePlayers()
+                .stream()
+                .min(Comparator.comparingInt(GameSessionPlayer::getScore)
+                        .thenComparing(GameSessionPlayer::getId))
+                .map(GameSessionPlayer::getId)
+                .orElse(fallback);
     }
 
     // Choosing and answering are the only roles, and only in the clue rounds.
@@ -499,9 +534,9 @@ public class GameSession {
         if (board.isDailyDouble(clueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerChoosingClue;
-            startWaitingForDailyDoubleWager();
+            setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
         } else {
-            startRevealingClue();
+            setState(GameSessionState.REVEALING_CLUE);
         }
     }
 
@@ -526,10 +561,6 @@ public class GameSession {
         playClue(clue.id());
     }
 
-    private void startWaitingForDailyDoubleWager() {
-        setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
-    }
-
     public void placeDailyDoubleWager(Long playerId, int wager) {
         if (!state.equals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER)) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager a bet right now!");
@@ -539,12 +570,17 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
         }
 
-        if (wager < minimumDailyDoubleWager(player) || wager > maximumDailyDoubleWager(player)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_WAGER, "You can't wager that amount!");
+        int minimum = minimumDailyDoubleWager(player);
+        int maximum = maximumDailyDoubleWager(player);
+        if (wager < minimum || wager > maximum) {
+            throw new InvalidGameActionException(
+                    GameErrorCode.INVALID_WAGER,
+                    "Your wager must be between " + minimum + " and " + maximum + "!"
+            );
         }
 
         dailyDoubleWager = wager;
-        startRevealingClue();
+        setState(GameSessionState.REVEALING_CLUE);
     }
 
     /** The chooser didn't wager in time, so they wager the minimum. */
@@ -552,7 +588,21 @@ public class GameSession {
         requirePhase(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
 
         dailyDoubleWager = minimumDailyDoubleWager(getPlayer(playerChoosingClue));
-        startRevealingClue();
+        setState(GameSessionState.REVEALING_CLUE);
+    }
+
+    /** The lowest Daily Double wager the chooser can place, while they're wagering; otherwise null. */
+    public Integer getMinimumDailyDoubleWager() {
+        return state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER
+                ? minimumDailyDoubleWager(getPlayer(playerChoosingClue))
+                : null;
+    }
+
+    /** The highest Daily Double wager the chooser can place, while they're wagering; otherwise null. */
+    public Integer getMaximumDailyDoubleWager() {
+        return state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER
+                ? maximumDailyDoubleWager(getPlayer(playerChoosingClue))
+                : null;
     }
 
     // A player may always wager up to the highest clue value in the round.
@@ -564,10 +614,6 @@ public class GameSession {
     // low values), so there is always a wager they can place.
     private int minimumDailyDoubleWager(GameSessionPlayer player) {
         return Math.min(MINIMUM_DAILY_DOUBLE_WAGER, maximumDailyDoubleWager(player));
-    }
-
-    private void startRevealingClue() {
-        setState(GameSessionState.REVEALING_CLUE);
     }
 
     public void finishRevealingClue() {
@@ -595,20 +641,24 @@ public class GameSession {
         setState(GameSessionState.WAITING_FOR_ANSWER);
     }
 
-    private void startRevealingAnswer() {
-        setState(GameSessionState.REVEALING_ANSWER);
-    }
-
     public void finishRevealingAnswer() {
         requirePhase(GameSessionState.REVEALING_ANSWER);
 
         if (!getAvailableClues().isEmpty()) {
+            handOverControlIfDeparted();
             setState(GameSessionState.CHOOSING_CLUE);
             return;
         }
 
         board.getNextRound(round).ifPresentOrElse(
-                this::enterRound,
+                next -> {
+                    // As on the show, a later clue round starts with the
+                    // lowest score in control.
+                    if (next != GameRound.FINAL_JEOPARDY) {
+                        playerChoosingClue = lowestScoringActivePlayer(playerChoosingClue);
+                    }
+                    enterRound(next);
+                },
                 () -> setState(GameSessionState.FINISHED_GAME)
         );
     }
@@ -717,14 +767,10 @@ public class GameSession {
         return finalJeopardy;
     }
 
-    private void startWaitingForBuzzer() {
-        setState(GameSessionState.WAITING_FOR_BUZZER);
-    }
-
     public void timeoutBuzzer() {
         requirePhase(GameSessionState.WAITING_FOR_BUZZER);
 
-        startRevealingAnswer();
+        setState(GameSessionState.REVEALING_ANSWER);
     }
 
     public void timeoutAnswer() {
@@ -742,11 +788,38 @@ public class GameSession {
         return board.checkAnswer(chosenClueId, answer, round != GameRound.JEOPARDY);
     }
 
-    // Players who have left can't buzz, so they don't count.
-    private boolean haveAllActivePlayersBuzzed() {
+    // Players who have left can't buzz and players who are away won't, so
+    // neither is waited for.
+    private boolean haveAllPresentPlayersBuzzed() {
         return getActivePlayers()
                 .stream()
+                .filter(player -> !player.isAway())
                 .allMatch(player -> playersAlreadyBuzzed.contains(player.getId()));
+    }
+
+    /**
+     * Records whether a player is away: they had connected, and now have no
+     * open connection. It never changes the state, so a page reload can't cut
+     * a phase short; it only matters from the next answer on.
+     *
+     * @return whether anything changed
+     */
+    public boolean setAway(Long playerId, boolean away) {
+        GameSessionPlayer player = getActivePlayer(playerId);
+
+        if (player == null || player.isAway() == away) {
+            return false;
+        }
+
+        player.setAway(away);
+        return true;
+    }
+
+    /** Whether there is someone in the session and every active player is away. */
+    public boolean isEveryoneAway() {
+        List<GameSessionPlayer> active = getActivePlayers();
+
+        return !active.isEmpty() && active.stream().allMatch(GameSessionPlayer::isAway);
     }
 
     private GameSessionPlayer getPlayer(Long playerId) {
@@ -820,10 +893,10 @@ public class GameSession {
             playerChoosingClue = clueAnswer.playerId();
         }
 
-        if (clueAnswer.correct() || dailyDouble || haveAllActivePlayersBuzzed()) {
-            startRevealingAnswer();
+        if (clueAnswer.correct() || dailyDouble || haveAllPresentPlayersBuzzed()) {
+            setState(GameSessionState.REVEALING_ANSWER);
         } else {
-            startWaitingForBuzzer();
+            setState(GameSessionState.WAITING_FOR_BUZZER);
         }
     }
 

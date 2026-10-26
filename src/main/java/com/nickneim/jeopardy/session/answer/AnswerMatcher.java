@@ -32,26 +32,13 @@ public final class AnswerMatcher {
 
     /**
      * Parses a stored answer once, to check any number of responses against
-     * it (GameBoard keeps one per clue). The static methods parse it again
-     * on every call.
+     * it (GameBoard keeps one per clue).
      */
     public static AnswerMatcher of(String answer) {
         return new AnswerMatcher(ExpectedAnswer.parse(Objects.requireNonNull(answer, "answer")));
     }
 
-    public static boolean matches(String answer, String response, boolean questionRequired) {
-        return check(answer, response, questionRequired).correct();
-    }
-
     /** Whether the response is correct, whether it was phrased as a question, and what it named. */
-    public static AnswerCheck check(String answer, String response, boolean questionRequired) {
-        if (answer == null) {
-            return AnswerCheck.wrong(false);
-        }
-        return of(answer).check(response, questionRequired);
-    }
-
-    /** Like {@link #check(String, String, boolean)}, against this matcher's answer. */
     public AnswerCheck check(String response, boolean questionRequired) {
         if (response == null || response.isBlank()) {
             return AnswerCheck.wrong(false);
@@ -77,12 +64,16 @@ public final class AnswerMatcher {
         return result(expected, !questionRequired || phrasedAsQuestion ? saidAsItIs : null, phrasedAsQuestion);
     }
 
-    /** {@link #acceptedAnswers(String)} for this matcher's answer. */
+    /** The answer as players should see it. */
     public AcceptedAnswers acceptedAnswers() {
         return new AcceptedAnswers(expected.required(), expected.firstWordings());
     }
 
-    /** {@link #expectsNumber(String)} for this matcher's answer. */
+    /**
+     * True if only an exact number is accepted ("1970", "$25,000", "2/3"),
+     * so a client can warn the player that typos won't be forgiven. Decades
+     * ("the 1980s") don't count.
+     */
     public boolean expectsNumber() {
         return expected.expectsNumber();
     }
@@ -106,19 +97,5 @@ public final class AnswerMatcher {
                 named.stream().map(Named::wording).toList(),
                 expected.firstWordingsExcept(named)
         );
-    }
-
-    /** The answer as players should see it; null for a missing answer. */
-    public static AcceptedAnswers acceptedAnswers(String answer) {
-        return answer == null ? null : of(answer).acceptedAnswers();
-    }
-
-    /**
-     * True if only an exact number is accepted ("1970", "$25,000", "2/3"),
-     * so a client can warn the player that typos won't be forgiven. Decades
-     * ("the 1980s") don't count.
-     */
-    public static boolean expectsNumber(String answer) {
-        return answer != null && of(answer).expectsNumber();
     }
 }

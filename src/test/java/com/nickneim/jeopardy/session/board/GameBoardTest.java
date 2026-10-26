@@ -7,7 +7,7 @@ import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
-import com.nickneim.jeopardy.session.answer.AnswerMatcher;
+import com.nickneim.jeopardy.session.answer.AnswerMatchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -85,7 +85,7 @@ class GameBoardTest {
 
         assertTrue(hinted.isNumberExpected(1L));
         assertFalse(hinted.isNumberExpected(2L));
-        assertEquals(AnswerMatcher.acceptedAnswers("1970"), hinted.getAcceptedAnswers(1L));
+        assertEquals(AnswerMatchers.acceptedAnswers("1970"), hinted.getAcceptedAnswers(1L));
         assertEquals(
                 new AcceptedAnswers(2, List.of("gold", "frankincense", "myrrh")),
                 hinted.getAcceptedAnswers(2L)
@@ -104,7 +104,7 @@ class GameBoardTest {
         for (String response : List.of("gold and myrrh", "What is gold, myrrh?", "gold", "", "frankincense")) {
             for (boolean questionRequired : List.of(false, true)) {
                 assertEquals(
-                        AnswerMatcher.check("(2 of) gold | frankincense | myrrh", response, questionRequired),
+                        AnswerMatchers.check("(2 of) gold | frankincense | myrrh", response, questionRequired),
                         checked.checkAnswer(1L, response, questionRequired),
                         response + ", question required: " + questionRequired
                 );

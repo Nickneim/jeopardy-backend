@@ -2,7 +2,10 @@ package com.nickneim.jeopardy.session.security;
 
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -56,9 +59,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code inFlight}) before this one checks whether any frame is left. A
  * frame sent after the close but before the ERROR frame is delivered too,
  * since it can't be told apart from one sent before.
+ *
+ * <p>Every player connection that opens or closes is also announced as a
+ * {@link PlayerConnectionsChanged} event, so the session can show who is away.
  */
 @Component
 public class PlayerConnections implements ExecutorChannelInterceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(PlayerConnections.class);
 
     // STOMP session id (one per connection) -> the connection.
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
@@ -70,13 +78,16 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
     private final Map<SessionCode, Set<String>> connectionsBySession = new ConcurrentHashMap<>();
 
     private final MessageChannel clientOutboundChannel;
+    private final ApplicationEventPublisher events;
 
     // The outbound channel is lazy because the broker configuration that
     // creates it also registers this as its interceptor.
     public PlayerConnections(
-            @Lazy @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel
+            @Lazy @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel,
+            ApplicationEventPublisher events
     ) {
         this.clientOutboundChannel = clientOutboundChannel;
+        this.events = events;
     }
 
     public void connected(String connectionId, PlayerPrincipal player) {
@@ -90,6 +101,8 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
             updated.add(connectionId);
             return updated;
         });
+
+        announce(player);
     }
 
     public void disconnected(String connectionId) {
@@ -97,6 +110,22 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
 
         if (connection != null) {
             forget(connectionId, connection);
+            announce(connection.player);
+        }
+    }
+
+    /** Whether the player has any open connection. */
+    public boolean isConnected(PlayerPrincipal player) {
+        return !connectionsOf(player).isEmpty();
+    }
+
+    // Called from the inbound channel's interceptor, which must never throw
+    // (see PlayerAuthenticationInterceptor).
+    private void announce(PlayerPrincipal player) {
+        try {
+            events.publishEvent(new PlayerConnectionsChanged(player));
+        } catch (RuntimeException exception) {
+            log.error("Handling a connection change of player {} failed", player.getName(), exception);
         }
     }
 
@@ -113,18 +142,12 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
      * sent after the ERROR frame is dropped.
      */
     public void close(PlayerPrincipal player, String message) {
-        List<String> sessionConnections = new ArrayList<>();
-        connectionsBySession.computeIfPresent(player.sessionId(), (sessionId, ids) -> {
-            sessionConnections.addAll(ids);
-            return ids;
-        });
-
         List<String> readyToClose = new ArrayList<>();
 
-        for (String connectionId : sessionConnections) {
+        for (String connectionId : connectionsOf(player)) {
             Connection connection = connections.get(connectionId);
 
-            if (connection == null || !connection.player.equals(player)) {
+            if (connection == null) {
                 continue;
             }
 
@@ -145,6 +168,22 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
         }
 
         readyToClose.forEach(connectionId -> sendError(connectionId, message));
+    }
+
+    // The ids of the player's open connections.
+    private List<String> connectionsOf(PlayerPrincipal player) {
+        List<String> sessionConnections = new ArrayList<>();
+        connectionsBySession.computeIfPresent(player.sessionId(), (sessionId, ids) -> {
+            sessionConnections.addAll(ids);
+            return ids;
+        });
+
+        return sessionConnections.stream()
+                .filter(connectionId -> {
+                    Connection connection = connections.get(connectionId);
+                    return connection != null && connection.player.equals(player);
+                })
+                .toList();
     }
 
     /**

@@ -40,7 +40,7 @@ class PlayerAuthenticationInterceptorTest {
         registry = new PlayerTokenRegistry();
         registry.register("valid-token", player);
         clientOutboundChannel = mock(MessageChannel.class);
-        connections = new PlayerConnections(clientOutboundChannel);
+        connections = new PlayerConnections(clientOutboundChannel, event -> {});
         interceptor = new PlayerAuthenticationInterceptor(registry, connections);
     }
 

@@ -564,6 +564,126 @@ class GameSessionTest {
     }
 
     @Test
+    void doubleJeopardy_startsWithTheLowestScoreInControl() {
+        session.startGame(player1.getId());
+        // Player 1 drops below player 2 and takes control back with a correct answer.
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Wrong");
+        session.buzz(player2.getId());
+        session.timeoutAnswer();
+        session.finishRevealingAnswer();
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), jeopardyClue2.answer());
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+
+        session.finishRevealingAnswer();
+
+        // Player 1 has 200, player 2 has -600.
+        assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+    }
+
+    @Test
+    void doubleJeopardy_onATie_startsWithTheLowestId() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), jeopardyClue1.answer());
+        session.finishRevealingAnswer();
+        session.chooseClue(player1.getId(), jeopardyClue2.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), jeopardyClue2.answer());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+
+        session.finishRevealingAnswer();
+
+        // Both have 200.
+        assertEquals(player1.getScore(), player2.getScore());
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+    }
+
+    // -------------------------------------------------------------------------
+    // Players who are away
+    // -------------------------------------------------------------------------
+
+    @Test
+    void buzzing_doesntWaitForAPlayerWhoIsAway() {
+        GameSessionPlayer player3 = new GameSessionPlayer(3L, "Ana", PlayerTokens.generate());
+        session.addPlayer(player3);
+        session.setAway(player3.getId(), true);
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Wrong");
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
+    }
+
+    @Test
+    void playerWhoIsAway_canStillBuzz_andIsWaitedForOnceBack() {
+        GameSessionPlayer player3 = new GameSessionPlayer(3L, "Ana", PlayerTokens.generate());
+        session.addPlayer(player3);
+        session.setAway(player3.getId(), true);
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Wrong");
+
+        session.setAway(player3.getId(), false);
+        session.buzz(player2.getId());
+        session.answerClue(player2.getId(), "Wrong");
+
+        assertEquals(GameSessionState.WAITING_FOR_BUZZER, session.getState());
+        session.buzz(player3.getId());
+        assertEquals(player3.getId(), session.getPlayerAnswering());
+    }
+
+    @Test
+    void setAway_saysWhetherAnythingChanged_andNeverChangesTheState() {
+        session.startGame(player1.getId());
+
+        assertTrue(session.setAway(player2.getId(), true));
+        assertFalse(session.setAway(player2.getId(), true));
+        assertFalse(session.setAway(99L, true));
+        assertTrue(player2.isAway());
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+
+        assertTrue(session.setAway(player2.getId(), false));
+        assertFalse(player2.isAway());
+    }
+
+    @Test
+    void isEveryoneAway_onlyWhenEveryActivePlayerIsAway() {
+        assertFalse(new GameSession(SessionCode.random(), session.getBoard()).isEveryoneAway());
+        assertFalse(session.isEveryoneAway());
+
+        session.setAway(player1.getId(), true);
+        assertFalse(session.isEveryoneAway());
+
+        session.setAway(player2.getId(), true);
+        assertTrue(session.isEveryoneAway());
+
+        session.setAway(player1.getId(), false);
+        assertFalse(session.isEveryoneAway());
+    }
+
+    @Test
     void setUpNewRound_makesDoubleJeopardyCluesAvailable() {
         session.startGame(player1.getId());
 
@@ -982,6 +1102,38 @@ class GameSessionTest {
         session.placeDailyDoubleWager(player1.getId(), 1500);
 
         assertEquals(1500, session.getDailyDoubleWager());
+    }
+
+    @Test
+    void dailyDoubleWagerRange_isShownWhileWagering_andNamedWhenAWagerIsOutsideIt() {
+        startDailyDouble();
+        player1.addScore(1500);
+
+        assertEquals(5, session.getMinimumDailyDoubleWager());
+        assertEquals(1500, session.getMaximumDailyDoubleWager());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeDailyDoubleWager(player1.getId(), 1501)
+        );
+        assertEquals("Your wager must be between 5 and 1500!", exception.getMessage());
+
+        session.placeDailyDoubleWager(player1.getId(), 1500);
+
+        assertNull(session.getMinimumDailyDoubleWager());
+        assertNull(session.getMaximumDailyDoubleWager());
+    }
+
+    @Test
+    void finalJeopardyWager_outsideTheRange_isNamedInTheError() {
+        reachFinalJeopardy();
+        player1.addScore(300);
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.placeFinalJeopardyWager(player1.getId(), 301)
+        );
+        assertEquals("Your wager must be between 0 and 300!", exception.getMessage());
     }
 
     @Test

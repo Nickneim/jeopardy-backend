@@ -46,8 +46,51 @@ class PlayerConnectionsTest {
     @BeforeEach
     void setUp() {
         clientOutboundChannel = mock(MessageChannel.class);
-        connections = new PlayerConnections(clientOutboundChannel);
+        connections = new PlayerConnections(clientOutboundChannel, event -> {});
         connections.connected(CONNECTION, player);
+    }
+
+    @Test
+    void openingAndClosingConnections_announcesThem_andTracksWhetherThePlayerIsConnected() {
+        List<Object> events = new ArrayList<>();
+        PlayerConnections tracked = new PlayerConnections(clientOutboundChannel, events::add);
+        PlayerPrincipal other = new PlayerPrincipal(player.sessionId(), 5, 2L);
+
+        assertFalse(tracked.isConnected(player));
+
+        tracked.connected("ws-a", player);
+        tracked.connected("ws-b", player);
+        tracked.connected("ws-c", other);
+        tracked.disconnected("ws-a");
+
+        assertTrue(tracked.isConnected(player));
+
+        tracked.disconnected("ws-b");
+        // An unknown connection (already forgotten) announces nothing.
+        tracked.disconnected("ws-b");
+
+        assertFalse(tracked.isConnected(player));
+        assertTrue(tracked.isConnected(other));
+        assertEquals(
+                List.of(
+                        new PlayerConnectionsChanged(player),
+                        new PlayerConnectionsChanged(player),
+                        new PlayerConnectionsChanged(other),
+                        new PlayerConnectionsChanged(player),
+                        new PlayerConnectionsChanged(player)
+                ),
+                events
+        );
+    }
+
+    @Test
+    void aFailingListener_neverReachesTheCaller() {
+        PlayerConnections tracked = new PlayerConnections(clientOutboundChannel, event -> {
+            throw new IllegalStateException("listener failed");
+        });
+
+        assertDoesNotThrow(() -> tracked.connected("ws-a", player));
+        assertDoesNotThrow(() -> tracked.disconnected("ws-a"));
     }
 
     @Test
@@ -137,7 +180,7 @@ class PlayerConnectionsTest {
         ExecutorSubscribableChannel outbound = new ExecutorSubscribableChannel(writes::add);
         List<Message<?>> written = new ArrayList<>();
         outbound.subscribe(written::add);
-        outbound.addInterceptor(new PlayerConnections(outbound));
+        outbound.addInterceptor(new PlayerConnections(outbound, event -> {}));
         connections = (PlayerConnections) outbound.getInterceptors().getFirst();
         OrderedMessageChannelDecorator.configureInterceptor(outbound, true);
         OrderedMessageChannelDecorator ordered =

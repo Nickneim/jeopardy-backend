@@ -535,7 +535,7 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.timers.clueRevealMs").value(3000))
                 .andExpect(jsonPath("$.timers.dailyDoubleWagerMs").value(30000))
                 .andExpect(jsonPath("$.timers.buzzerMs").value(10000))
-                .andExpect(jsonPath("$.timers.answerMs").value(5000))
+                .andExpect(jsonPath("$.timers.answerMs").value(15000))
                 .andExpect(jsonPath("$.timers.answerRevealMs").value(3000))
                 .andExpect(jsonPath("$.timers.finalJeopardyWagerMs").value(30000))
                 .andExpect(jsonPath("$.timers.finalJeopardyAnswerMs").value(30000))

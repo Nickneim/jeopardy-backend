@@ -10,7 +10,9 @@ import com.nickneim.jeopardy.session.model.GameSession;
  * on the state: a Daily Double's question, clue type and media URL stay
  * hidden until the wager is placed, and the answer stays hidden until the
  * answer is revealed.
- * {@code wager} is only set for a Daily Double once the wager is placed.
+ * {@code wager} is only set for a Daily Double once the wager is placed;
+ * {@code minWager} and {@code maxWager}, the chooser's allowed range, only
+ * while it is being placed.
  * {@code numberExpected} (only an exact number is accepted) is shown with the
  * question, since it says something about the answer. {@code acceptedAnswers}
  * is the answer as players should see it, revealed with {@code answer}.
@@ -20,6 +22,8 @@ public record CurrentClueResponse(
         int value,
         boolean dailyDouble,
         Integer wager,
+        Integer minWager,
+        Integer maxWager,
         String question,
         ClueType clueType,
         String mediaUrl,
@@ -59,6 +63,8 @@ public record CurrentClueResponse(
                 clue.value(),
                 clue.dailyDouble(),
                 session.getDailyDoubleWager(),
+                session.getMinimumDailyDoubleWager(),
+                session.getMaximumDailyDoubleWager(),
                 showQuestion ? clue.question() : null,
                 showQuestion ? clue.clueType() : null,
                 showQuestion ? clue.mediaUrl() : null,

@@ -194,7 +194,7 @@ public final class GameBoard {
         return getClue(clueId).dailyDouble();
     }
 
-    /** Whether only an exact number is accepted for the clue ({@link AnswerMatcher#expectsNumber}). */
+    /** Whether only an exact number is accepted for the clue ({@link AnswerMatcher#expectsNumber()}). */
     public boolean isNumberExpected(Long clueId) {
         return answerHints(clueId).numberExpected();
     }

@@ -21,10 +21,13 @@ public class GameSessionTimer {
     private final ScheduledThreadPoolExecutor scheduler = newScheduler();
 
     // Each session has one phase timer and, separately, one cleanup timer
-    // that removes the session once it has been idle for too long.
+    // that removes the session once it has been idle for too long, and one
+    // that closes it once every player has been away for too long.
     private final Map<SessionCode, ScheduledFuture<?>> timers =
             new ConcurrentHashMap<>();
     private final Map<SessionCode, ScheduledFuture<?>> cleanupTimers =
+            new ConcurrentHashMap<>();
+    private final Map<SessionCode, ScheduledFuture<?>> abandonmentTimers =
             new ConcurrentHashMap<>();
 
     // By default the executor still runs every delayed task after shutdown,
@@ -62,6 +65,27 @@ public class GameSessionTimer {
 
     public void cancelCleanup(SessionCode sessionId) {
         cancel(cleanupTimers, sessionId);
+    }
+
+    /**
+     * Like the other timers, except that one already waiting is kept: it
+     * counts from when everyone went away, however often this is called
+     * afterwards.
+     */
+    public void scheduleAbandonment(
+            SessionCode sessionId,
+            Duration delay,
+            Runnable action
+    ) {
+        ScheduledFuture<?> waiting = abandonmentTimers.get(sessionId);
+
+        if (waiting == null || waiting.isDone()) {
+            schedule(abandonmentTimers, sessionId, delay, action);
+        }
+    }
+
+    public void cancelAbandonment(SessionCode sessionId) {
+        cancel(abandonmentTimers, sessionId);
     }
 
     private void schedule(

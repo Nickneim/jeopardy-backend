@@ -16,26 +16,26 @@ class AnswerMatcherTest {
 
     @Test
     void matches_rejectsMissingOrBlankResponses() {
-        assertFalse(AnswerMatcher.matches("Lincoln", null, false));
-        assertFalse(AnswerMatcher.matches("Lincoln", "", false));
-        assertFalse(AnswerMatcher.matches("Lincoln", "   ", false));
-        assertFalse(AnswerMatcher.matches("Lincoln", "What is", true));
-        assertFalse(AnswerMatcher.matches(null, "Lincoln", false));
+        assertFalse(AnswerMatchers.matches("Lincoln", null, false));
+        assertFalse(AnswerMatchers.matches("Lincoln", "", false));
+        assertFalse(AnswerMatchers.matches("Lincoln", "   ", false));
+        assertFalse(AnswerMatchers.matches("Lincoln", "What is", true));
+        assertFalse(AnswerMatchers.matches(null, "Lincoln", false));
     }
 
     @Test
     void matches_answersThatAreOnlyArticlesOrSymbols() {
-        assertTrue(AnswerMatcher.matches("A", "a", false));
-        assertTrue(AnswerMatcher.matches("The The", "the the", false));
-        assertFalse(AnswerMatcher.matches("The The", "the", false));
-        assertTrue(AnswerMatcher.matches("@", "@", false));
-        assertFalse(AnswerMatcher.matches("@", "#", false));
+        assertTrue(AnswerMatchers.matches("A", "a", false));
+        assertTrue(AnswerMatchers.matches("The The", "the the", false));
+        assertFalse(AnswerMatchers.matches("The The", "the", false));
+        assertTrue(AnswerMatchers.matches("@", "@", false));
+        assertFalse(AnswerMatchers.matches("@", "#", false));
     }
 
     @Test
     void matches_answerThatIsAllParentheses_needsAllOfIt() {
-        assertTrue(AnswerMatcher.matches("(smiling and waving)", "smiling and waving", false));
-        assertFalse(AnswerMatcher.matches("(smiling and waving)", "waving", false));
+        assertTrue(AnswerMatchers.matches("(smiling and waving)", "smiling and waving", false));
+        assertFalse(AnswerMatchers.matches("(smiling and waving)", "waving", false));
     }
 
     @Test
@@ -46,125 +46,125 @@ class AnswerMatcherTest {
                 "waht is", "wat is", "whta is", "wht is", "hwo is", "woh is", "wehre is", "whre is", "wher is",
                 "wehn is", "whn is", "\"What is"
         }) {
-            assertTrue(AnswerMatcher.matches("Lincoln", question + " Lincoln", true), question);
+            assertTrue(AnswerMatchers.matches("Lincoln", question + " Lincoln", true), question);
         }
     }
 
     @Test
     void matches_doesNotTakeOtherWordsForAQuestion() {
-        assertFalse(AnswerMatcher.matches("Lincoln", "Whose Lincoln", true));
-        assertFalse(AnswerMatcher.matches("Lincoln", "Who Lincoln", true));
-        assertFalse(AnswerMatcher.matches("Lincoln", "Is Lincoln", true));
-        assertFalse(AnswerMatcher.matches("Lincoln", "Lincoln?", true));
+        assertFalse(AnswerMatchers.matches("Lincoln", "Whose Lincoln", true));
+        assertFalse(AnswerMatchers.matches("Lincoln", "Who Lincoln", true));
+        assertFalse(AnswerMatchers.matches("Lincoln", "Is Lincoln", true));
+        assertFalse(AnswerMatchers.matches("Lincoln", "Lincoln?", true));
     }
 
     @Test
     void matches_ignoresTheQuestionFormWhenItIsNotRequired() {
-        assertTrue(AnswerMatcher.matches("Lincoln", "Who is Lincoln?", false));
-        assertTrue(AnswerMatcher.matches("Lincoln", "Lincoln", false));
+        assertTrue(AnswerMatchers.matches("Lincoln", "Who is Lincoln?", false));
+        assertTrue(AnswerMatchers.matches("Lincoln", "Lincoln", false));
     }
 
     @Test
     void check_reportsTheQuestionFormInEveryRound() {
         // Jeopardy round: optional, but still reported.
-        assertFlags(true, false, AnswerMatcher.check("Lincoln", "Lincoln", false));
-        assertFlags(true, true, AnswerMatcher.check("Lincoln", "Who is Lincoln?", false));
+        assertFlags(true, false, AnswerMatchers.check("Lincoln", "Lincoln", false));
+        assertFlags(true, true, AnswerMatchers.check("Lincoln", "Who is Lincoln?", false));
         // Double and Final Jeopardy: a bare answer is wrong because of it.
-        assertFlags(false, false, AnswerMatcher.check("Lincoln", "Lincoln", true));
-        assertFlags(true, true, AnswerMatcher.check("Lincoln", "Who is Lincoln?", true));
+        assertFlags(false, false, AnswerMatchers.check("Lincoln", "Lincoln", true));
+        assertFlags(true, true, AnswerMatchers.check("Lincoln", "Who is Lincoln?", true));
     }
 
     @Test
     void check_countsATypoOfTheQuestionWord() {
-        assertFlags(true, true, AnswerMatcher.check("Lincoln", "waht is Lincoln", true));
-        assertFlags(true, true, AnswerMatcher.check("Lincoln", "whats lincln", true));
+        assertFlags(true, true, AnswerMatchers.check("Lincoln", "waht is Lincoln", true));
+        assertFlags(true, true, AnswerMatchers.check("Lincoln", "whats lincln", true));
     }
 
     @Test
     void check_reportsTheQuestionFormOfAWrongAnswerToo() {
-        assertFlags(false, true, AnswerMatcher.check("Lincoln", "Who is Washington?", true));
-        assertFlags(false, false, AnswerMatcher.check("Lincoln", "Washington", false));
+        assertFlags(false, true, AnswerMatchers.check("Lincoln", "Who is Washington?", true));
+        assertFlags(false, false, AnswerMatchers.check("Lincoln", "Washington", false));
     }
 
     @Test
     void check_answerThatIsItselfAQuestion_saidAsItIs_isPhrasedAsOne() {
-        assertFlags(true, true, AnswerMatcher.check("Who's The Boss?", "Who's the Boss?", true));
+        assertFlags(true, true, AnswerMatchers.check("Who's The Boss?", "Who's the Boss?", true));
         // Without a question word the matcher recognises, said as it is (with a typo).
-        assertFlags(true, true, AnswerMatcher.check("Who's The Boss?", "Whoo's the Boss", true));
-        assertFlags(false, false, AnswerMatcher.check("Who's The Boss?", "the Boss", true));
+        assertFlags(true, true, AnswerMatchers.check("Who's The Boss?", "Whoo's the Boss", true));
+        assertFlags(false, false, AnswerMatchers.check("Who's The Boss?", "the Boss", true));
     }
 
     @Test
     void check_missingResponseIsNeitherCorrectNorPhrasedAsAQuestion() {
-        assertFlags(false, false, AnswerMatcher.check("Lincoln", null, true));
-        assertFlags(false, false, AnswerMatcher.check("Lincoln", " ", true));
+        assertFlags(false, false, AnswerMatchers.check("Lincoln", null, true));
+        assertFlags(false, false, AnswerMatchers.check("Lincoln", " ", true));
     }
 
     @Test
     void matches_bracketsAreOneThingWordedDifferently_anywhereInAnAnswer() {
-        assertTrue(AnswerMatcher.matches("a linen [closet | cupboard]", "a linen cupboard", false));
-        assertTrue(AnswerMatcher.matches("a linen [closet | cupboard]", "linen closet", false));
-        assertFalse(AnswerMatcher.matches("a linen [closet | cupboard]", "cupboard", false));
-        assertFalse(AnswerMatcher.matches("a linen [closet | cupboard]", "a linen closet cupboard", false));
+        assertTrue(AnswerMatchers.matches("a linen [closet | cupboard]", "a linen cupboard", false));
+        assertTrue(AnswerMatchers.matches("a linen [closet | cupboard]", "linen closet", false));
+        assertFalse(AnswerMatchers.matches("a linen [closet | cupboard]", "cupboard", false));
+        assertFalse(AnswerMatchers.matches("a linen [closet | cupboard]", "a linen closet cupboard", false));
 
-        assertTrue(AnswerMatcher.matches("[Greek | Eastern] Orthodox", "Eastern Orthodox", false));
-        assertFalse(AnswerMatcher.matches("[Greek | Eastern] Orthodox", "Orthodox", false));
+        assertTrue(AnswerMatchers.matches("[Greek | Eastern] Orthodox", "Eastern Orthodox", false));
+        assertFalse(AnswerMatchers.matches("[Greek | Eastern] Orthodox", "Orthodox", false));
     }
 
     @Test
     void matches_wordingsOfOneOptionCountOnce() {
         String answer = "(2 of) Ohio | [Myanmar | Burma]";
 
-        assertTrue(AnswerMatcher.matches(answer, "Ohio & Myanmar", false));
-        assertTrue(AnswerMatcher.matches(answer, "Burma and Ohio", false));
-        assertFalse(AnswerMatcher.matches(answer, "Myanmar & Burma", false), "two wordings of one option");
-        assertFalse(AnswerMatcher.matches(answer, "Ohio", false));
+        assertTrue(AnswerMatchers.matches(answer, "Ohio & Myanmar", false));
+        assertTrue(AnswerMatchers.matches(answer, "Burma and Ohio", false));
+        assertFalse(AnswerMatchers.matches(answer, "Myanmar & Burma", false), "two wordings of one option");
+        assertFalse(AnswerMatchers.matches(answer, "Ohio", false));
     }
 
     @Test
     void matches_pipesInsideBracketsDoNotMakeAList() {
-        assertTrue(AnswerMatcher.matches("[Myanmar | Burma]", "Burma", false));
+        assertTrue(AnswerMatchers.matches("[Myanmar | Burma]", "Burma", false));
         // Naming both wordings names the same thing twice, which is fine.
-        assertTrue(AnswerMatcher.matches("[Myanmar | Burma]", "Myanmar or Burma", false));
-        assertFalse(AnswerMatcher.matches("[Myanmar | Burma]", "Thailand", false));
+        assertTrue(AnswerMatchers.matches("[Myanmar | Burma]", "Myanmar or Burma", false));
+        assertFalse(AnswerMatchers.matches("[Myanmar | Burma]", "Thailand", false));
     }
 
     @Test
     void matches_bracketWordingsCanHaveOptionalParts() {
         String answer = "[(Abraham) Lincoln | Honest Abe]";
 
-        assertTrue(AnswerMatcher.matches(answer, "Lincoln", false));
-        assertTrue(AnswerMatcher.matches(answer, "Abraham Lincoln", false));
-        assertTrue(AnswerMatcher.matches(answer, "Honest Abe", false));
-        assertFalse(AnswerMatcher.matches(answer, "Abraham", false));
+        assertTrue(AnswerMatchers.matches(answer, "Lincoln", false));
+        assertTrue(AnswerMatchers.matches(answer, "Abraham Lincoln", false));
+        assertTrue(AnswerMatchers.matches(answer, "Honest Abe", false));
+        assertFalse(AnswerMatchers.matches(answer, "Abraham", false));
     }
 
     @Test
     void matches_aBracketWordingThatIsAQuestion_canBeSaidBare() {
-        assertTrue(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "Who's the Boss", true));
+        assertTrue(AnswerMatchers.matches("[Who's the Boss? | The Boss]", "Who's the Boss", true));
     }
 
     @Test
     void matches_onlyAWordingThatIsAQuestion_canBeSaidBare() {
-        assertFalse(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "The Boss", true));
-        assertTrue(AnswerMatcher.matches("[Who's the Boss? | The Boss]", "What is the Boss", true));
-        assertFlags(true, true, AnswerMatcher.check("(2 of) Who's the Boss? | Taxi", "Who's the Boss and Taxi", true));
-        assertFlags(false, false, AnswerMatcher.check("(2 of) Who's the Boss? | Taxi", "Taxi and Who's the Boss", true));
+        assertFalse(AnswerMatchers.matches("[Who's the Boss? | The Boss]", "The Boss", true));
+        assertTrue(AnswerMatchers.matches("[Who's the Boss? | The Boss]", "What is the Boss", true));
+        assertFlags(true, true, AnswerMatchers.check("(2 of) Who's the Boss? | Taxi", "Who's the Boss and Taxi", true));
+        assertFlags(false, false, AnswerMatchers.check("(2 of) Who's the Boss? | Taxi", "Taxi and Who's the Boss", true));
     }
 
     @Test
     void matches_unclosedParenthesesRunToTheEnd() {
-        assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Lincoln", false));
-        assertTrue(AnswerMatcher.matches("Lincoln (Abraham", "Abraham Lincoln", false));
+        assertTrue(AnswerMatchers.matches("Lincoln (Abraham", "Lincoln", false));
+        assertTrue(AnswerMatchers.matches("Lincoln (Abraham", "Abraham Lincoln", false));
     }
 
     @Test
     void acceptedAnswers_anUnclosedBracketDoesNotHideTheRestOfAList() {
         assertEquals(
                 new AcceptedAnswers(2, List.of("Smith [Jones", "Brown", "Green")),
-                AnswerMatcher.acceptedAnswers("(2 of) Smith [Jones | Brown | Green")
+                AnswerMatchers.acceptedAnswers("(2 of) Smith [Jones | Brown | Green")
         );
-        assertTrue(AnswerMatcher.matches("(2 of) Smith [Jones | Brown | Green", "Brown and Green", false));
+        assertTrue(AnswerMatchers.matches("(2 of) Smith [Jones | Brown | Green", "Brown and Green", false));
     }
 
     // More than an int can hold: it asks for every option, like any count
@@ -173,9 +173,9 @@ class AnswerMatcherTest {
     void matches_aListCountTooLargeForAnIntAsksForEveryOption() {
         String answer = "(99999999999 of) Ohio | Iowa";
 
-        assertEquals(new AcceptedAnswers(2, List.of("Ohio", "Iowa")), AnswerMatcher.acceptedAnswers(answer));
-        assertTrue(AnswerMatcher.matches(answer, "Iowa and Ohio", false));
-        assertFalse(AnswerMatcher.matches(answer, "Ohio", false));
+        assertEquals(new AcceptedAnswers(2, List.of("Ohio", "Iowa")), AnswerMatchers.acceptedAnswers(answer));
+        assertTrue(AnswerMatchers.matches(answer, "Iowa and Ohio", false));
+        assertFalse(AnswerMatchers.matches(answer, "Ohio", false));
     }
 
     @Test
@@ -192,7 +192,7 @@ class AnswerMatcherTest {
         }
 
         assertTimeoutPreemptively(Duration.ofSeconds(2), () ->
-                AnswerMatcher.check(answer.toString(), response.toString(), false));
+                AnswerMatchers.check(answer.toString(), response.toString(), false));
     }
 
     @Test
@@ -200,7 +200,7 @@ class AnswerMatcherTest {
         String response = "gold ".repeat(500);
 
         assertTimeoutPreemptively(Duration.ofSeconds(1), () ->
-                assertFalse(AnswerMatcher.matches("(2 of) gold | frankincense | myrrh", response, false)));
+                assertFalse(AnswerMatchers.matches("(2 of) gold | frankincense | myrrh", response, false)));
     }
 
     @Test
@@ -209,7 +209,7 @@ class AnswerMatcherTest {
         String response = "Alaska Wyoming Delaware North Dakota South Dakota Vermont Montana Alaska Wyoming Delaware";
 
         assertTimeoutPreemptively(Duration.ofSeconds(1), () ->
-                assertTrue(AnswerMatcher.matches(answer, response, false)));
+                assertTrue(AnswerMatchers.matches(answer, response, false)));
     }
 
     @Test
@@ -238,7 +238,7 @@ class AnswerMatcherTest {
 
     @Test
     void check_reportsNothingMatchedForAWrongAnswer() {
-        AnswerCheck check = AnswerMatcher.check("Lincoln", "Lincoln", true);
+        AnswerCheck check = AnswerMatchers.check("Lincoln", "Lincoln", true);
 
         assertFalse(check.correct());
         assertNull(check.matchedAnswers(), "right words, but wrong without the question form");
@@ -247,13 +247,13 @@ class AnswerMatcherTest {
 
     @Test
     void acceptedAnswers_givesTheFirstWordingOfEachOption() {
-        assertEquals(new AcceptedAnswers(1, List.of("a linen closet")), AnswerMatcher.acceptedAnswers("a linen [closet | cupboard]"));
+        assertEquals(new AcceptedAnswers(1, List.of("a linen closet")), AnswerMatchers.acceptedAnswers("a linen [closet | cupboard]"));
         assertEquals(
                 new AcceptedAnswers(2, List.of("coroner", "coronet")),
-                AnswerMatcher.acceptedAnswers("(2 of) coroner | [coronet | coronel]")
+                AnswerMatchers.acceptedAnswers("(2 of) coroner | [coronet | coronel]")
         );
-        assertEquals(new AcceptedAnswers(1, List.of("bear")), AnswerMatcher.acceptedAnswers("bear/bare"));
-        assertNull(AnswerMatcher.acceptedAnswers(null));
+        assertEquals(new AcceptedAnswers(1, List.of("bear")), AnswerMatchers.acceptedAnswers("bear/bare"));
+        assertNull(AnswerMatchers.acceptedAnswers(null));
     }
 
     private static void assertFlags(boolean correct, boolean phrasedAsQuestion, AnswerCheck check) {
@@ -262,7 +262,7 @@ class AnswerMatcherTest {
     }
 
     private static void assertMatched(List<String> matched, List<String> alsoAccepted, String answer, String response) {
-        AnswerCheck check = AnswerMatcher.check(answer, response, false);
+        AnswerCheck check = AnswerMatchers.check(answer, response, false);
 
         assertTrue(check.correct(), response);
         assertEquals(matched, check.matchedAnswers(), response);
@@ -271,8 +271,8 @@ class AnswerMatcherTest {
 
     @Test
     void expectsNumber_handlesMissingAnswers() {
-        assertFalse(AnswerMatcher.expectsNumber(null));
-        assertFalse(AnswerMatcher.expectsNumber("Lincoln"));
+        assertFalse(AnswerMatchers.expectsNumber(null));
+        assertFalse(AnswerMatchers.expectsNumber("Lincoln"));
     }
 
     @Test

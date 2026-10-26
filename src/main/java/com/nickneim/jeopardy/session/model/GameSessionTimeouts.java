@@ -31,7 +31,8 @@ public record GameSessionTimeouts(
                 Duration.ofSeconds(3),
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(10),
-                Duration.ofSeconds(5),
+                // Long enough to type an answer, on a phone too.
+                Duration.ofSeconds(15),
                 Duration.ofSeconds(3),
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(30),

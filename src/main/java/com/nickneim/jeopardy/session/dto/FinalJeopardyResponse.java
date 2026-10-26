@@ -5,7 +5,7 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.model.FinalJeopardy;
 import com.nickneim.jeopardy.session.model.GameSession;
-import com.nickneim.jeopardy.session.model.GameSessionPlayer;
+import com.nickneim.jeopardy.session.model.GameSessionState;
 
 import java.util.List;
 
@@ -60,12 +60,12 @@ public record FinalJeopardyResponse(
         BoardClue clue = session.getBoard().getFinalJeopardyClue();
         FinalJeopardy finalJeopardy = session.getFinalJeopardy();
 
+        boolean wagering = session.getState() == GameSessionState.FINAL_JEOPARDY_WAGERING;
         List<FinalJeopardyPlayerResponse> players = session.getPlayers()
                 .stream()
-                .map(GameSessionPlayer::getId)
-                .map(playerId -> showResults
-                        ? FinalJeopardyPlayerResponse.revealed(playerId, finalJeopardy)
-                        : FinalJeopardyPlayerResponse.submitted(playerId, finalJeopardy))
+                .map(player -> showResults
+                        ? FinalJeopardyPlayerResponse.revealed(player, finalJeopardy)
+                        : FinalJeopardyPlayerResponse.submitted(player, finalJeopardy, wagering))
                 .toList();
 
         BoardCategory category = session.getBoard().getFinalJeopardyCategory();

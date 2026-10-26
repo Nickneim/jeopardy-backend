@@ -17,19 +17,24 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
+import com.nickneim.jeopardy.session.security.PlayerConnectionsChanged;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import com.nickneim.jeopardy.session.security.PlayerTokens;
 import com.nickneim.jeopardy.session.model.SessionCode;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 @Service
 public class GameSessionService {
@@ -39,6 +44,9 @@ public class GameSessionService {
 
     /** A finished game with no change for this long is removed. */
     public static final Duration FINISHED_SESSION_TIMEOUT = Duration.ofMinutes(10);
+
+    /** A session whose players have all been away (no open connection) for this long is closed. */
+    public static final Duration EVERYONE_AWAY_TIMEOUT = Duration.ofMinutes(2);
 
     static final String LEFT_MESSAGE = "You left the session";
     static final String KICKED_MESSAGE = "You were removed from the session by the host";
@@ -201,6 +209,7 @@ public class GameSessionService {
     void removeSession(SessionCode sessionId) {
         timer.cancel(sessionId);
         timer.cancelCleanup(sessionId);
+        timer.cancelAbandonment(sessionId);
 
         GameSession session = sessions.get(sessionId);
 
@@ -255,54 +264,77 @@ public class GameSessionService {
     }
 
     public void leave(PlayerPrincipal player) {
-        GameSession session = sessionOf(player);
-
-        synchronized (session) {
-            GameSessionState before = session.getState();
-            GameSessionPlayer departed = session.leave(player.playerId());
-
-            afterDeparture(session, departed, before, LEFT_MESSAGE);
-        }
+        depart(player, session -> session.leave(player.playerId()), LEFT_MESSAGE);
     }
 
     public void kick(PlayerPrincipal host, Long playerId) {
-        GameSession session = sessionOf(host);
+        depart(host, session -> session.kick(host.playerId(), playerId), KICKED_MESSAGE);
+    }
+
+    /**
+     * The departing player's token stops working at once and their open
+     * connections are closed, so a client that reconnects is rejected like
+     * any unknown token. If nobody active is left, the session is closed.
+     */
+    private void depart(
+            PlayerPrincipal actor,
+            Function<GameSession, GameSessionPlayer> departure,
+            String message
+    ) {
+        GameSession session = sessionOf(actor);
 
         synchronized (session) {
-            GameSessionState before = session.getState();
-            GameSessionPlayer kicked = session.kick(host.playerId(), playerId);
+            GameSessionState stateBefore = session.getState();
+            Long chooserBefore = session.getPlayerChoosingClue();
+            GameSessionPlayer departed = departure.apply(session);
 
-            afterDeparture(session, kicked, before, KICKED_MESSAGE);
+            playerTokens.unregister(departed.getToken());
+
+            if (session.getActivePlayers().isEmpty()) {
+                closeSession(session, SessionCloseReason.ABANDONED);
+            } else {
+                // A departure usually leaves the phase alone, and re-arming
+                // the timer then would restart it. It changes it when the
+                // last player who could still buzz leaves, and when a
+                // departed chooser's control passes on: the new chooser gets
+                // the full time to pick.
+                if (session.getState() != stateBefore
+                        || !Objects.equals(session.getPlayerChoosingClue(), chooserBefore)) {
+                    scheduleTimeout(session);
+                }
+
+                broadcast(session);
+            }
+
+            connections.close(PlayerPrincipal.of(session, departed.getId()), message);
         }
     }
 
     /**
-     * The player's token stops working at once and their open connections
-     * are closed, so a client that reconnects is rejected like any unknown
-     * token. If nobody active is left, the session is closed.
+     * A connection of a player opened or closed: they're away while they
+     * have none. Being away never changes the state (see
+     * {@link GameSession#setAway}), so no timer is re-armed.
      */
-    private void afterDeparture(
-            GameSession session,
-            GameSessionPlayer player,
-            GameSessionState before,
-            String message
-    ) {
-        playerTokens.unregister(player.getToken());
+    @EventListener
+    public void onPlayerConnectionsChanged(PlayerConnectionsChanged event) {
+        PlayerPrincipal player = event.player();
+        GameSession session = sessions.get(player.sessionId());
 
-        if (session.getActivePlayers().isEmpty()) {
-            closeSession(session, SessionCloseReason.ABANDONED);
-        } else {
-            // A departure usually leaves the state alone, and re-arming the
-            // timer then would restart the phase. It changes it when the last
-            // player who could still buzz leaves.
-            if (session.getState() != before) {
-                scheduleTimeout(session);
-            }
-
-            broadcast(session);
+        if (session == null || !player.isIn(session)) {
+            return;
         }
 
-        connections.close(PlayerPrincipal.of(session, player.getId()), message);
+        synchronized (session) {
+            if (session.getState() == GameSessionState.CLOSED) {
+                return;
+            }
+
+            // Asked now, under the lock, rather than taken from the event:
+            // two connections' events can arrive in either order.
+            if (session.setAway(player.playerId(), !connections.isConnected(player))) {
+                broadcast(session);
+            }
+        }
     }
 
     public void startGame(PlayerPrincipal player) {
@@ -361,25 +393,12 @@ public class GameSessionService {
 
     /** The usual mutation: under the lock, act, re-arm the phase timer, broadcast. */
     private void act(PlayerPrincipal player, Consumer<GameSession> action) {
-        GameSession session = sessionOf(player);
-
-        synchronized (session) {
-            action.accept(session);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+        mutate(sessionOf(player), session -> true, action, true);
     }
 
     /** For actions that leave the state alone: re-arming the timer would restart the phase. */
     private void actKeepingTimer(PlayerPrincipal player, Consumer<GameSession> action) {
-        GameSession session = sessionOf(player);
-
-        synchronized (session) {
-            action.accept(session);
-
-            broadcast(session);
-        }
+        mutate(sessionOf(player), session -> true, action, false);
     }
 
     /**
@@ -388,16 +407,30 @@ public class GameSessionService {
      * {@code armedIn}. Real timers go through {@link #onPhaseTimeout}.
      */
     private void onTimeout(SessionCode sessionId, GameSessionState armedIn, Consumer<GameSession> action) {
-        GameSession session = getSession(sessionId);
+        mutate(getSession(sessionId), session -> session.getState() == armedIn, action, true);
+    }
 
+    /**
+     * Every mutation goes through here: under the session's lock, and only
+     * if {@code stillValid} holds, apply the action, re-arm the phase timer
+     * if asked, and broadcast.
+     */
+    private void mutate(
+            GameSession session,
+            Predicate<GameSession> stillValid,
+            Consumer<GameSession> action,
+            boolean rescheduleTimer
+    ) {
         synchronized (session) {
-            if (session.getState() != armedIn) {
+            if (!stillValid.test(session)) {
                 return;
             }
 
             action.accept(session);
 
-            scheduleTimeout(session);
+            if (rescheduleTimer) {
+                scheduleTimeout(session);
+            }
             broadcast(session);
         }
     }
@@ -411,13 +444,20 @@ public class GameSessionService {
     }
 
     /**
-     * Arms the session's cleanup timer after every change: a lobby or a
+     * Arms the session's cleanup timers after every change: a lobby or a
      * finished game is removed once it has gone without changes for its
-     * timeout. A game in progress always moves on by itself, so it has none.
-     * Called with the session's lock held.
+     * timeout (a game in progress always moves on by itself, so it has
+     * none), and any open session once every player has been away for
+     * {@link #EVERYONE_AWAY_TIMEOUT}. Called with the session's lock held.
      */
     private void scheduleCleanup(GameSession session) {
         SessionCode sessionId = session.getId();
+
+        if (session.isEveryoneAway() && session.getState() != GameSessionState.CLOSED) {
+            timer.scheduleAbandonment(sessionId, EVERYONE_AWAY_TIMEOUT, () -> abandonSession(session));
+        } else {
+            timer.cancelAbandonment(sessionId);
+        }
 
         Duration timeout = switch (session.getState()) {
             case WAITING_FOR_START -> IDLE_LOBBY_TIMEOUT;
@@ -450,6 +490,16 @@ public class GameSessionService {
                 case FINISHED_GAME -> closeSession(session, SessionCloseReason.FINISHED);
                 default -> {
                 }
+            }
+        }
+    }
+
+    // A stale abandonment (someone came back, or the session is gone) is a
+    // no-op. Like expireSession, it holds the session itself, not its id.
+    private void abandonSession(GameSession session) {
+        synchronized (session) {
+            if (sessions.get(session.getId()) == session && session.isEveryoneAway()) {
+                closeSession(session, SessionCloseReason.ABANDONED);
             }
         }
     }
@@ -552,18 +602,14 @@ public class GameSessionService {
             long timerId,
             Consumer<GameSession> action
     ) {
-        synchronized (session) {
-            if (sessions.get(session.getId()) != session
-                    || session.getState() != armedIn
-                    || session.getPhaseTimerId() != timerId) {
-                return;
-            }
-
-            action.accept(session);
-
-            scheduleTimeout(session);
-            broadcast(session);
-        }
+        mutate(
+                session,
+                current -> sessions.get(current.getId()) == current
+                        && current.getState() == armedIn
+                        && current.getPhaseTimerId() == timerId,
+                action,
+                true
+        );
     }
 
     private record PhaseTimeout(Duration duration, Consumer<GameSession> action) {}

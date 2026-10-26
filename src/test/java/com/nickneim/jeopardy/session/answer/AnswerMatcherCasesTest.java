@@ -42,12 +42,12 @@ class AnswerMatcherCasesTest {
         return cases().stream().flatMap(c -> Stream.concat(
                 c.accept().stream().map(response -> DynamicTest.dynamicTest(
                         c.label() + " accepts \"" + response + "\"",
-                        () -> assertEquals(true, AnswerMatcher.matches(c.answer(), response, c.questionRequired()),
+                        () -> assertEquals(true, AnswerMatchers.matches(c.answer(), response, c.questionRequired()),
                                 () -> "\"" + response + "\" should match " + c.answer())
                 )),
                 c.reject().stream().map(response -> DynamicTest.dynamicTest(
                         c.label() + " rejects \"" + response + "\"",
-                        () -> assertEquals(false, AnswerMatcher.matches(c.answer(), response, c.questionRequired()),
+                        () -> assertEquals(false, AnswerMatchers.matches(c.answer(), response, c.questionRequired()),
                                 () -> "\"" + response + "\" shouldn't match " + c.answer())
                 ))
         ));
@@ -59,7 +59,7 @@ class AnswerMatcherCasesTest {
                 .filter(c -> c.round() == null)
                 .map(c -> DynamicTest.dynamicTest(
                         c.answer(),
-                        () -> assertEquals(Boolean.TRUE.equals(c.numberExpected()), AnswerMatcher.expectsNumber(c.answer()))
+                        () -> assertEquals(Boolean.TRUE.equals(c.numberExpected()), AnswerMatchers.expectsNumber(c.answer()))
                 ));
     }
 

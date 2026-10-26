@@ -20,6 +20,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
+import com.nickneim.jeopardy.session.security.PlayerConnectionsChanged;
 import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.security.PlayerTokenRegistry;
 import com.nickneim.jeopardy.session.model.SessionCode;
@@ -520,7 +521,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(5)),
+                eq(Duration.ofSeconds(15)),
                 any(Runnable.class)
         );
     }
@@ -596,6 +597,7 @@ class GameSessionServiceTest {
         );
         // A game in progress is never cleaned up.
         verify(timer).cancelCleanup(session.getId());
+        verify(timer).cancelAbandonment(session.getId());
         verifyNoMoreInteractions(timer);
     }
 
@@ -1069,7 +1071,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(5)),
+                eq(Duration.ofSeconds(15)),
                 any(Runnable.class)
         );
         verify(timer, never()).schedule(
@@ -1176,7 +1178,7 @@ class GameSessionServiceTest {
         );
 
         Runnable answerTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(5));
+                captureScheduledRunnable(session, Duration.ofSeconds(15));
 
         clearInvocations(timer, broadcaster);
 
@@ -1207,7 +1209,7 @@ class GameSessionServiceTest {
         gameSessionService.finishRevealingClue(session.getId());
 
         Runnable answerTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(5));
+                captureScheduledRunnable(session, Duration.ofSeconds(15));
 
         clearInvocations(timer, broadcaster);
 
@@ -1534,6 +1536,7 @@ class GameSessionServiceTest {
                 eq(GameSessionService.FINISHED_SESSION_TIMEOUT),
                 any(Runnable.class)
         );
+        verify(timer).cancelAbandonment(session.getId());
         verifyNoMoreInteractions(timer);
     }
 
@@ -1828,14 +1831,119 @@ class GameSessionServiceTest {
         GameSessionPlayer chooser = gameSessionService.joinSession(session.getId(), "Nico");
         GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
         gameSessionService.startGame(player(session.getId(), chooser.getId()));
+        gameSessionService.chooseClue(player(session.getId(), chooser.getId()), CLUE_ID);
         gameSessionService.leave(player(session.getId(), chooser.getId()));
 
-        assertTrue(chooser.isLeaving());
+        assertTrue(session.getPlayers().contains(chooser));
         assertClosedOnNextBroadcast(session, SessionCloseReason.ABANDONED);
 
         gameSessionService.leave(player(session.getId(), other.getId()));
 
         assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+    }
+
+    @Test
+    void chooserLeavingWhileChoosing_givesTheNewChooserTheFullTime() {
+        GameSession session = createSessionWithPlayers(2);
+        gameSessionService.startGame(player(session.getId(), 1L));
+        clearInvocations(timer, broadcaster);
+
+        gameSessionService.leave(player(session.getId(), 1L));
+
+        assertEquals(2L, session.getPlayerChoosingClue());
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(30)), any(Runnable.class));
+        verify(broadcaster).broadcast(session);
+    }
+
+    // -------------------------------------------------------------------------
+    // Players who are away
+    // -------------------------------------------------------------------------
+
+    @Test
+    void lastConnectionClosing_marksThePlayerAway_withoutTouchingThePhaseTimer() {
+        GameSession session = createSessionWithPlayers(2);
+        gameSessionService.startGame(player(session.getId(), 1L));
+        clearInvocations(timer, broadcaster);
+        PlayerPrincipal second = PlayerPrincipal.of(session, 2L);
+        when(connections.isConnected(second)).thenReturn(false);
+
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(second));
+
+        assertTrue(GameSessionResponse.from(session).players().get(1).away());
+        verify(broadcaster).broadcast(session);
+        verifyPhaseTimerUntouched();
+        verify(timer, never()).scheduleAbandonment(any(), any(), any());
+
+        // Another event that changes nothing isn't broadcast.
+        clearInvocations(broadcaster);
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(second));
+        verifyNoInteractions(broadcaster);
+    }
+
+    @Test
+    void connectionChange_ofAnEarlierSessionUnderTheSameId_isIgnored() {
+        GameSession session = createSessionWithPlayers(2);
+        clearInvocations(broadcaster);
+        PlayerPrincipal stale = new PlayerPrincipal(session.getId(), session.getInstanceId() + 1000, 2L);
+
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(stale));
+
+        verifyNoInteractions(broadcaster);
+        verify(connections, never()).isConnected(any());
+    }
+
+    @Test
+    void everyoneAway_closesTheSessionAfterTheGracePeriod() {
+        GameSession session = createSessionWithPlayers(2);
+        gameSessionService.startGame(player(session.getId(), 1L));
+        goAway(session, 1L);
+        verify(timer, never()).scheduleAbandonment(any(), any(), any());
+
+        goAway(session, 2L);
+
+        Runnable abandonment = captureAbandonment(session);
+        assertClosedOnNextBroadcast(session, SessionCloseReason.ABANDONED);
+        abandonment.run();
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+    }
+
+    @Test
+    void someoneComingBack_cancelsTheGracePeriod() {
+        GameSession session = createSessionWithPlayers(2);
+        goAway(session, 1L);
+        goAway(session, 2L);
+        Runnable abandonment = captureAbandonment(session);
+        clearInvocations(timer);
+
+        PlayerPrincipal first = PlayerPrincipal.of(session, 1L);
+        when(connections.isConnected(first)).thenReturn(true);
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(first));
+
+        verify(timer).cancelAbandonment(session.getId());
+
+        // A late run finds someone back and does nothing.
+        abandonment.run();
+        assertSame(session, gameSessionService.getSession(session.getId()));
+    }
+
+    private void goAway(GameSession session, Long playerId) {
+        PlayerPrincipal player = PlayerPrincipal.of(session, playerId);
+        when(connections.isConnected(player)).thenReturn(false);
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(player));
+    }
+
+    private Runnable captureAbandonment(GameSession session) {
+        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+
+        verify(timer, org.mockito.Mockito.atLeastOnce()).scheduleAbandonment(
+                eq(session.getId()),
+                eq(GameSessionService.EVERYONE_AWAY_TIMEOUT),
+                captor.capture()
+        );
+
+        return captor.getValue();
     }
 
     // -------------------------------------------------------------------------
