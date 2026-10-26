@@ -14,94 +14,81 @@ public record JoinSessionRequest(
 ) {
     public static final int MAX_NAME_LENGTH = 30;
 
-    // Validation runs on the cleaned name, so a name with nothing visible in
-    // it (a non-breaking or zero-width space, say) is blank, and "Bob " can't
-    // pass for "Bob". @NotBlank alone only ignores ASCII spaces and controls.
+    // Stacked marks past this many on one character are dropped. Real
+    // spellings (Vietnamese, Thai, Tibetan) need fewer.
+    static final int MAX_MARKS_PER_CHARACTER = 4;
+
+    // Validation runs on the cleaned name, so a name of only spaces is blank,
+    // and "Bob " can't pass for "Bob". @NotBlank alone only ignores ASCII
+    // spaces and controls.
     public JoinSessionRequest {
         playerName = playerName == null ? null : clean(playerName);
     }
 
-    private static final int ZERO_WIDTH_NON_JOINER = 0x200C;
-    private static final int ZERO_WIDTH_JOINER = 0x200D;
-    private static final int NEXT_LINE = 0x0085;
-    private static final int BRAILLE_BLANK = 0x2800;
-    private static final int WAVING_BLACK_FLAG = 0x1F3F4;
-    private static final int CANCEL_TAG = 0xE007F;
-
     /**
-     * Every client shows the name, so it keeps only what shows, or changes
-     * how what's next to it shows:
+     * Removes only what would break how clients lay the name out; anything
+     * else stays, invisible or not (names are display text, and duplicates
+     * are allowed anyway, so a look-alike gains nothing):
      * <ul>
      *     <li>Whitespace (a tab, a newline, a non-breaking space) becomes a
-     *     plain space, so it still separates words but can't break a layout,
-     *     and the spaces at either end go.</li>
-     *     <li>Other controls, and format characters, go everywhere: they're
-     *     invisible, so they could make a name look like someone else's
-     *     ("Nico" with a soft hyphen) or hide text in it, and the direction
-     *     overrides (U+202E) reverse the text after them. Except the ones
-     *     names and emoji need: the zero-width non-joiner of Persian or Hindi
-     *     spelling, the joiner in 👩‍💻, and the tags of a flag like 🏴󠁧󠁢󠁳󠁣󠁴󠁿 (only
-     *     right after its 🏴).</li>
-     *     <li>The Hangul fillers, which render as nothing, go too.</li>
-     *     <li>A name with nothing visible left (only spaces, joiners, or
-     *     combining marks with nothing to combine with) is blank.</li>
+     *     plain space, so it still separates words but can't break a line.</li>
+     *     <li>Other control characters and the direction controls go: U+202E,
+     *     say, reverses everything after it.</li>
+     *     <li>Combining marks stacked past {@link #MAX_MARKS_PER_CHARACTER}
+     *     on one character go, so they can't pile up over other lines.</li>
+     *     <li>Spaces, including zero-width ones, go at either end.</li>
      * </ul>
      */
     private static String clean(String name) {
         StringBuilder cleaned = new StringBuilder(name.length());
-        boolean inFlag = false;
+        int marks = 0;
 
         for (int codePoint : name.codePoints().toArray()) {
-            boolean tag = isTag(codePoint);
+            int type = Character.getType(codePoint);
+            boolean mark = type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK;
+            marks = mark ? marks + 1 : 0;
 
-            if (isSpace(codePoint)) {
+            if (Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint) || codePoint == NEXT_LINE) {
                 cleaned.append(' ');
-            } else if (tag ? inFlag : isKept(codePoint)) {
+            } else if (!Character.isISOControl(codePoint)
+                    && !isDirectionControl(codePoint)
+                    && marks <= MAX_MARKS_PER_CHARACTER) {
                 cleaned.appendCodePoint(codePoint);
             }
-
-            inFlag = codePoint == WAVING_BLACK_FLAG || inFlag && tag && codePoint != CANCEL_TAG;
         }
 
-        String trimmed = cleaned.toString().strip();
-
-        return trimmed.codePoints().anyMatch(JoinSessionRequest::isVisible) ? trimmed : "";
+        return trimSpaces(cleaned.toString());
     }
 
-    // The braille blank renders as a space, so it counts as one.
-    private static boolean isSpace(int codePoint) {
-        return Character.isWhitespace(codePoint)
-                || Character.isSpaceChar(codePoint)
-                || codePoint == NEXT_LINE
-                || codePoint == BRAILLE_BLANK;
+    // A line break, but neither Java whitespace nor a space character.
+    private static final int NEXT_LINE = 0x0085;
+
+    // The Arabic letter mark, the left-to-right and right-to-left marks,
+    // embeddings, overrides and isolates.
+    private static boolean isDirectionControl(int codePoint) {
+        return codePoint == 0x061C
+                || codePoint == 0x200E || codePoint == 0x200F
+                || codePoint >= 0x202A && codePoint <= 0x202E
+                || codePoint >= 0x2066 && codePoint <= 0x2069;
     }
 
-    private static boolean isKept(int codePoint) {
-        if (Character.isISOControl(codePoint) || isHangulFiller(codePoint)) {
-            return false;
+    private static String trimSpaces(String name) {
+        int start = 0;
+        int end = name.length();
+
+        while (start < end && isTrimmed(name.codePointAt(start))) {
+            start += Character.charCount(name.codePointAt(start));
+        }
+        while (end > start && isTrimmed(name.codePointBefore(end))) {
+            end -= Character.charCount(name.codePointBefore(end));
         }
 
-        return Character.getType(codePoint) != Character.FORMAT
-                || codePoint == ZERO_WIDTH_NON_JOINER
-                || codePoint == ZERO_WIDTH_JOINER;
+        return name.substring(start, end);
     }
 
-    private static boolean isTag(int codePoint) {
-        return codePoint >= 0xE0000 && codePoint <= CANCEL_TAG;
-    }
-
-    private static boolean isHangulFiller(int codePoint) {
-        return codePoint == 0x115F || codePoint == 0x1160 || codePoint == 0x3164 || codePoint == 0xFFA0;
-    }
-
-    // Spaces, the joiners, flag tags and combining marks only show with
-    // something else.
-    private static boolean isVisible(int codePoint) {
-        int type = Character.getType(codePoint);
-
-        return codePoint != ' '
-                && type != Character.FORMAT
-                && type != Character.NON_SPACING_MARK
-                && type != Character.ENCLOSING_MARK;
+    // Spaces, and the zero-width ones: the zero-width space, the word
+    // joiner and the zero-width no-break space.
+    private static boolean isTrimmed(int codePoint) {
+        return codePoint == ' ' || codePoint == 0x200B || codePoint == 0x2060 || codePoint == 0xFEFF;
     }
 }

@@ -250,26 +250,24 @@ class GameSessionControllerTest {
         verify(gameSessionService).joinSession(sessionId, "Nico");
     }
 
+    // Only what breaks a layout goes; invisible characters stay (names are
+    // display text, and duplicates are allowed anyway).
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
-            # A newline and a tab separate words, as a space.
-            Mary\\nJane\\tDoe                          | Mary Jane Doe
-            # A right-to-left override, a direction mark, a zero-width space and a NUL go.
-            N\\u202Ei\\u200Fc\\u200Bo\\u0000          | Nico
-            # The joiner in an emoji stays: woman, joiner, laptop.
-            Nico \\uD83D\\uDC69\\u200D\\uD83D\\uDCBB  | Nico 👩‍💻
-            # The zero-width non-joiner of Persian spelling stays.
-            \\u0645\\u06CC\\u200C\\u062E\\u0648\\u0627\\u0647\\u0645 | می‌خواهم
-            # So do the tags of a flag (Scotland), at the end of the name.
-            Ana \\uD83C\\uDFF4\\uDB40\\uDC67\\uDB40\\uDC62\\uDB40\\uDC73\\uDB40\\uDC63\\uDB40\\uDC74\\uDB40\\uDC7F | Ana 🏴󠁧󠁢󠁳󠁣󠁴󠁿
-            # Tags anywhere else hide text, so they go: "Nico" followed by a hidden "hi".
-            Nico\\uDB40\\uDC68\\uDB40\\uDC69                      | Nico
-            # A soft hyphen, an invisible times and a Mongolian vowel separator go.
-            N\\u00ADi\\u2062c\\u180Eo                          | Nico
-            # A Hangul filler (renders as nothing) goes; next-line and a braille blank are spaces.
-            Ni\\u3164co\\u0085Mary\\u2800Jane                 | Nico Mary Jane
+            # Line breaks and tabs separate words, as a space.
+            Mary\\nJane\\tDoe\\u0085Ann                  | Mary Jane Doe Ann
+            # Direction controls (an override, a mark, an isolate) and other controls go.
+            N\\u202Ei\\u200Fc\\u2066o\\u0000\\u0008      | Nico
+            # Stacked marks past four on one character go.
+            a\\u0301\\u0301\\u0301\\u0301\\u0301\\u0301 | á́́́
+            # Real stacked marks fit: Vietnamese e with circumflex and tilde.
+            Nguye\\u0302\\u0303n                        | Nguyễn
+            # Invisible characters inside stay: a zero-width space, a soft hyphen, a Hangul filler.
+            Ni\\u200Bc\\u00ADo\\u3164                   | Ni​c­oㅤ
+            # So do tags, joiners and the non-joiner: hidden "hi", 👩‍💻, Persian.
+            Nico\\uDB40\\uDC68\\uDB40\\uDC69 \\uD83D\\uDC69\\u200D\\uD83D\\uDCBB \\u0645\\u06CC\\u200C\\u062E | Nico󠁨󠁩 👩‍💻 می‌خ
             """)
-    void joinSession_cleansTheInsideOfTheName(String sent, String joinedAs) throws Exception {
+    void joinSession_removesOnlyWhatBreaksTheLayout(String sent, String joinedAs) throws Exception {
         SessionCode sessionId = SessionCode.random();
 
         when(gameSessionService.joinSession(sessionId, joinedAs))
@@ -284,17 +282,11 @@ class GameSessionControllerTest {
         verify(gameSessionService).joinSession(sessionId, joinedAs);
     }
 
-    // Each sent as JSON escapes: only joiners, Hangul fillers, braille
-    // blanks, a combining accent alone, and a flag's tags without the flag.
+    // Each sent as JSON escapes: spaces and zero-width spaces, line breaks,
+    // and controls with nothing else.
     @ParameterizedTest
-    @ValueSource(strings = {
-            " \\u200D\\u200C ",
-            "\\u3164\\u115F\\u1160\\uFFA0",
-            "\\u2800\\u2800\\u2800",
-            "\\u0301\\u20DD",
-            "\\uDB40\\uDC67\\uDB40\\uDC62\\uDB40\\uDC7F"
-    })
-    void joinSession_rejectsANameThatShowsNothing(String sent) throws Exception {
+    @ValueSource(strings = {" \\u200B\\u2060\\uFEFF ", "\\n\\t\\u2028\\u0085", "\\u202E\\u0000 "})
+    void joinSession_rejectsANameOfOnlySpacesAndControls(String sent) throws Exception {
         mockMvc.perform(post("/api/game-sessions/" + SessionCode.random() + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"playerName\": \"" + sent + "\"}"))

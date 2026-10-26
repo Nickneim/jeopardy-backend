@@ -182,9 +182,11 @@ The session's current state: the same `GameSessionResponse` as the latest broadc
 Joins a session.
 
 - Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters). The name is cleaned first, and validated as cleaned:
-  - Any whitespace (tab, newline, next line U+0085, non-breaking space, ideographic space…) and the braille blank U+2800 become an ordinary space, and the spaces at either end are removed: `" Nico "` joins as `"Nico"`, `"Mary\nJane"` as `"Mary Jane"`.
-  - Other control characters, the Hangul fillers (U+115F, U+1160, U+3164, U+FFA0) and every format character (Unicode category Cf: direction marks and overrides, zero-width spaces, soft hyphens, invisible operators…) are removed anywhere, so `"Ni‮co"` and `"Ni­co"` join as `"Nico"`. Only the format characters names and emoji need are kept: the zero-width non-joiner (U+200C) in Persian or Hindi spelling, the zero-width joiner (U+200D) in emoji such as 👩‍💻, and tag characters (U+E0000–U+E007F) right after a 🏴, as in flags such as 🏴󠁧󠁢󠁳󠁣󠁴󠁿.
-  - A name with nothing visible left (only spaces, the two joiners, or combining marks with nothing to combine with) counts as blank.
+  - Line breaks, tabs and other whitespace (including the non-breaking and ideographic spaces) become an ordinary space: `"Mary\nJane"` joins as `"Mary Jane"`.
+  - Other control characters and the direction controls (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) are removed, since they break how the name is laid out (U+202E reverses everything after it).
+  - Combining marks stacked past 4 on one character are removed, so they can't pile up over other lines.
+  - Spaces and zero-width spaces (U+200B, U+2060, U+FEFF) at either end are removed: `" Nico "` joins as `"Nico"`. A name with nothing left counts as blank.
+  - **Everything else is kept, invisible or not**: zero-width spaces inside a name, soft hyphens, joiners, tag characters, Hangul fillers. Names are display text only, and since duplicate names are allowed (§9), a name that looks like another gains nothing. Treat a name as nothing but text to show.
   - "Characters" are Unicode code points, what JavaScript's `[...name].length` counts: 😀 is 1, 👩‍💻 is 3 (woman, joiner, laptop).
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
 - The first player to join becomes the host (§6.4).
