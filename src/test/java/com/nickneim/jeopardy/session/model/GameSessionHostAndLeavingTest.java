@@ -89,6 +89,34 @@ class GameSessionHostAndLeavingTest {
     }
 
     @Test
+    void hostLeaving_skipsAwayPlayers_soSomeonePresentCanStart() {
+        session.setAway(ben.getId(), true);
+
+        session.leave(ana.getId());
+
+        assertEquals(cy.getId(), session.getHostPlayerId());
+        session.startGame(cy.getId());
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+    }
+
+    @Test
+    void hostLeaving_whenEveryoneElseIsAway_passesToTheLowestId() {
+        session.setAway(ben.getId(), true);
+        session.setAway(cy.getId(), true);
+
+        session.leave(ana.getId());
+
+        assertEquals(ben.getId(), session.getHostPlayerId());
+    }
+
+    @Test
+    void awayHost_staysHost() {
+        session.setAway(ana.getId(), true);
+
+        assertEquals(ana.getId(), session.getHostPlayerId());
+    }
+
+    @Test
     void newHost_canStartAndChoosesFirst() {
         session.leave(ana.getId());
         session.startGame(ben.getId());

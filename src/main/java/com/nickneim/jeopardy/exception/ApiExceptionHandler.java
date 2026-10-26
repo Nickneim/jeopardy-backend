@@ -50,7 +50,7 @@ public class ApiExceptionHandler {
     ) {
         HttpStatus status = switch (exception.getCode()) {
             case SESSION_NOT_FOUND, PLAYER_NOT_FOUND, CLUE_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case INVALID_STATE, CLUE_ALREADY_PLAYED -> HttpStatus.CONFLICT;
+            case INVALID_STATE, TOO_LATE, CLUE_ALREADY_PLAYED -> HttpStatus.CONFLICT;
             case NOT_YOUR_TURN, NOT_HOST, PLAYER_NOT_IN_SESSION -> HttpStatus.FORBIDDEN;
             case UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED;
             case INVALID_REQUEST, INVALID_WAGER -> HttpStatus.BAD_REQUEST;
@@ -68,14 +68,15 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNPROCESSABLE_CONTENT, ApiErrorCode.UNPLAYABLE_GAME, exception.getMessage());
     }
 
-    // 409: the request is fine, but the session's state doesn't allow it:
-    // it doesn't take new players right now (GameSession.isJoinable), or
-    // (for a create) its id is already in use.
+    // 409: the request is fine, but the session doesn't take new players
+    // right now (GameSession.isJoinable).
     @ExceptionHandler(SessionNotJoinableException.class)
     public ResponseEntity<ApiErrorResponse> handleSessionNotJoinable(SessionNotJoinableException exception) {
         return error(HttpStatus.CONFLICT, ApiErrorCode.SESSION_NOT_JOINABLE, exception.getMessage());
     }
 
+    // 409: the code a create asked for is already in use; the client
+    // retries with another.
     @ExceptionHandler(GameSessionAlreadyExistsException.class)
     public ResponseEntity<ApiErrorResponse> handleSessionAlreadyExists(
             GameSessionAlreadyExistsException exception

@@ -986,7 +986,8 @@ class GameSessionServiceTest {
                             InvalidGameActionException.class,
                             exception.getCause()
                     );
-                    assertEquals(GameErrorCode.INVALID_STATE, ((InvalidGameActionException)exception.getCause()).getCode());
+                    // The loser of the race is told they were too late.
+                    assertEquals(GameErrorCode.TOO_LATE, ((InvalidGameActionException)exception.getCause()).getCode());
                 }
             }
 

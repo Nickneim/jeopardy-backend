@@ -460,7 +460,7 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 **Host**
 
 - The first player to join is the host (`hostPlayerId`). Only the host can `start`, `update-timers`, `update-settings` and `kick`; anyone else gets `NOT_HOST`.
-- When the host leaves or is kicked, the remaining player with the **lowest id** who hasn't left becomes host at once, in the same broadcast. (So the host is always the active player with the lowest id.)
+- When the host leaves or is kicked, the remaining player with the **lowest id** who hasn't left becomes host at once, in the same broadcast, skipping `away` players unless everyone is `away`, so the players who are there can still start and kick. A host who goes `away` stays host.
 - When nobody is left, the session closes (§6.5).
 
 **Kicking.** The host sends `kick` with another player's id. The kicked player is treated **exactly** like a player who leaves (below). Kicking yourself is rejected with `INVALID_REQUEST` (use `leave`). Kicking an id that isn't an active player in the session, including one who has already left, is rejected with `PLAYER_NOT_FOUND`.
@@ -574,6 +574,7 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `PLAYER_NOT_IN_SESSION` | Your token belongs to a different session (also an earlier, closed session that had the same code), or you have left the session (or were kicked) and are acting from a connection that hasn't been closed yet |
 | `SESSION_NOT_FOUND` | The session no longer exists (§6.5) |
 | `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed, or changing timers after the start) |
+| `TOO_LATE` | You were a moment too late: someone else buzzed first (`"Someone else buzzed first!"`), your answer had already timed out (`"Time's up!"`), or the clue-choice timer had already chosen a clue for you (`"Time's up: a clue was chosen for you!"`). Nothing went wrong; the next broadcast shows what happened |
 | `NOT_YOUR_TURN` | Another player is choosing or answering, or you already buzzed on this clue |
 | `NOT_HOST` | Only the host can do that: `start`, `update-timers`, `update-settings` or `kick` (§6.4) |
 | `PLAYER_NOT_FOUND` | The player you tried to kick isn't in the session or has already left |
@@ -583,7 +584,7 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `INVALID_REQUEST` | The payload is missing a field, has a field of the wrong type, isn't JSON, or has a too-long answer (§4.3), or a timer is out of bounds (§6.3); also kicking yourself, and a destination whose session code isn't valid (§3.2) |
 | `INTERNAL_ERROR` | A bug on the server. The message is always `"Something went wrong on the server. Please try again."`, and the action may or may not have taken effect: rely on the next broadcast or a `GET` of the state |
 
-Timing races are normal: two players buzzing at the same moment means one wins and the other gets `INVALID_STATE`. Treat these errors as non-fatal.
+Timing races are normal: two players buzzing at the same moment means one wins and the other gets `TOO_LATE`, and so does an answer or a clue choice sent just after its timer ran out. Show `TOO_LATE` gently (or not at all); it's never a client bug. Other late actions, and `INVALID_STATE` in general, are non-fatal too.
 
 ---
 
@@ -614,6 +615,7 @@ type GameErrorCode =
   | "SESSION_NOT_FOUND"
   | "NOT_YOUR_TURN"
   | "INVALID_STATE"
+  | "TOO_LATE"
   | "CLUE_NOT_FOUND"
   | "CLUE_ALREADY_PLAYED"
   | "PLAYER_NOT_IN_SESSION"

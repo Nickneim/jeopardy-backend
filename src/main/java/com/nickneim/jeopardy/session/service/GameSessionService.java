@@ -29,7 +29,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -285,8 +284,7 @@ public class GameSessionService {
         GameSession session = sessionOf(actor);
 
         synchronized (session) {
-            GameSessionState stateBefore = session.getState();
-            Long chooserBefore = session.getPlayerChoosingClue();
+            long phaseBefore = session.getPhaseNumber();
             GameSessionPlayer departed = departure.apply(session);
 
             playerTokens.unregister(departed.getToken());
@@ -297,8 +295,7 @@ public class GameSessionService {
                 // Usually the phase goes on: the last player who could still
                 // buzz leaving ends it, and a departed chooser's control
                 // passing on gives the new chooser the full time to pick.
-                scheduleTimeoutIfPhaseChanged(session, stateBefore, chooserBefore);
-                broadcast(session);
+                afterChange(session, phaseBefore);
             }
 
             connections.close(PlayerPrincipal.of(session, departed.getId()), message);
@@ -413,30 +410,25 @@ public class GameSessionService {
                 return;
             }
 
-            GameSessionState stateBefore = session.getState();
-            Long chooserBefore = session.getPlayerChoosingClue();
+            long phaseBefore = session.getPhaseNumber();
             action.accept(session);
 
-            scheduleTimeoutIfPhaseChanged(session, stateBefore, chooserBefore);
-            broadcast(session);
+            afterChange(session, phaseBefore);
         }
     }
 
     /**
-     * Re-arms the phase timer if the state changed or someone else got
-     * control. Anything else (a Final Jeopardy wager or answer, a lobby
-     * setting, most departures) leaves the phase going: re-arming the timer
-     * would restart it.
+     * Re-arms the phase timer if a new phase began since {@code phaseBefore}
+     * (see {@link GameSession#getPhaseNumber}), then broadcasts. Anything
+     * else (a Final Jeopardy wager or answer, a lobby setting, most
+     * departures) leaves the phase going: re-arming the timer would restart it.
      */
-    private void scheduleTimeoutIfPhaseChanged(
-            GameSession session,
-            GameSessionState stateBefore,
-            Long chooserBefore
-    ) {
-        if (session.getState() != stateBefore
-                || !Objects.equals(session.getPlayerChoosingClue(), chooserBefore)) {
+    private void afterChange(GameSession session, long phaseBefore) {
+        if (session.getPhaseNumber() != phaseBefore) {
             scheduleTimeout(session);
         }
+
+        broadcast(session);
     }
 
     // Every state change is broadcast through here, so the version can't be

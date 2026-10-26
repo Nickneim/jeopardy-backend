@@ -51,9 +51,16 @@ public class GameSession {
     // tell whether it is still the current one: the state alone can't, since
     // a session can leave a state and come back before a stale timeout runs.
     private long phaseTimerId;
+    // Goes up whenever a new phase begins: the state changes, or control
+    // passes to someone else while choosing. The service re-arms the phase
+    // timer exactly when it moved.
+    private long phaseNumber;
 
     private Long playerChoosingClue;
     private Long chosenClueId;
+    // Whether the clue in play was chosen by the clue-choice timeout, so a
+    // choice that arrives just after it can be told it was too late.
+    private boolean chosenByTimer;
     // The wager on the clue in play, once placed if it's a Daily Double;
     // null otherwise. Reset whenever a clue is chosen.
     private Integer dailyDoubleWager;
@@ -186,7 +193,12 @@ public class GameSession {
         };
     }
 
-    /** Adds a player with a given id. The first player to join becomes the host. */
+    /**
+     * Adds a player exactly as given (id, score, away), skipping the join
+     * checks. For tests, which set players up in a known state; the app
+     * joins players through {@link #addPlayer(String, String)}. The first
+     * player added becomes the host.
+     */
     public void addPlayer(GameSessionPlayer player) {
         players.add(player);
         nextPlayerId = Math.max(nextPlayerId, player.getId() + 1);
@@ -280,6 +292,11 @@ public class GameSession {
         return phaseTimerId;
     }
 
+    /** Changes whenever a new phase begins; see {@link #phaseNumber}. */
+    public long getPhaseNumber() {
+        return phaseNumber;
+    }
+
     /** The full length of the current phase, or null if it has no timer. */
     public Duration getPhaseDuration() {
         return phaseDuration;
@@ -367,12 +384,15 @@ public class GameSession {
     private void depart(GameSessionPlayer player) {
         player.markLeaving();
 
-        // The host is always the active player with the lowest id.
+        // The host passes to the active player with the lowest id. Players
+        // who are away come last, so nobody present is left without one
+        // who can start the game or kick.
         if (player.getId().equals(hostPlayerId)) {
             hostPlayerId = getActivePlayers()
                     .stream()
+                    .min(Comparator.comparing(GameSessionPlayer::isAway)
+                            .thenComparing(GameSessionPlayer::getId))
                     .map(GameSessionPlayer::getId)
-                    .min(Comparator.naturalOrder())
                     .orElse(null);
         }
 
@@ -409,6 +429,7 @@ public class GameSession {
      */
     private void setState(GameSessionState newState) {
         state = newState;
+        phaseNumber++;
         removeDepartedPlayers();
     }
 
@@ -453,6 +474,8 @@ public class GameSession {
 
         if (chooser != null && chooser.isLeaving()) {
             playerChoosingClue = lowestScoringActivePlayer(playerChoosingClue);
+            // The new chooser gets the full time to pick.
+            phaseNumber++;
         }
     }
 
@@ -488,7 +511,7 @@ public class GameSession {
         requireActivePlayer(playerId);
         requireHost(playerId, "Only the host can start the game!");
 
-        // The host is the first player to join who is still here.
+        // The host, who is starting the game, chooses first.
         playerChoosingClue = hostPlayerId;
         enterRound(board.getFirstRound());
     }
@@ -504,6 +527,10 @@ public class GameSession {
     }
 
     public void chooseClue(Long playerId, Long clueId) {
+        if (chosenByTimer && playerId.equals(playerChoosingClue)
+                && (state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER || state == GameSessionState.REVEALING_CLUE)) {
+            throw tooLate("Time's up: a clue was chosen for you!");
+        }
         requireState(GameSessionState.CHOOSING_CLUE, "You can't choose a clue right now!");
         requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
@@ -516,11 +543,12 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.CLUE_ALREADY_PLAYED, "That clue was already chosen!");
         }
 
-        playClue(clueId);
+        playClue(clueId, false);
     }
 
-    private void playClue(Long clueId) {
+    private void playClue(Long clueId, boolean byTimer) {
         chosenClueId = clueId;
+        chosenByTimer = byTimer;
         dailyDoubleWager = null;
         playedClues.add(clueId);
         clueAnswers.clear();
@@ -551,7 +579,7 @@ public class GameSession {
                 .findFirst()
                 .orElseThrow();
 
-        playClue(clue.id());
+        playClue(clue.id(), true);
     }
 
     public void placeDailyDoubleWager(Long playerId, int wager) {
@@ -620,6 +648,12 @@ public class GameSession {
     }
 
     public void buzz(Long playerId) {
+        // Pressed a moment after someone else (the usual buzzer race).
+        if (state == GameSessionState.WAITING_FOR_ANSWER
+                && !board.isDailyDouble(chosenClueId)
+                && !playerId.equals(playerWhoBuzzed)) {
+            throw tooLate("Someone else buzzed first!");
+        }
         requireState(GameSessionState.WAITING_FOR_BUZZER, "You can't buzz right now!");
         requireActivePlayer(playerId);
         if (playersAlreadyBuzzed.contains(playerId)) {
@@ -637,6 +671,12 @@ public class GameSession {
     }
 
     public void answerClue(Long playerId, String answer) {
+        // Sent just after the answer timed out (they can't buzz again on
+        // this clue, so any timed-out answer of theirs is this one).
+        if (state != GameSessionState.WAITING_FOR_ANSWER
+                && clueAnswers.stream().anyMatch(given -> given.playerId().equals(playerId) && given.ranOutOfTime())) {
+            throw tooLate("Time's up!");
+        }
         requireState(GameSessionState.WAITING_FOR_ANSWER, "You can't answer right now!");
         requireActivePlayer(playerId);
         // On a Daily Double the chooser counts as the buzzer (see playClue).
@@ -896,6 +936,10 @@ public class GameSession {
         if (state != expected) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, message);
         }
+    }
+
+    private static InvalidGameActionException tooLate(String message) {
+        return new InvalidGameActionException(GameErrorCode.TOO_LATE, message);
     }
 
     private void requireOpen() {

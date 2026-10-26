@@ -31,7 +31,7 @@ public record GameSessionResponse(
         List<ClueAnswerResponse> clueAnswers,
         FinalJeopardyResponse finalJeopardy
 ) {
-    static public GameSessionResponse from(GameSession session) {
+    public static GameSessionResponse from(GameSession session) {
         return from(session, System.nanoTime());
     }
 
@@ -40,7 +40,7 @@ public record GameSessionResponse(
      * which is when {@code phaseRemainingMs} is measured. Timing is sent as
      * durations rather than a deadline, so a client's clock doesn't matter.
      */
-    static public GameSessionResponse from(GameSession session, long nowNanos) {
+    public static GameSessionResponse from(GameSession session, long nowNanos) {
         Duration phaseDuration = session.getPhaseDuration();
         Duration phaseRemaining = session.getPhaseRemaining(nowNanos);
 

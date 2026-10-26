@@ -346,6 +346,65 @@ class GameSessionTest {
     }
 
     @Test
+    void buzz_justAfterSomeoneElse_isTooLate() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.buzz(player1.getId())
+        );
+
+        assertEquals(GameErrorCode.TOO_LATE, exception.getCode());
+        assertEquals("Someone else buzzed first!", exception.getMessage());
+    }
+
+    @Test
+    void answer_justAfterItTimedOut_isTooLate() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player2.getId());
+        session.timeoutAnswer();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.answerClue(player2.getId(), "George Washington")
+        );
+
+        assertEquals(GameErrorCode.TOO_LATE, exception.getCode());
+        assertEquals("Time's up!", exception.getMessage());
+    }
+
+    @Test
+    void choice_justAfterTheTimerChose_isTooLate() {
+        session.startGame(player1.getId());
+        session.timeoutChoosingClue();
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.chooseClue(player1.getId(), jeopardyClue2.id())
+        );
+
+        assertEquals(GameErrorCode.TOO_LATE, exception.getCode());
+    }
+
+    @Test
+    void secondChoice_afterChoosingInTime_isntTooLate() {
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+
+        InvalidGameActionException exception = assertThrows(
+                InvalidGameActionException.class,
+                () -> session.chooseClue(player1.getId(), jeopardyClue2.id())
+        );
+
+        assertEquals(GameErrorCode.INVALID_STATE, exception.getCode());
+    }
+
+    @Test
     void buzz_rejectsPlayerNotInSession() {
         session.startGame(player1.getId());
 

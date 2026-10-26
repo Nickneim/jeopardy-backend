@@ -19,6 +19,11 @@ public record ClueAnswer(
         return new ClueAnswer(playerId, null, null);
     }
 
+    /** Whether the player ran out of time instead of answering. */
+    public boolean ranOutOfTime() {
+        return answer == null;
+    }
+
     public boolean correct() {
         return check != null && check.correct();
     }
