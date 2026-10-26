@@ -11,11 +11,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The sessions held by the other instances, for the lobby list. Each
@@ -23,11 +26,16 @@ import java.util.concurrent.TimeUnit;
  * found by resolving {@code app.session-lobby.peers}: in Kubernetes, a
  * headless Service, whose name resolves to the IP of every ready pod. (The
  * JVM caches the answer for 30 seconds, so a new pod can be missing for that
- * long, and a removed one fails until then.)
+ * long, and a removed one is still asked until then.)
  *
- * <p>An instance that fails or doesn't answer within the timeout is left
- * out, so a slow or dying pod hides its own sessions for a moment instead of
- * holding up or breaking the lobby.
+ * <p>The lookup and the answers together take at most the timeout: an
+ * instance that fails or doesn't answer by then is left out, so a slow or
+ * dying pod hides its own sessions for a moment instead of holding up or
+ * breaking the lobby. After a failure, an instance isn't waited for again
+ * until it answers: lobby requests ask it in the background (one request at
+ * a time; a late answer to the one that failed counts), and once it answers,
+ * the next lobby request lists its sessions again. So a removed pod that DNS
+ * still names doesn't slow the lobby down.
  */
 @Component
 public class PeerSessions {
@@ -42,7 +50,11 @@ public class PeerSessions {
     private final SessionLobbyProperties properties;
     private final Resolver resolver;
     private final PeerClient client;
+    private final InetAddress self;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    // Instances whose last answer failed, with the background request asking
+    // them again.
+    private final Map<String, CompletableFuture<?>> failing = new ConcurrentHashMap<>();
 
     @Autowired
     PeerSessions(SessionLobbyProperties properties, PeerClient client) {
@@ -53,6 +65,7 @@ public class PeerSessions {
         this.properties = properties;
         this.resolver = resolver;
         this.client = client;
+        this.self = parseSelf(properties.selfAddress());
     }
 
     private static List<String> resolveDns(String name) throws UnknownHostException {
@@ -61,32 +74,77 @@ public class PeerSessions {
                 .toList();
     }
 
+    private static InetAddress parseSelf(String address) {
+        if (address.isEmpty()) {
+            return null;
+        }
+        try {
+            return InetAddress.getByName(address);
+        } catch (UnknownHostException exception) {
+            log.warn("Can't read this instance's address {}; it will ask itself too", address);
+            return null;
+        }
+    }
+
+    /**
+     * Whether an address is this instance's. Compared as addresses, not text,
+     * because the same IPv6 address has several spellings (Kubernetes gives
+     * {@code fd00::1}, Java {@code fd00:0:0:0:0:0:0:1}).
+     */
+    private boolean isSelf(String address) {
+        if (self == null) {
+            return false;
+        }
+        try {
+            // A literal address, so no lookup.
+            return InetAddress.getByName(address).equals(self);
+        } catch (UnknownHostException exception) {
+            return false;
+        }
+    }
+
     /** Every other instance's sessions; none when peers aren't configured. */
     public List<GameSessionSummaryResponse> fetch() {
         if (!properties.enabled()) {
             return List.of();
         }
 
+        long deadline = System.nanoTime() + properties.timeout().toNanos();
+
         List<String> peers;
         try {
-            peers = resolver.resolve(properties.peers())
-                    .stream()
-                    .filter(address -> !address.equals(properties.selfAddress()))
-                    .toList();
-        } catch (UnknownHostException exception) {
-            log.warn("Can't find the other instances at {}: {}", properties.peers(), exception.getMessage());
+            peers = CompletableFuture
+                    .supplyAsync(this::resolvePeers, executor)
+                    .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
+                    .join();
+        } catch (CompletionException exception) {
+            Throwable cause = exception.getCause() instanceof TimeoutException
+                    ? new TimeoutException("no answer in " + properties.timeout())
+                    : exception.getCause();
+            log.warn("Can't find the other instances at {}: {}", properties.peers(), cause.toString());
             return List.of();
         }
 
+        // A removed instance is forgotten once DNS stops naming it.
+        failing.keySet().retainAll(peers);
+
+        long remaining = Math.max(0, deadline - System.nanoTime());
         List<CompletableFuture<List<GameSessionSummaryResponse>>> answers = peers.stream()
-                .map(address -> CompletableFuture
-                        .supplyAsync(() -> fetchFrom(address), executor)
-                        .orTimeout(properties.timeout().toMillis(), TimeUnit.MILLISECONDS)
-                        .exceptionally(failure -> {
-                            Throwable cause = failure instanceof CompletionException ? failure.getCause() : failure;
-                            log.warn("Leaving out the sessions of {}: {}", address, cause.toString());
-                            return List.of();
-                        }))
+                .filter(address -> !retryIfFailing(address))
+                .map(address -> {
+                    CompletableFuture<List<GameSessionSummaryResponse>> answer = fetchAsync(address);
+                    // A copy, so that giving up here doesn't end the request.
+                    return answer.copy()
+                            .orTimeout(remaining, TimeUnit.NANOSECONDS)
+                            .exceptionally(failure -> {
+                                Throwable cause = failure instanceof CompletionException ? failure.getCause() : failure;
+                                // An answer that's just late still counts.
+                                if (failing.putIfAbsent(address, watch(address, answer)) == null) {
+                                    log.warn("Leaving out the sessions of {} until it answers: {}", address, cause.toString());
+                                }
+                                return List.of();
+                            });
+                })
                 .toList();
 
         return answers.stream()
@@ -94,12 +152,49 @@ public class PeerSessions {
                 .toList();
     }
 
-    private List<GameSessionSummaryResponse> fetchFrom(String address) {
+    private List<String> resolvePeers() {
         try {
-            return client.fetch(address);
-        } catch (Exception exception) {
+            return resolver.resolve(properties.peers())
+                    .stream()
+                    .filter(address -> !isSelf(address))
+                    .toList();
+        } catch (UnknownHostException exception) {
             throw new CompletionException(exception);
         }
+    }
+
+    /**
+     * If the instance's last answer failed, asks it again in the background
+     * (unless that's already happening) and returns true: it isn't waited for.
+     */
+    private boolean retryIfFailing(String address) {
+        return failing.computeIfPresent(address, (key, retry) -> retry.isDone() ? retry(key) : retry) != null;
+    }
+
+    private CompletableFuture<?> retry(String address) {
+        return watch(address, fetchAsync(address));
+    }
+
+    /** Takes the instance off {@link #failing} if this request to it succeeds. */
+    private CompletableFuture<?> watch(String address, CompletableFuture<?> answer) {
+        return answer
+                .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
+                // Async: the map may still be being updated when this is created.
+                .whenCompleteAsync((result, failure) -> {
+                    if (failure == null && failing.remove(address) != null) {
+                        log.info("{} answers again; listing its sessions", address);
+                    }
+                }, executor);
+    }
+
+    private CompletableFuture<List<GameSessionSummaryResponse>> fetchAsync(String address) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return client.fetch(address);
+            } catch (Exception exception) {
+                throw new CompletionException(exception);
+            }
+        }, executor);
     }
 
     @PreDestroy

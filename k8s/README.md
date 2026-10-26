@@ -18,15 +18,16 @@ The lobby request reaches one pod, which only holds its own sessions, so that po
 
 - **The `backend-peers` Service is headless** (`clusterIP: None`): instead of one address that forwards to a pod, its DNS name resolves to the IP of every ready pod. `SESSION_PEERS` in the ConfigMap names it.
 - **Each pod answers on its management port, 8081** (`/actuator/gamesessions`), where Actuator lives along with the health probes (`MANAGEMENT_SERVER_PORT`). No Service used by the Ingresses includes that port, so it can't be reached from outside the cluster.
-- **A pod doesn't ask itself:** it reads its own sessions directly, and knows its own IP from `POD_IP`, which the Deployment fills in with the downward API (`status.podIP`).
-- **A pod that fails or takes longer than a second is left out** for that request, so a slow or dying pod only hides its own sessions for a moment.
+- **A pod doesn't ask itself:** it reads its own sessions directly, and knows its own IP from `POD_IP`, which the Deployment fills in with the downward API (`status.podIP`). The addresses are compared as IPs, so IPv6 spellings don't matter.
+- **The DNS lookup and the answers together take at most a second.** A pod that fails or doesn't answer by then is left out, so a slow or dying pod only hides its own sessions for a moment. After that it isn't waited for: later lobby requests ask it again in the background, and once it answers, the next one lists its sessions again.
+- **A summary a pod can't read is left out on its own** (during a rolling update, a newer pod may send a state an older one doesn't know), not the pod's whole list.
 
 Without `SESSION_PEERS`, as when running from IntelliJ, the lobby lists only that instance's sessions, which are all of them.
 
 ## Known gaps
 
 - **A pod that stops takes its sessions with it.** That includes a deploy (`kubectl rollout restart` or a new image) and scaling down.
-- **The lobby can briefly miss a new pod's sessions or ask a removed pod.** Java caches DNS answers for 30 seconds, so the list of pods can be that far behind. A removed pod just fails and is left out.
+- **The lobby can briefly miss a new pod's sessions or ask a removed pod.** Java caches DNS answers for 30 seconds, so the list of pods can be that far behind. A removed pod fails once and is then only asked in the background, so it doesn't slow the lobby down.
 - **Changing the number of pods moves some sessions' routing.** The hash is consistent, so only about 1 in N sessions move, but those sessions' new requests (a refresh, a join, a reconnect) reach a pod without them and get a 404, even though their pod is still running. Open WebSocket connections aren't affected. Change `replicas` only when no games are running.
 
 ## Prerequisites

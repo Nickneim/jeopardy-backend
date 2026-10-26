@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -102,6 +104,88 @@ class PeerSessionsTest {
     }
 
     @Test
+    void returnsNothing_whenThePeersNameDoesntResolveInTime() {
+        peerSessions = new PeerSessions(
+                properties(""),
+                name -> {
+                    await(release);
+                    return List.of("10.0.0.1");
+                },
+                address -> List.of(fromA)
+        );
+
+        long start = System.nanoTime();
+        List<GameSessionSummaryResponse> fetched = peerSessions.fetch();
+        Duration took = Duration.ofNanos(System.nanoTime() - start);
+
+        assertEquals(List.of(), fetched);
+        assertTrue(took.compareTo(TIMEOUT.multipliedBy(3)) < 0, "took " + took);
+    }
+
+    @Test
+    void recognizesItsOwnIpv6Address_inAnySpelling() {
+        // Java spells IPv6 addresses out in full; Kubernetes' POD_IP is compressed.
+        peerSessions = peers(Map.of(
+                "fd00:0:0:0:0:0:0:1", List.of(fromA),
+                "fd00:0:0:0:0:0:0:2", List.of(fromB)
+        ), "fd00::2");
+
+        assertEquals(List.of(fromA), peerSessions.fetch());
+        assertEquals(Set.of("fd00:0:0:0:0:0:0:1"), asked);
+    }
+
+    @Test
+    void doesntWaitAgainForAnInstanceThatTimedOut_andListsItOnceItAnswers() throws Exception {
+        CountDownLatch slowPeer = new CountDownLatch(1);
+        peerSessions = new PeerSessions(
+                properties(""),
+                name -> List.of("10.0.0.1", "10.0.0.2"),
+                address -> {
+                    if (address.equals("10.0.0.2")) {
+                        await(slowPeer);
+                        return List.of(fromB);
+                    }
+                    return List.of(fromA);
+                }
+        );
+
+        assertEquals(List.of(fromA), peerSessions.fetch());
+
+        long start = System.nanoTime();
+        List<GameSessionSummaryResponse> fetched = peerSessions.fetch();
+        Duration took = Duration.ofNanos(System.nanoTime() - start);
+        assertEquals(List.of(fromA), fetched);
+        assertTrue(took.compareTo(TIMEOUT) < 0, "took " + took);
+
+        // Its late answer to the first request is enough.
+        slowPeer.countDown();
+        assertEventually(() -> Set.copyOf(peerSessions.fetch()).equals(Set.of(fromA, fromB)));
+    }
+
+    @Test
+    void asksAnInstanceThatFailedAgainInTheBackground_andListsItOnceItAnswers() throws Exception {
+        AtomicBoolean down = new AtomicBoolean(true);
+        peerSessions = new PeerSessions(
+                properties(""),
+                name -> List.of("10.0.0.1", "10.0.0.2"),
+                address -> {
+                    if (address.equals("10.0.0.2")) {
+                        if (down.get()) {
+                            throw new IOException("Connection refused");
+                        }
+                        return List.of(fromB);
+                    }
+                    return List.of(fromA);
+                }
+        );
+
+        assertEquals(List.of(fromA), peerSessions.fetch());
+
+        down.set(false);
+        assertEventually(() -> Set.copyOf(peerSessions.fetch()).equals(Set.of(fromA, fromB)));
+    }
+
+    @Test
     void returnsNothing_whenThePeersNameDoesntResolve() {
         peerSessions = new PeerSessions(
                 properties(""),
@@ -110,6 +194,22 @@ class PeerSessionsTest {
         );
 
         assertEquals(List.of(), peerSessions.fetch());
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void assertEventually(BooleanSupplier condition) throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (!condition.getAsBoolean()) {
+            assertTrue(System.nanoTime() < deadline, "condition not met in time");
+            Thread.sleep(20);
+        }
     }
 
     private PeerSessions peers(Map<String, List<GameSessionSummaryResponse>> byAddress, String self) {

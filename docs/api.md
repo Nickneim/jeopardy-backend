@@ -111,7 +111,7 @@ A session lives in the memory of one backend instance. When several instances ru
 
 **Every request about one session must carry `?session=<its id>`:** creating it (`PUT /api/game-sessions/{id}`), fetching it, joining it, and the `/ws` connection used to play or watch it (§4.1). The value is the session id, the same as in the path. A request without it may reach an instance that doesn't have the session and get a 404 (or, on the WebSocket, a rejected token), so add it even when running a single instance, where it's simply ignored.
 
-Requests that aren't about one session (the lobby list and §3.1) need no parameter and can reach any instance. The lobby list still covers every instance: the one that answers collects the others' sessions. If an instance doesn't answer it within a second, that instance's sessions are missing from that response.
+Requests that aren't about one session (the lobby list and §3.1) need no parameter and can reach any instance. The lobby list still covers every instance: the one that answers collects the others' sessions. If an instance doesn't answer it within a second, that instance's sessions are missing from that response, and from later ones until it answers again (it's asked again in the background).
 
 #### `GET /api/game-sessions`
 
