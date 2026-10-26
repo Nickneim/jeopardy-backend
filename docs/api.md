@@ -212,7 +212,8 @@ Every new player starts with the session's current `joinScore` (0 until someone'
 - With no token you get an anonymous connection that can only watch.
 - An unknown or invalid token **rejects the connection** with a STOMP ERROR frame (message `"Unknown player token"`) before CONNECT completes. A token stops working when its player leaves or is kicked (§6.4) and when its session is removed (§6.5). In every case, treat the rejection as "this token is gone": forget it and show the join form.
 - Reconnecting with the same token restores the same player. Dropping the connection doesn't make a player leave.
-- **Heartbeats.** The server offers STOMP heartbeats every 10 seconds in each direction (`heart-beat: 10000,10000` on CONNECTED); the actual interval each way is the larger of the two sides' values, and a side that sends 0 gets none that way. Keep them on (`@stomp/stompjs` sends `10000,10000` by default). A connection that promised heartbeats and sends nothing at all, not even a heartbeat, for three intervals is closed by the server; reconnect as after any dropped connection. Heartbeats also keep an idle connection open through proxies that close quiet ones.
+- **Heartbeats.** The server offers STOMP heartbeats every 10 seconds in each direction (`heart-beat: 10000,10000` on CONNECTED); the actual interval each way is the larger of the two sides' values, and a side that sends 0 gets none that way. Keep them on (`@stomp/stompjs` sends `10000,10000` by default). A connection that promised heartbeats and sends nothing at all, not even a heartbeat, for three intervals is closed by the server, which happens to a browser tab in the background that throttles its timers. That close comes **without an ERROR frame**: the WebSocket just closes (code 1000, reason `"Missed heartbeats"`), the player becomes `away` like after a closed tab, and the client reconnects with the same token. A DISCONNECT without a `receipt` header is answered the same way (the WebSocket closes with code 1000 and no ERROR frame). Heartbeats also keep an idle connection open through proxies that close quiet ones.
+- **An ERROR frame always means the token no longer works.** The server sends one only when it rejects a token on CONNECT (above) and when it closes a player's connections because they left or were kicked (below). Every other close, whether the server dropped the connection or the network did, comes without one: reconnect with the same token. (A malformed frame also gets an ERROR, but a STOMP library never sends one.)
 - **When a player leaves or is kicked, the server closes their open connections** with a STOMP ERROR frame, *after* CONNECT completed. Its `message` header is `"You left the session"` or `"You were removed from the session by the host"`. A client that then reconnects with the old token is rejected as above, so the usual "token rejected" handling takes them back to the join form. On each of their connections, everything sent to it before they left arrives first, including the broadcast that removed them; then the ERROR frame arrives, then the WebSocket closes (code 1002). Nothing is sent to it after the ERROR frame. Only a connection that drops on its own at the same moment misses the frame.
 - When a session is removed, connections are **not** closed: everyone receives a last broadcast with `state: "CLOSED"` (§6.5). A reconnect after that is rejected, and `GET /api/game-sessions/{id}` returns 404.
 
@@ -233,8 +234,11 @@ const client = new Client({
     });
   },
   onStompError: (frame) => {
-    // e.g. the token was rejected: forget it and send the user back to join
+    // The token no longer works (rejected, or the player left or was
+    // kicked): forget it and send the user back to join.
   },
+  // Any other close (including missed heartbeats) has no ERROR frame:
+  // @stomp/stompjs reconnects with the same connectHeaders on its own.
 });
 client.activate();
 

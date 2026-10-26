@@ -46,8 +46,12 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHttpHeaders;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
@@ -200,6 +204,131 @@ class GameSessionWebSocketIntegrationTest {
         } finally {
             stompClient.stop();
             clientScheduler.shutdown();
+        }
+    }
+
+    // A client that promised heartbeats and then went quiet (a browser tab in
+    // the background) is dropped by the broker. Spring would send it an ERROR
+    // frame, which clients take to mean their token is gone, so the server
+    // must only close the connection: the player is away and reconnects.
+    @Test
+    void silentClient_isClosedWithoutAnErrorFrame_andCanReconnect()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer player = session.getPlayers().getFirst();
+        RawStompConnection connection;
+
+        // The broker drops a connection that sends nothing for three of its
+        // intervals, checking every HEARTBEAT_MILLIS. Shorter heartbeats than
+        // the configured ones keep the wait to about one check.
+        long[] heartbeat = simpleBrokerMessageHandler.getHeartbeatValue();
+        simpleBrokerMessageHandler.setHeartbeatValue(new long[] {1_000, 1_000});
+
+        try {
+            connection = rawConnect();
+            connection.send(stompFrame(
+                    "CONNECT",
+                    "accept-version:1.2",
+                    "host:localhost",
+                    "heart-beat:1000,1000",
+                    PlayerAuthenticationInterceptor.TOKEN_HEADER + ":" + tokenOf(session)
+            ));
+
+            assertTrue(connection.awaitFrame().startsWith("CONNECTED\n"));
+            await().atMost(Duration.ofSeconds(5)).until(() -> !player.isAway());
+
+            CloseStatus status = connection.closed.get(
+                    3 * WebSocketConfig.HEARTBEAT_MILLIS,
+                    TimeUnit.MILLISECONDS
+            );
+            assertEquals(CloseStatus.NORMAL.getCode(), status.getCode());
+        } finally {
+            simpleBrokerMessageHandler.setHeartbeatValue(heartbeat);
+        }
+
+        assertNull(connection.frames.poll(), "no frame after CONNECTED");
+        await().atMost(Duration.ofSeconds(5)).until(player::isAway);
+        assertFalse(player.isLeaving());
+        assertTrue(session.getPlayers().contains(player));
+
+        assertTrue(connect(tokenOf(session)).isConnected());
+        await().atMost(Duration.ofSeconds(5)).until(() -> !player.isAway());
+    }
+
+    // Spring answers a DISCONNECT without a receipt request with an ERROR
+    // frame too.
+    @Test
+    void disconnectWithoutReceipt_closesWithoutAnErrorFrame()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+        GameSessionPlayer player = session.getPlayers().getFirst();
+
+        RawStompConnection connection = rawConnect();
+        connection.send(stompFrame(
+                "CONNECT",
+                "accept-version:1.2",
+                "host:localhost",
+                PlayerAuthenticationInterceptor.TOKEN_HEADER + ":" + tokenOf(session)
+        ));
+        assertTrue(connection.awaitFrame().startsWith("CONNECTED\n"));
+
+        connection.send(stompFrame("DISCONNECT"));
+
+        assertEquals(
+                CloseStatus.NORMAL.getCode(),
+                connection.closed.get(5, TimeUnit.SECONDS).getCode()
+        );
+        assertNull(connection.frames.poll(), "no frame after CONNECTED");
+        await().atMost(Duration.ofSeconds(5)).until(player::isAway);
+        assertFalse(player.isLeaving());
+    }
+
+    // A frame with no body: the command and header lines.
+    private static String stompFrame(String... lines) {
+        return String.join("\n", lines) + "\n\n\0";
+    }
+
+    // A WebSocket connection that speaks STOMP by hand, so a test controls
+    // exactly what the client sends (a STOMP client sends heartbeats on its
+    // own) and sees every frame the server sends, heartbeats aside.
+    private RawStompConnection rawConnect() throws Exception {
+        RawStompConnection connection = new RawStompConnection();
+
+        connection.session = new StandardWebSocketClient()
+                .execute(connection, "ws://localhost:" + port + "/ws")
+                .get(5, TimeUnit.SECONDS);
+
+        return connection;
+    }
+
+    private static final class RawStompConnection extends TextWebSocketHandler {
+
+        private final BlockingQueue<String> frames = new LinkedBlockingQueue<>();
+        private final CompletableFuture<CloseStatus> closed = new CompletableFuture<>();
+        private WebSocketSession session;
+
+        void send(String frame) throws Exception {
+            session.sendMessage(new TextMessage(frame));
+        }
+
+        String awaitFrame() throws InterruptedException {
+            String frame = frames.poll(5, TimeUnit.SECONDS);
+            assertNotNull(frame, "no frame arrived");
+            return frame;
+        }
+
+        @Override
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+            if (!message.getPayload().isBlank()) {
+                frames.add(message.getPayload());
+            }
+        }
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+            closed.complete(status);
         }
     }
 

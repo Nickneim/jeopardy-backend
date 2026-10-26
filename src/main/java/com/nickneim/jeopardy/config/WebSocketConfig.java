@@ -12,6 +12,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -29,6 +30,7 @@ public class WebSocketConfig
 
     private final PlayerAuthenticationInterceptor playerAuthenticationInterceptor;
     private final PlayerConnections playerConnections;
+    private final SilentDisconnects silentDisconnects;
     private final CorsProperties corsProperties;
     private final TaskScheduler messageBrokerTaskScheduler;
 
@@ -37,11 +39,13 @@ public class WebSocketConfig
     public WebSocketConfig(
             PlayerAuthenticationInterceptor playerAuthenticationInterceptor,
             PlayerConnections playerConnections,
+            SilentDisconnects silentDisconnects,
             CorsProperties corsProperties,
             @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler
     ) {
         this.playerAuthenticationInterceptor = playerAuthenticationInterceptor;
         this.playerConnections = playerConnections;
+        this.silentDisconnects = silentDisconnects;
         this.corsProperties = corsProperties;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
     }
@@ -91,12 +95,25 @@ public class WebSocketConfig
         registration.interceptors(playerAuthenticationInterceptor);
     }
 
-    // Lets PlayerConnections hold back a departing player's ERROR frame until
-    // everything already sent to them has been written, so it isn't lost.
+    // Lets SilentDisconnects close the WebSocket of a connection the broker
+    // dropped.
+    @Override
+    public void configureWebSocketTransport(
+            WebSocketTransportRegistration registration
+    ) {
+        registration.addDecoratorFactory(silentDisconnects);
+    }
+
+    // SilentDisconnects closes a connection the broker dropped without the
+    // ERROR frame Spring would send, so an ERROR frame always means the
+    // token stopped working. It comes first, so PlayerConnections never
+    // counts the frame it drops as in flight. PlayerConnections holds back a
+    // departing player's ERROR frame until everything already sent to them
+    // has been written, so it isn't lost.
     @Override
     public void configureClientOutboundChannel(
             ChannelRegistration registration
     ) {
-        registration.interceptors(playerConnections);
+        registration.interceptors(silentDisconnects, playerConnections);
     }
 }
