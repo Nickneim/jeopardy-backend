@@ -72,6 +72,17 @@ class ClueTest {
 
         assertThrows(IllegalArgumentException.class, () -> new Clue(
                 "Question", "Answer", (short) 1, ClueType.IMAGE, "  ", category));
+        assertThrows(IllegalArgumentException.class, () -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.IMAGE, " \t\n\r\f\u000B", category));
+    }
+
+    @Test
+    void newClue_countsOnlyAsciiWhitespaceAsBlank() {
+        // Like the database's check_media_url, which can't see these as space.
+        Category category = new Category("CATEGORY", (short) 1, null, game);
+
+        assertDoesNotThrow(() -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.IMAGE, "\u001C", category));
     }
 
     @Test

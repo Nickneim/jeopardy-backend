@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.repository.GameRepository;
+import com.nickneim.jeopardy.game.service.GameService;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
@@ -23,6 +24,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -54,6 +57,12 @@ class GameIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private GameService gameService;
 
     @Test
     void database_rejectsDailyDoubleWithClueFromAnotherGame() {
@@ -137,22 +146,50 @@ class GameIntegrationTest {
 
     @Test
     void database_rowLimitMatchesBoardClue() {
-        String check = jdbcTemplate.queryForObject(
-                "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'check_clue_row_number'",
-                String.class);
+        Long emptyCategory = jdbcTemplate.queryForObject(
+                "INSERT INTO category (name, column_number, game_id) VALUES ('ROWS', 1, ?) RETURNING id",
+                Long.class,
+                insertEmptyGame("Game Integration Test Game Rows")
+        );
+        String insertClue = "INSERT INTO clue (question, answer, row_number, category_id) VALUES ('Q', 'A', ?, ?)";
 
-        assertThat(check).contains("row_number <= " + BoardClue.MAX_ROW + ")");
+        jdbcTemplate.update(insertClue, BoardClue.MAX_ROW, emptyCategory);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(insertClue, BoardClue.MAX_ROW + 1, emptyCategory))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("check_clue_row_number");
     }
 
     @Test
-    void database_rejectsClueBelowTheLastPlayableRow() {
-        Long categoryId = jdbcTemplate.queryForObject(
-                "SELECT id FROM category WHERE game_id = 1 LIMIT 1", Long.class);
+    void database_allowsMovingACategoryWithItsDailyDoubleInOneTransaction() {
+        Long categoryWithDailyDouble = jdbcTemplate.queryForObject("""
+                SELECT clue.category_id FROM game_daily_double
+                JOIN clue ON clue.id = game_daily_double.clue_id
+                WHERE game_daily_double.game_id = 1
+                LIMIT 1
+                """, Long.class);
+        Long categoryFirst = insertEmptyGame("Game Integration Test Game Moved Category First");
+        Long dailyDoubleFirst = insertEmptyGame("Game Integration Test Game Moved Daily Double First");
 
-        assertThatThrownBy(() -> jdbcTemplate.update(
-                "INSERT INTO clue (question, answer, row_number, category_id) VALUES ('Q', 'A', 11, ?)",
-                categoryId
-        )).isInstanceOf(DataIntegrityViolationException.class);
+        // Either order works: the triggers check the rows at commit.
+        transactionTemplate.executeWithoutResult(status -> {
+            jdbcTemplate.update("UPDATE category SET game_id = ? WHERE id = ?", categoryFirst, categoryWithDailyDouble);
+            jdbcTemplate.update("UPDATE game_daily_double SET game_id = ? WHERE game_id = 1", categoryFirst);
+        });
+        transactionTemplate.executeWithoutResult(status -> {
+            jdbcTemplate.update("UPDATE game_daily_double SET game_id = ? WHERE game_id = ?", dailyDoubleFirst, categoryFirst);
+            jdbcTemplate.update("UPDATE category SET game_id = ? WHERE id = ?", dailyDoubleFirst, categoryWithDailyDouble);
+        });
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM game_daily_double WHERE game_id = ?", Long.class, dailyDoubleFirst
+        )).isEqualTo(1L);
+    }
+
+    @Test
+    void getGame_requiresTheCallersTransaction() {
+        assertThatThrownBy(() -> gameService.getGame(1L))
+                .isInstanceOf(IllegalTransactionStateException.class);
     }
 
     @Test

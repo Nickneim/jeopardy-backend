@@ -67,6 +67,11 @@ class GameTest {
     }
 
     @Test
+    void newCategory_needsAGame() {
+        assertThrows(NullPointerException.class, () -> new Category("HISTORY", (short) 1, null, null));
+    }
+
+    @Test
     void newDailyDouble_comparesSavedGamesById() {
         // The same saved game, loaded as two different objects.
         Game sameGameElsewhere = new Game("Show #123", LocalDate.of(2025, 1, 1), "40");

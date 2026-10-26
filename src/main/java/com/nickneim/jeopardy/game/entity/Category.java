@@ -5,6 +5,7 @@ import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(
@@ -53,7 +54,7 @@ public class Category {
         this.name = name;
         this.columnNumber = columnNumber;
         this.comments = comments;
-        this.game = game;
+        this.game = Objects.requireNonNull(game, "game");
     }
 
     public Long getId() {
