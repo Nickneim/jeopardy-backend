@@ -5,6 +5,8 @@ import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.support.AnnotationExceptionHandlerMethodResolver;
 
@@ -37,6 +39,24 @@ class GameSessionWebSocketControllerTest {
         assertEquals(GameErrorCode.INTERNAL_ERROR, error.code());
         // The exception's own message could hold internal details.
         assertEquals("Something went wrong on the server. Please try again.", error.message());
+    }
+
+    // Spring only logs what an exception handler throws, so rethrowing would
+    // leave the sender without a reply.
+    @Test
+    void aConversionFailureForAnotherType_isAnInvalidRequest() throws Exception {
+        Exception exception = new ConversionFailedException(
+                TypeDescriptor.valueOf(String.class),
+                TypeDescriptor.valueOf(Long.class),
+                "abc",
+                new NumberFormatException("abc")
+        );
+
+        Method handler = resolver.resolveMethod(exception);
+        GameSessionErrorResponse error = (GameSessionErrorResponse) handler.invoke(controller, exception);
+
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
+        assertEquals("Invalid request: a value in the destination has the wrong format", error.message());
     }
 
     @Test

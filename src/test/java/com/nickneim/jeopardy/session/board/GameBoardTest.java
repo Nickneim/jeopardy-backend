@@ -95,9 +95,29 @@ class GameBoardTest {
     }
 
     @Test
+    void checkAnswer_matchesTheAnswerMatcher() {
+        GameBoard checked = new GameBoard(List.of(round(
+                GameRound.JEOPARDY,
+                new BoardClue(1L, 1, "Gifts?", "(2 of) gold | frankincense | myrrh", 200, false)
+        )));
+
+        for (String response : List.of("gold and myrrh", "What is gold, myrrh?", "gold", "", "frankincense")) {
+            for (boolean questionRequired : List.of(false, true)) {
+                assertEquals(
+                        AnswerMatcher.check("(2 of) gold | frankincense | myrrh", response, questionRequired),
+                        checked.checkAnswer(1L, response, questionRequired),
+                        response + ", question required: " + questionRequired
+                );
+            }
+        }
+        assertFalse(checked.checkAnswer(1L, null, false).correct());
+    }
+
+    @Test
     void answerHints_rejectUnknownClue() {
         assertThrows(IllegalArgumentException.class, () -> board.isNumberExpected(999L));
         assertThrows(IllegalArgumentException.class, () -> board.getAcceptedAnswers(999L));
+        assertThrows(IllegalArgumentException.class, () -> board.checkAnswer(999L, "Lincoln", false));
     }
 
     @Test

@@ -24,7 +24,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -194,11 +193,6 @@ public class GameSessionService {
 
             return player;
         }
-    }
-
-    /** The player a token belongs to, or empty if it's unknown (or null). */
-    public Optional<PlayerPrincipal> findPlayerByToken(String token) {
-        return playerTokens.find(token);
     }
 
     /**
@@ -432,9 +426,12 @@ public class GameSessionService {
 
         // Tokens before the id is freed: a player still connecting could
         // otherwise pass the interceptor's second token check after a new
-        // session took the id, and act as that session's player.
+        // session took the id, and act as that session's player. Removed only
+        // if it's still this session, like everywhere else: one forgotten
+        // without a close (removeSession) can be closed later, after a new
+        // session took its id.
         session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
-        sessions.remove(sessionId);
+        sessions.remove(sessionId, session);
     }
 
     private void scheduleTimeout(GameSession session) {

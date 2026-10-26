@@ -181,7 +181,7 @@ The session's current state: the same `GameSessionResponse` as the latest broadc
 
 Joins a session.
 
-- Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters). Spaces and invisible characters at either end (ordinary, non-breaking and zero-width spaces, control characters) are removed first, so `" Nico "` joins as `"Nico"`, a name of only such characters counts as blank, and the length is that of the trimmed name.
+- Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters). Spaces and invisible characters at either end (ordinary, non-breaking and zero-width spaces, control characters) are removed first, so `" Nico "` joins as `"Nico"`, a name of only such characters counts as blank, and the length is that of the trimmed name. Control characters (such as newlines) and format characters (such as zero-width spaces and the direction overrides U+202A–U+202E and U+2066–U+2069) are also removed from inside the name, so `"Ni\nco"` joins as `"Nico"`. The zero-width joiner (U+200D) is kept, for emoji such as 👩‍💻.
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
 - The first player to join becomes the host (§6.4).
 - Unknown (or removed) session: `404 { "status": 404, "code": "SESSION_NOT_FOUND", "message": "Game session not found: <id>" }`

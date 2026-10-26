@@ -55,6 +55,7 @@ class GameSessionServiceTest {
     private GameSessionTimer timer;
     private GameSessionBroadcaster broadcaster;
     private PlayerConnections connections;
+    private PlayerTokenRegistry playerTokens;
     private Clock clock;
 
     private static final Long CLUE_ID = 10L;
@@ -71,13 +72,14 @@ class GameSessionServiceTest {
         broadcaster = mock(GameSessionBroadcaster.class);
 
         connections = mock(PlayerConnections.class);
+        playerTokens = new PlayerTokenRegistry();
         clock = mock(Clock.class);
         when(clock.instant()).thenReturn(Instant.parse("2026-10-09T12:00:00Z"));
 
         gameSessionService = new GameSessionService(
                 timer,
                 broadcaster,
-                new PlayerTokenRegistry(),
+                playerTokens,
                 connections,
                 clock
         );
@@ -322,7 +324,7 @@ class GameSessionServiceTest {
     }
 
     @Test
-    void findPlayerByToken_returnsWhoTheTokenBelongsTo() {
+    void joinSession_registersTheTokenForThePlayer() {
         GameSession session = createSession();
 
         GameSessionPlayer player =
@@ -330,14 +332,14 @@ class GameSessionServiceTest {
 
         assertEquals(
                 Optional.of(new PlayerPrincipal(session.getId(), player.getId())),
-                gameSessionService.findPlayerByToken(player.getToken())
+                playerTokens.find(player.getToken())
         );
     }
 
     @Test
-    void findPlayerByToken_isEmptyForUnknownOrMissingToken() {
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken("not-a-token"));
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(null));
+    void playerTokens_areEmptyForUnknownOrMissingToken() {
+        assertEquals(Optional.empty(), playerTokens.find("not-a-token"));
+        assertEquals(Optional.empty(), playerTokens.find(null));
     }
 
     @Test
@@ -354,10 +356,10 @@ class GameSessionServiceTest {
 
         assertEquals(
                 Optional.empty(),
-                gameSessionService.findPlayerByToken(removedPlayer.getToken())
+                playerTokens.find(removedPlayer.getToken())
         );
         assertTrue(
-                gameSessionService.findPlayerByToken(keptPlayer.getToken()).isPresent()
+                playerTokens.find(keptPlayer.getToken()).isPresent()
         );
     }
 
@@ -1644,8 +1646,8 @@ class GameSessionServiceTest {
         gameSessionService.leave(session.getId(), other.getId());
 
         assertEquals(List.of(host), session.getPlayers());
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(other.getToken()));
-        assertTrue(gameSessionService.findPlayerByToken(host.getToken()).isPresent());
+        assertEquals(Optional.empty(), playerTokens.find(other.getToken()));
+        assertTrue(playerTokens.find(host.getToken()).isPresent());
         verify(broadcaster).broadcast(session);
         verify(connections).close(
                 new PlayerPrincipal(session.getId(), other.getId()),
@@ -1664,7 +1666,7 @@ class GameSessionServiceTest {
         gameSessionService.kick(session.getId(), host.getId(), other.getId());
 
         assertEquals(List.of(host), session.getPlayers());
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(other.getToken()));
+        assertEquals(Optional.empty(), playerTokens.find(other.getToken()));
         verify(broadcaster).broadcast(session);
         verify(connections).close(
                 new PlayerPrincipal(session.getId(), other.getId()),
@@ -1686,7 +1688,7 @@ class GameSessionServiceTest {
 
         assertEquals(GameErrorCode.NOT_HOST, exception.getCode());
         assertEquals(2, session.getPlayers().size());
-        assertTrue(gameSessionService.findPlayerByToken(host.getToken()).isPresent());
+        assertTrue(playerTokens.find(host.getToken()).isPresent());
         verifyNoInteractions(timer, broadcaster, connections);
     }
 
@@ -1757,7 +1759,7 @@ class GameSessionServiceTest {
 
         verify(broadcaster).broadcast(session);
         assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
         verify(timer).cancel(session.getId());
         verify(connections).close(
                 new PlayerPrincipal(session.getId(), player.getId()),
@@ -1864,7 +1866,7 @@ class GameSessionServiceTest {
 
         cleanup.run();
 
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
         // The connections stay open, so clients see the CLOSED broadcast.
         verify(connections, never()).close(any(), any());
     }
@@ -1919,7 +1921,7 @@ class GameSessionServiceTest {
         cleanup.run();
 
         assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
-        assertEquals(Optional.empty(), gameSessionService.findPlayerByToken(player.getToken()));
+        assertEquals(Optional.empty(), playerTokens.find(player.getToken()));
     }
 
     @Test

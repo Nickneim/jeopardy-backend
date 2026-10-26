@@ -4,6 +4,7 @@ import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
+import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 
 import java.util.ArrayList;
@@ -96,9 +97,11 @@ public final class GameBoard {
                 .orElse(null);
     }
 
-    // An answer that parses to no options would mark every response wrong.
+    // Each answer is parsed once, here. An answer that parses to no options
+    // would mark every response wrong.
     private static AnswerHints answerHints(BoardClue clue) {
-        AcceptedAnswers accepted = AnswerMatcher.acceptedAnswers(clue.answer());
+        AnswerMatcher matcher = AnswerMatcher.of(clue.answer());
+        AcceptedAnswers accepted = matcher.acceptedAnswers();
 
         if (accepted.options().isEmpty()) {
             throw new InvalidBoardException(
@@ -106,7 +109,7 @@ public final class GameBoard {
             );
         }
 
-        return new AnswerHints(AnswerMatcher.expectsNumber(clue.answer()), accepted);
+        return new AnswerHints(matcher, matcher.expectsNumber(), accepted);
     }
 
     /**
@@ -201,11 +204,16 @@ public final class GameBoard {
         return answerHints(clueId).acceptedAnswers();
     }
 
+    /** Checks a response against the clue's answer ({@link AnswerMatcher#check(String, boolean)}). */
+    public AnswerCheck checkAnswer(Long clueId, String response, boolean questionRequired) {
+        return answerHints(clueId).matcher().check(response, questionRequired);
+    }
+
     private AnswerHints answerHints(Long clueId) {
         return answerHints.get(getClue(clueId).id());
     }
 
-    private record AnswerHints(boolean numberExpected, AcceptedAnswers acceptedAnswers) {}
+    private record AnswerHints(AnswerMatcher matcher, boolean numberExpected, AcceptedAnswers acceptedAnswers) {}
 
     public Set<Long> getClueIds(GameRound round) {
         return clueIdsByRound.getOrDefault(round, Set.of());

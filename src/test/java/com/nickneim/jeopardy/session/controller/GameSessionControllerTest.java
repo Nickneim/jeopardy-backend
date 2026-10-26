@@ -248,6 +248,26 @@ class GameSessionControllerTest {
     }
 
     @Test
+    void joinSession_removesControlAndFormatCharactersInsideTheName() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+        // A woman technologist: woman, zero-width joiner, laptop.
+        String emoji = "👩‍💻";
+        GameSessionPlayer player = new GameSessionPlayer(1L, "Nico" + emoji, PlayerTokens.generate());
+
+        when(gameSessionService.joinSession(sessionId, "Nico" + emoji))
+                .thenReturn(player);
+
+        // A newline, a right-to-left override and a zero-width space inside,
+        // and the joiner inside the emoji, which stays.
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"N\\ni\\u202Ec\\u200bo\\ud83d\\udc69\\u200d\\ud83d\\udcbb\"}"))
+                .andExpect(status().isCreated());
+
+        verify(gameSessionService).joinSession(sessionId, "Nico" + emoji);
+    }
+
+    @Test
     void joinSession_rejectsANameWithNothingVisible() throws Exception {
         SessionCode sessionId = SessionCode.random();
 

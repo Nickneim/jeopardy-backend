@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -14,6 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -183,6 +185,20 @@ class PeerSessionsTest {
 
         down.set(false);
         assertEventually(() -> Set.copyOf(peerSessions.fetch()).equals(Set.of(fromA, fromB)));
+    }
+
+    // A late answer can complete before its entry is stored, so watch() can't
+    // take it off; the entry then holds a request that already succeeded.
+    @Test
+    void asksAnInstanceAsUsual_whenItsFailingEntryAlreadySucceeded() {
+        peerSessions = peers(Map.of("10.0.0.1", List.of(fromA)), "");
+        @SuppressWarnings("unchecked")
+        Map<String, CompletableFuture<?>> failing =
+                (Map<String, CompletableFuture<?>>) ReflectionTestUtils.getField(peerSessions, "failing");
+        failing.put("10.0.0.1", CompletableFuture.completedFuture(List.of()));
+
+        assertEquals(List.of(fromA), peerSessions.fetch());
+        assertTrue(failing.isEmpty());
     }
 
     @Test

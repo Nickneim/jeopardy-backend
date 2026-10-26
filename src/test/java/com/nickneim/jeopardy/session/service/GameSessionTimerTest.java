@@ -9,10 +9,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -94,6 +96,25 @@ class GameSessionTimerTest {
         assertFalse(
                 latch.await(300, TimeUnit.MILLISECONDS)
         );
+    }
+
+    // A cancelled task holds its session until it leaves the queue; with
+    // its 30-minute delay a lobby's cleanups would otherwise pile up.
+    @Test
+    void replacedAndCancelledTimers_leaveTheQueueAtOnce() {
+        SessionCode sessionId = SessionCode.random();
+        ScheduledThreadPoolExecutor scheduler =
+                (ScheduledThreadPoolExecutor) ReflectionTestUtils.getField(timer, "scheduler");
+
+        for (int i = 0; i < 5; i++) {
+            timer.scheduleCleanup(sessionId, Duration.ofMinutes(30), () -> {});
+            timer.schedule(sessionId, Duration.ofMinutes(5), () -> {});
+        }
+        assertEquals(2, scheduler.getQueue().size());
+
+        timer.cancel(sessionId);
+        timer.cancelCleanup(sessionId);
+        assertEquals(0, scheduler.getQueue().size());
     }
 
     @Test

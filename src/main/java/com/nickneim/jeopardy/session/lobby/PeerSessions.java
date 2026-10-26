@@ -166,16 +166,33 @@ public class PeerSessions {
     /**
      * If the instance's last answer failed, asks it again in the background
      * (unless that's already happening) and returns true: it isn't waited for.
+     * An entry whose request already succeeded is dropped, and the instance
+     * is asked as usual: {@link #watch} can't always take it off, since a
+     * request that is already done may finish its callback before the entry
+     * is stored.
      */
     private boolean retryIfFailing(String address) {
-        return failing.computeIfPresent(address, (key, retry) -> retry.isDone() ? retry(key) : retry) != null;
+        return failing.computeIfPresent(address, (key, retry) -> {
+            if (!retry.isDone()) {
+                return retry;
+            }
+            if (!retry.isCompletedExceptionally()) {
+                log.info("{} answers again; listing its sessions", key);
+                return null;
+            }
+            return retry(key);
+        }) != null;
     }
 
     private CompletableFuture<?> retry(String address) {
         return watch(address, fetchAsync(address));
     }
 
-    /** Takes the instance off {@link #failing} if this request to it succeeds. */
+    /**
+     * Takes the instance off {@link #failing} if this request to it succeeds.
+     * The future it returns succeeds exactly when the request does, which
+     * {@link #retryIfFailing} relies on.
+     */
     private CompletableFuture<?> watch(String address, CompletableFuture<?> answer) {
         return answer
                 .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)

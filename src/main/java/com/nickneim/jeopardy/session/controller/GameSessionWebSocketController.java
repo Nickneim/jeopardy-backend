@@ -214,14 +214,20 @@ public class GameSessionWebSocketController {
     }
 
     // A destination with a malformed session code, such as /app/sessions/abc/buzz:
-    // converting a destination variable fails with this, unwrapped.
+    // converting a destination variable fails with this, unwrapped. Every
+    // destination variable is a session code today; any other is still the
+    // client's mistake. (Rethrowing wouldn't reach handleUnexpected: Spring
+    // only logs what an exception handler throws, and the sender gets no reply.)
     @MessageExceptionHandler(ConversionFailedException.class)
     @SendToUser(value = "/queue/errors", broadcast = false)
     public GameSessionErrorResponse handleInvalidSessionCode(
             ConversionFailedException exception
     ) {
         if (exception.getTargetType().getType() != SessionCode.class) {
-            throw exception;
+            return new GameSessionErrorResponse(
+                    GameErrorCode.INVALID_REQUEST,
+                    "Invalid request: a value in the destination has the wrong format"
+            );
         }
 
         return new GameSessionErrorResponse(

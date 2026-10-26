@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.answer;
 import com.nickneim.jeopardy.session.answer.ExpectedAnswer.Named;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -23,7 +24,19 @@ import java.util.Optional;
  */
 public final class AnswerMatcher {
 
-    private AnswerMatcher() {
+    private final ExpectedAnswer expected;
+
+    private AnswerMatcher(ExpectedAnswer expected) {
+        this.expected = expected;
+    }
+
+    /**
+     * Parses a stored answer once, to check any number of responses against
+     * it (GameBoard keeps one per clue). The static methods parse it again
+     * on every call.
+     */
+    public static AnswerMatcher of(String answer) {
+        return new AnswerMatcher(ExpectedAnswer.parse(Objects.requireNonNull(answer, "answer")));
     }
 
     public static boolean matches(String answer, String response, boolean questionRequired) {
@@ -32,10 +45,17 @@ public final class AnswerMatcher {
 
     /** Whether the response is correct, whether it was phrased as a question, and what it named. */
     public static AnswerCheck check(String answer, String response, boolean questionRequired) {
-        if (answer == null || response == null || response.isBlank()) {
+        if (answer == null) {
             return AnswerCheck.wrong(false);
         }
-        ExpectedAnswer expected = ExpectedAnswer.parse(answer);
+        return of(answer).check(response, questionRequired);
+    }
+
+    /** Like {@link #check(String, String, boolean)}, against this matcher's answer. */
+    public AnswerCheck check(String response, boolean questionRequired) {
+        if (response == null || response.isBlank()) {
+            return AnswerCheck.wrong(false);
+        }
 
         Optional<String> afterQuestion = QuestionForm.strip(response);
         if (afterQuestion.isPresent()) {
@@ -55,6 +75,16 @@ public final class AnswerMatcher {
         List<Named> saidAsItIs = expected.match(AnswerText.wholeTokens(response));
         boolean phrasedAsQuestion = startsWithQuestion(saidAsItIs);
         return result(expected, !questionRequired || phrasedAsQuestion ? saidAsItIs : null, phrasedAsQuestion);
+    }
+
+    /** {@link #acceptedAnswers(String)} for this matcher's answer. */
+    public AcceptedAnswers acceptedAnswers() {
+        return new AcceptedAnswers(expected.required(), expected.firstWordings());
+    }
+
+    /** {@link #expectsNumber(String)} for this matcher's answer. */
+    public boolean expectsNumber() {
+        return expected.expectsNumber();
     }
 
     /**
@@ -80,11 +110,7 @@ public final class AnswerMatcher {
 
     /** The answer as players should see it; null for a missing answer. */
     public static AcceptedAnswers acceptedAnswers(String answer) {
-        if (answer == null) {
-            return null;
-        }
-        ExpectedAnswer expected = ExpectedAnswer.parse(answer);
-        return new AcceptedAnswers(expected.required(), expected.firstWordings());
+        return answer == null ? null : of(answer).acceptedAnswers();
     }
 
     /**
@@ -93,6 +119,6 @@ public final class AnswerMatcher {
      * ("the 1980s") don't count.
      */
     public static boolean expectsNumber(String answer) {
-        return answer != null && ExpectedAnswer.parse(answer).expectsNumber();
+        return answer != null && of(answer).expectsNumber();
     }
 }

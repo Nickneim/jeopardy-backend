@@ -30,10 +30,14 @@ public class GameSessionTimer {
 
     // By default the executor still runs every delayed task after shutdown,
     // so timers (lobby cleanups wait 30 minutes) would fire against a
-    // closed context, e.g. after a devtools restart.
+    // closed context, e.g. after a devtools restart. A cancelled task would
+    // also stay queued until its delay ran out, keeping its session (board,
+    // players, tokens) in memory: every lobby broadcast cancels a 30-minute
+    // cleanup, so they piled up.
     private static ScheduledExecutorService newScheduler() {
         ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(4);
         scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        scheduler.setRemoveOnCancelPolicy(true);
         return scheduler;
     }
 

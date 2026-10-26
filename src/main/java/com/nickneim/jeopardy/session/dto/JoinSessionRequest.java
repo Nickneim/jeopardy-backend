@@ -13,12 +13,29 @@ public record JoinSessionRequest(
 ) {
     public static final int MAX_NAME_LENGTH = 30;
 
-    // Validation runs on the trimmed name, so a name with nothing visible in
+    // Validation runs on the cleaned name, so a name with nothing visible in
     // it (a non-breaking or zero-width space, say) is blank, and "Bob " can't
     // pass for "Bob". @NotBlank alone only ignores ASCII spaces and controls.
     public JoinSessionRequest {
-        playerName = playerName == null ? null : trimInvisible(playerName);
+        playerName = playerName == null ? null : trimInvisible(removeControls(playerName));
     }
+
+    // Controls and format characters anywhere in the name go, since every
+    // client shows it: a newline breaks layouts, and a direction override
+    // (U+202E) reverses the text after it, which could make a name read as
+    // someone else's. The zero-width joiner stays, for emoji like 👩‍💻.
+    private static String removeControls(String name) {
+        StringBuilder kept = new StringBuilder(name.length());
+
+        name.codePoints()
+                .filter(codePoint -> codePoint == ZERO_WIDTH_JOINER
+                        || !Character.isISOControl(codePoint) && Character.getType(codePoint) != Character.FORMAT)
+                .forEach(kept::appendCodePoint);
+
+        return kept.toString();
+    }
+
+    private static final int ZERO_WIDTH_JOINER = 0x200D;
 
     private static String trimInvisible(String name) {
         int start = 0;
