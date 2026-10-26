@@ -9,6 +9,7 @@ import com.nickneim.jeopardy.session.board.GameBoard;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.service.TestGameSessions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,12 +46,12 @@ class GameSessionsEndpointIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        gameSessionService.removeSession(session.getId());
+        TestGameSessions.removeSession(gameSessionService, session.getId());
     }
 
     @Test
     void anotherInstanceReadsTheSessionsThisOneHolds() throws Exception {
-        session = gameSessionService.createSession(new GameBoard(7L, "Show #7", List.of(
+        session = TestGameSessions.createSession(gameSessionService, new GameBoard(7L, "Show #7", List.of(
                 new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory(
                         "HISTORY",
                         List.of(new BoardClue(10L, 1, "Question", "Answer", 200, false))

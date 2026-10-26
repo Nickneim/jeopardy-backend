@@ -349,6 +349,24 @@ class GameIntegrationTest {
                 });
     }
 
+    // An offset past Integer.MAX_VALUE is more than JPA can ask for; it's
+    // just a page past the end, not a server error.
+    @Test
+    void getGames_returnsEmptyPageWhenTheOffsetIsTooLargeForTheDatabase() {
+        restTestClient.get()
+                .uri("/api/games?page=30000000&size=100")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<
+                        PageResponse<GameSummaryResponse>>() {})
+                .value(body -> {
+                    assertThat(body.page()).isEqualTo(30000000);
+                    assertThat(body.size()).isEqualTo(100);
+                    assertThat(body.totalElements()).isEqualTo(25);
+                    assertThat(body.content()).isEmpty();
+                });
+    }
+
     @Test
     void getGames_usesDefaultPageAndSize() {
         restTestClient.get()

@@ -68,8 +68,9 @@ public class WebSocketConfig
     ) {
         // Without heartbeats a connection that dies without closing (the
         // client lost its network) is never noticed while nothing is written
-        // to it, as after its session closed: PlayerConnections would keep it,
-        // and with it the session's code, forever. Heartbeats also keep idle
+        // to it, as after its session closed: the broker would keep its
+        // subscriptions, and with them the session's code (SessionWatchers),
+        // forever. Heartbeats also keep idle
         // connections alive through proxies that time them out.
         registry.enableSimpleBroker("/topic", "/queue")
                 .setHeartbeatValue(new long[] {HEARTBEAT_MILLIS, HEARTBEAT_MILLIS})

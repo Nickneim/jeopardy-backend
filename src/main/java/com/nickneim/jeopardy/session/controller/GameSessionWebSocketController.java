@@ -48,8 +48,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.startGame(
-                sessionId,
-                playerId(sessionId, headers)
+                player(sessionId, headers)
         );
     }
 
@@ -60,8 +59,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.chooseClue(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.clueId()
         );
     }
@@ -72,8 +70,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.buzz(
-                sessionId,
-                playerId(sessionId, headers)
+                player(sessionId, headers)
         );
     }
 
@@ -84,8 +81,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.answerClue(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.answer()
         );
     }
@@ -97,8 +93,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.placeDailyDoubleWager(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.wager()
         );
     }
@@ -110,8 +105,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.placeFinalJeopardyWager(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.wager()
         );
     }
@@ -123,8 +117,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.answerFinalJeopardy(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.answer()
         );
     }
@@ -136,8 +129,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.updateTimers(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request
         );
     }
@@ -149,8 +141,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.updateSettings(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request
         );
     }
@@ -161,8 +152,7 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.leave(
-                sessionId,
-                playerId(sessionId, headers)
+                player(sessionId, headers)
         );
     }
 
@@ -173,17 +163,17 @@ public class GameSessionWebSocketController {
             SimpMessageHeaderAccessor headers
     ) {
         gameSessionService.kick(
-                sessionId,
-                playerId(sessionId, headers),
+                player(sessionId, headers),
                 request.playerId()
         );
     }
 
     /**
-     * The id of the player on this connection, checked against the session
-     * the action is for. An anonymous connection (no token) can only watch.
+     * The player on this connection, checked against the session the action
+     * is for (the service checks it's that very session, not an earlier one
+     * with the same id). An anonymous connection (no token) can only watch.
      */
-    private Long playerId(SessionCode sessionId, SimpMessageHeaderAccessor headers) {
+    private PlayerPrincipal player(SessionCode sessionId, SimpMessageHeaderAccessor headers) {
         if (!(headers.getUser() instanceof PlayerPrincipal player)) {
             throw new InvalidGameActionException(
                     GameErrorCode.UNAUTHENTICATED,
@@ -198,7 +188,7 @@ public class GameSessionWebSocketController {
             );
         }
 
-        return player.playerId();
+        return player;
     }
 
     // Also a missing session: GameSessionNotFoundException is one.

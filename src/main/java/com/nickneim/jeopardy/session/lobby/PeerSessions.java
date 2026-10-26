@@ -17,6 +17,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -28,14 +29,19 @@ import java.util.concurrent.TimeoutException;
  * JVM caches the answer for 30 seconds, so a new pod can be missing for that
  * long, and a removed one is still asked until then.)
  *
- * <p>The lookup and the answers together take at most the timeout: an
- * instance that fails or doesn't answer by then is left out, so a slow or
- * dying pod hides its own sessions for a moment instead of holding up or
- * breaking the lobby. After a failure, an instance isn't waited for again
- * until it answers: lobby requests ask it in the background (one request at
- * a time; a late answer to the one that failed counts), and once it answers,
- * the next lobby request lists its sessions again. So a removed pod that DNS
- * still names doesn't slow the lobby down.
+ * <p>The lookup and the answers each take at most the timeout, so a lobby
+ * request waits at most twice the timeout (the lookup is usually answered
+ * from the JVM's cache). Concurrent lobby requests share one lookup, so a
+ * slow DNS server isn't asked once per request. An instance that fails or
+ * doesn't answer in its own timeout is left out, so a slow or dying pod
+ * hides its own sessions for a moment instead of holding up or breaking the
+ * lobby. The answers don't share the lookup's timeout, or a slow lookup
+ * would leave them too little time and they'd be taken for failing. After a
+ * failure, an instance isn't waited for again until it answers: lobby
+ * requests ask it in the background (one request at a time; a late answer to
+ * the one that failed counts), and once it answers, the next lobby request
+ * lists its sessions again. So a removed pod that DNS still names doesn't
+ * slow the lobby down.
  */
 @Component
 public class PeerSessions {
@@ -55,6 +61,9 @@ public class PeerSessions {
     // Instances whose last answer failed, with the background request asking
     // them again.
     private final Map<String, CompletableFuture<?>> failing = new ConcurrentHashMap<>();
+    // The last DNS lookup, shared by the lobby requests that come while it
+    // runs. Guarded by this.
+    private CompletableFuture<List<String>> lookup;
 
     @Autowired
     PeerSessions(SessionLobbyProperties properties, PeerClient client) {
@@ -108,13 +117,20 @@ public class PeerSessions {
         if (!properties.enabled()) {
             return List.of();
         }
+        try {
+            return fetchFromPeers();
+        } catch (RejectedExecutionException exception) {
+            // Shutting down (close()): there's nobody left to ask with.
+            return List.of();
+        }
+    }
 
-        long deadline = System.nanoTime() + properties.timeout().toNanos();
-
+    private List<GameSessionSummaryResponse> fetchFromPeers() {
         List<String> peers;
         try {
-            peers = CompletableFuture
-                    .supplyAsync(this::resolvePeers, executor)
+            // A copy, so that giving up here doesn't end the shared lookup.
+            peers = lookUpPeers()
+                    .copy()
                     .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
                     .join();
         } catch (CompletionException exception) {
@@ -128,14 +144,13 @@ public class PeerSessions {
         // A removed instance is forgotten once DNS stops naming it.
         failing.keySet().retainAll(peers);
 
-        long remaining = Math.max(0, deadline - System.nanoTime());
         List<CompletableFuture<List<GameSessionSummaryResponse>>> answers = peers.stream()
                 .filter(address -> !retryIfFailing(address))
                 .map(address -> {
                     CompletableFuture<List<GameSessionSummaryResponse>> answer = fetchAsync(address);
                     // A copy, so that giving up here doesn't end the request.
                     return answer.copy()
-                            .orTimeout(remaining, TimeUnit.NANOSECONDS)
+                            .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
                             .exceptionally(failure -> {
                                 Throwable cause = failure instanceof CompletionException ? failure.getCause() : failure;
                                 // An answer that's just late still counts, for one more
@@ -153,6 +168,18 @@ public class PeerSessions {
         return answers.stream()
                 .flatMap(answer -> answer.join().stream())
                 .toList();
+    }
+
+    /**
+     * The lookup still running, or a new one: a lookup that has timed out
+     * keeps its thread until DNS answers, so starting one per lobby request
+     * would pile them up while DNS is slow.
+     */
+    private synchronized CompletableFuture<List<String>> lookUpPeers() {
+        if (lookup == null || lookup.isDone()) {
+            lookup = CompletableFuture.supplyAsync(this::resolvePeers, executor);
+        }
+        return lookup;
     }
 
     private List<String> resolvePeers() {

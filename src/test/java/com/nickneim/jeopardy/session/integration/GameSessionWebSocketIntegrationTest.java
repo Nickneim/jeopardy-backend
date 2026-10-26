@@ -28,7 +28,9 @@ import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
+import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.service.GameSessionService;
+import com.nickneim.jeopardy.session.service.TestGameSessions;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -319,8 +321,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session = createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         StompSession stompSession = connect(tokenOf(session));
@@ -353,7 +354,7 @@ class GameSessionWebSocketIntegrationTest {
         BlockingQueue<GameSessionErrorResponse> errors =
                 subscribeToErrors(stompSession);
 
-        gameSessionService.removeSession(session.getId());
+        TestGameSessions.removeSession(gameSessionService, session.getId());
 
         startGame(
                 stompSession,
@@ -481,8 +482,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session = createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         Long clueId = 10L;
@@ -541,8 +541,7 @@ class GameSessionWebSocketIntegrationTest {
                 gameSessionService.joinSession(session.getId(), "John");
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         // The first player chooses; the second connects with their own token.
@@ -574,8 +573,7 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         Long playerId =
@@ -583,31 +581,28 @@ class GameSessionWebSocketIntegrationTest {
 
         // Choose the clue.
         gameSessionService.chooseClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 10L
         );
 
         // Clue reveal finishes.
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
         // Player buzzes.
         gameSessionService.buzz(
-                session.getId(),
-                playerId
+                player(session.getId(), playerId)
         );
 
         // Player answers correctly.
         gameSessionService.answerClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 "Correct answer"
         );
 
         // Answer reveal finishes.
-        gameSessionService.finishRevealingAnswer(
+        TestGameSessions.finishRevealingAnswer(gameSessionService,
                 session.getId()
         );
 
@@ -672,8 +667,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session = createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         StompSession stompSession = connect(tokenOf(session));
@@ -709,20 +703,18 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
 
         gameSessionService.chooseClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 10L
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
@@ -792,17 +784,15 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         gameSessionService.chooseClue(
-                session.getId(),
-                session.getPlayers().getFirst().getId(),
+                player(session.getId(), session.getPlayers().getFirst().getId()),
                 10L
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
@@ -839,26 +829,23 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
 
         gameSessionService.chooseClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 10L
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
         gameSessionService.buzz(
-                session.getId(),
-                playerId
+                player(session.getId(), playerId)
         );
 
         StompSession stompSession = connect(tokenOf(session));
@@ -900,26 +887,23 @@ class GameSessionWebSocketIntegrationTest {
                 createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         Long playerId =
                 session.getPlayers().getFirst().getId();
 
         gameSessionService.chooseClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 10L
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
         gameSessionService.buzz(
-                session.getId(),
-                playerId
+                player(session.getId(), playerId)
         );
 
         StompSession stompSession = connect(tokenOf(session));
@@ -972,23 +956,20 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId();
 
         gameSessionService.startGame(
-                session.getId(),
-                playerId
+                player(session.getId(), playerId)
         );
 
         gameSessionService.chooseClue(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 10L
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
         gameSessionService.buzz(
-                session.getId(),
-                playerId
+                player(session.getId(), playerId)
         );
 
         // The second player tries to answer the first player's buzz. The
@@ -1223,12 +1204,11 @@ class GameSessionWebSocketIntegrationTest {
                 session.getPlayers().getFirst().getId();
 
         gameSessionService.placeDailyDoubleWager(
-                session.getId(),
-                playerId,
+                player(session.getId(), playerId),
                 500
         );
 
-        gameSessionService.finishRevealingClue(
+        TestGameSessions.finishRevealingClue(gameSessionService,
                 session.getId()
         );
 
@@ -1368,8 +1348,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session = createSessionWithPlayer();
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         StompSession stompSession = connect(tokenOf(session));
@@ -1781,7 +1760,7 @@ class GameSessionWebSocketIntegrationTest {
         subscribeToSession(watcher, id);
         awaitSubscriptions(watcher, createSession().getId());
 
-        gameSessionService.leave(id, session.getPlayers().getFirst().getId());
+        gameSessionService.leave(player(id, session.getPlayers().getFirst().getId()));
 
         assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(id));
         assertThrows(GameSessionAlreadyExistsException.class, () -> gameSessionService.requireUnusedId(id));
@@ -1895,7 +1874,7 @@ class GameSessionWebSocketIntegrationTest {
         // Same-sized broadcasts, sent faster than one connection writes them.
         int broadcasts = 100;
         for (int i = 0; i < broadcasts; i++) {
-            gameSessionService.updateSettings(session.getId(), hostId, new SessionSettingsRequest(i % 2 == 0));
+            gameSessionService.updateSettings(player(session.getId(), hostId), new SessionSettingsRequest(i % 2 == 0));
         }
 
         long previous = -1;
@@ -1940,9 +1919,14 @@ class GameSessionWebSocketIntegrationTest {
     // -------------------------------------------------------------------------
 
     private GameSession createSession() {
-        return gameSessionService.createSession(
+        return TestGameSessions.createSession(gameSessionService,
                 createBoard()
         );
+    }
+
+    /** The principal the player's connection would carry. */
+    private PlayerPrincipal player(SessionCode sessionId, Long playerId) {
+        return TestGameSessions.player(gameSessionService, sessionId, playerId);
     }
 
     /** The secret token of the session's first player. */
@@ -1988,7 +1972,7 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     private GameSession createStartedSessionWithDailyDouble() {
-        GameSession session = gameSessionService.createSession(
+        GameSession session = TestGameSessions.createSession(gameSessionService,
                 createBoardWithDailyDouble()
         );
 
@@ -1998,8 +1982,7 @@ class GameSessionWebSocketIntegrationTest {
         );
 
         gameSessionService.startGame(
-                session.getId(),
-                session.getPlayers().getFirst().getId()
+                player(session.getId(), session.getPlayers().getFirst().getId())
         );
 
         return session;
@@ -2009,8 +1992,7 @@ class GameSessionWebSocketIntegrationTest {
         GameSession session = createStartedSessionWithDailyDouble();
 
         gameSessionService.chooseClue(
-                session.getId(),
-                session.getPlayers().getFirst().getId(),
+                player(session.getId(), session.getPlayers().getFirst().getId()),
                 DAILY_DOUBLE_CLUE_ID
         );
 
@@ -2020,7 +2002,7 @@ class GameSessionWebSocketIntegrationTest {
     // The player answers the only Jeopardy clue correctly (200 points), which
     // starts Final Jeopardy with its real 30-second wagering timer running.
     private GameSession createSessionInFinalJeopardy() {
-        GameSession session = gameSessionService.createSession(
+        GameSession session = TestGameSessions.createSession(gameSessionService,
                 new GameBoard(List.of(
                         new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory(
                                 "Category",
@@ -2038,12 +2020,12 @@ class GameSessionWebSocketIntegrationTest {
         Long playerId =
                 session.getPlayers().getFirst().getId();
 
-        gameSessionService.startGame(session.getId(), playerId);
-        gameSessionService.chooseClue(session.getId(), playerId, 10L);
-        gameSessionService.finishRevealingClue(session.getId());
-        gameSessionService.buzz(session.getId(), playerId);
-        gameSessionService.answerClue(session.getId(), playerId, "Correct answer");
-        gameSessionService.finishRevealingAnswer(session.getId());
+        gameSessionService.startGame(player(session.getId(), playerId));
+        gameSessionService.chooseClue(player(session.getId(), playerId), 10L);
+        TestGameSessions.finishRevealingClue(gameSessionService, session.getId());
+        gameSessionService.buzz(player(session.getId(), playerId));
+        gameSessionService.answerClue(player(session.getId(), playerId), "Correct answer");
+        TestGameSessions.finishRevealingAnswer(gameSessionService, session.getId());
 
         assertEquals(
                 GameSessionState.FINAL_JEOPARDY_WAGERING,

@@ -167,6 +167,17 @@ class AnswerMatcherTest {
         assertTrue(AnswerMatcher.matches("(2 of) Smith [Jones | Brown | Green", "Brown and Green", false));
     }
 
+    // More than an int can hold: it asks for every option, like any count
+    // above the number of options, instead of failing to parse.
+    @Test
+    void matches_aListCountTooLargeForAnIntAsksForEveryOption() {
+        String answer = "(99999999999 of) Ohio | Iowa";
+
+        assertEquals(new AcceptedAnswers(2, List.of("Ohio", "Iowa")), AnswerMatcher.acceptedAnswers(answer));
+        assertTrue(AnswerMatcher.matches(answer, "Iowa and Ohio", false));
+        assertFalse(AnswerMatcher.matches(answer, "Ohio", false));
+    }
+
     @Test
     void matches_responsesThatFitManyOptionsStayFast() {
         // Every response word is a typo of many options, so the ways to cut

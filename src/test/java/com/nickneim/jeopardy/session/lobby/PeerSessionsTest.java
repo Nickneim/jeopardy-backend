@@ -128,6 +128,55 @@ class PeerSessionsTest {
         assertTrue(took.compareTo(TIMEOUT.multipliedBy(3)) < 0, "took " + took);
     }
 
+    // The lookup and the answer together take longer than the timeout, but
+    // each fits in its own: a slow lookup isn't blamed on the instances.
+    // (A longer timeout than the other tests, so that each sleep is well
+    // clear of it on a busy machine.)
+    @Test
+    void asksTheInstancesWithTheirOwnTimeout_afterASlowLookup() {
+        Duration timeout = Duration.ofMillis(600);
+        peerSessions = new PeerSessions(
+                new SessionLobbyProperties("backend-peers", "", 8081, timeout),
+                name -> {
+                    sleep(timeout.multipliedBy(3).dividedBy(5));
+                    return List.of("10.0.0.1");
+                },
+                address -> {
+                    sleep(timeout.multipliedBy(3).dividedBy(5));
+                    return List.of(fromA);
+                }
+        );
+
+        assertEquals(List.of(fromA), peerSessions.fetch());
+        assertEquals(List.of(fromA), peerSessions.fetch());
+    }
+
+    @Test
+    void sharesOneLookup_whileItsSlow() {
+        AtomicInteger lookups = new AtomicInteger();
+        peerSessions = new PeerSessions(
+                properties(""),
+                name -> {
+                    lookups.incrementAndGet();
+                    await(release);
+                    return List.of("10.0.0.1");
+                },
+                address -> List.of(fromA)
+        );
+
+        assertEquals(List.of(), peerSessions.fetch());
+        assertEquals(List.of(), peerSessions.fetch());
+        assertEquals(1, lookups.get());
+    }
+
+    @Test
+    void returnsNothing_afterClosing() {
+        peerSessions = peers(Map.of("10.0.0.1", List.of(fromA)), "");
+        peerSessions.close();
+
+        assertEquals(List.of(), peerSessions.fetch());
+    }
+
     @Test
     void recognizesItsOwnIpv6Address_inAnySpelling() {
         // Java spells IPv6 addresses out in full; Kubernetes' POD_IP is compressed.
@@ -239,6 +288,14 @@ class PeerSessionsTest {
         );
 
         assertEquals(List.of(), peerSessions.fetch());
+    }
+
+    private static void sleep(Duration duration) {
+        try {
+            Thread.sleep(duration);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static void await(CountDownLatch latch) {

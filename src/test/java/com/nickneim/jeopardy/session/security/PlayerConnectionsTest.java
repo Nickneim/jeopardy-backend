@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Queue;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -36,7 +37,7 @@ class PlayerConnectionsTest {
 
     private static final String CONNECTION = "ws-1";
 
-    private final PlayerPrincipal player = new PlayerPrincipal(SessionCode.random(), 1L);
+    private final PlayerPrincipal player = new PlayerPrincipal(SessionCode.random(), 5, 1L);
 
     private MessageChannel clientOutboundChannel;
     private PlayerConnections connections;
@@ -166,42 +167,47 @@ class PlayerConnectionsTest {
     }
 
     @Test
-    void hasPlayersConnected_looksAtTheSessionOfEachConnectedPlayer() {
-        assertTrue(connections.hasPlayersConnected(player.sessionId()));
-        assertFalse(connections.hasPlayersConnected(SessionCode.random()));
-
-        connections.disconnected(CONNECTION);
-
-        assertFalse(connections.hasPlayersConnected(player.sessionId()));
-    }
-
-    @Test
-    void hasPlayersConnected_staysTrueUntilTheSessionsLastConnectionEnds() {
-        PlayerPrincipal secondPlayer = new PlayerPrincipal(player.sessionId(), 2L);
+    void close_reachesEveryConnectionOfThePlayer_andNoOneElses() {
+        PlayerPrincipal secondPlayer = new PlayerPrincipal(player.sessionId(), player.sessionInstance(), 2L);
         connections.connected("ws-2", secondPlayer);
         // The same player again, on another tab.
         connections.connected("ws-3", player);
 
-        connections.disconnected(CONNECTION);
-        connections.disconnected("ws-3");
-        assertTrue(connections.hasPlayersConnected(player.sessionId()));
+        connections.close(player, "You left the session");
 
-        connections.disconnected("ws-2");
-        assertFalse(connections.hasPlayersConnected(player.sessionId()));
+        assertEquals(List.of(CONNECTION, "ws-3"), errorsSentTo().stream().sorted().toList());
+    }
 
-        // Disconnecting twice changes nothing.
-        connections.disconnected("ws-2");
-        assertFalse(connections.hasPlayersConnected(player.sessionId()));
+    // Player ids restart at 1 in a new session under a closed one's id.
+    @Test
+    void close_leavesAPlayerOfAnotherSessionWithTheSameIdsAlone() {
+        PlayerPrincipal earlier = new PlayerPrincipal(player.sessionId(), player.sessionInstance() - 1, player.playerId());
+        connections.connected("ws-2", earlier);
+
+        connections.close(player, "You left the session");
+
+        assertEquals(List.of(CONNECTION), errorsSentTo());
     }
 
     @Test
-    void aConnectionIdRecordedAgain_countsOnlyForItsLatestSession() {
-        PlayerPrincipal elsewhere = new PlayerPrincipal(SessionCode.random(), 1L);
+    void close_sendsNothingOnceTheConnectionHasEnded() {
+        connections.disconnected(CONNECTION);
 
+        connections.close(player, "You left the session");
+
+        verifyNoInteractions(clientOutboundChannel);
+    }
+
+    @Test
+    void aConnectionIdRecordedAgain_isClosedOnlyAsItsLatestPlayer() {
+        PlayerPrincipal elsewhere = new PlayerPrincipal(SessionCode.random(), 7, 1L);
         connections.connected(CONNECTION, elsewhere);
 
-        assertFalse(connections.hasPlayersConnected(player.sessionId()));
-        assertTrue(connections.hasPlayersConnected(elsewhere.sessionId()));
+        connections.close(player, "You left the session");
+        verifyNoInteractions(clientOutboundChannel);
+
+        connections.close(elsewhere, "You left the session");
+        assertErrorSent("You left the session");
     }
 
     @Test
@@ -223,6 +229,18 @@ class PlayerConnectionsTest {
         assertEquals(StompCommand.ERROR, error.getCommand());
         assertEquals(CONNECTION, error.getSessionId());
         assertEquals(message, error.getMessage());
+    }
+
+    private List<String> errorsSentTo() {
+        ArgumentCaptor<Message<?>> sent = ArgumentCaptor.forClass(Message.class);
+        verify(clientOutboundChannel, atLeast(0)).send(sent.capture());
+
+        return sent.getAllValues()
+                .stream()
+                .map(StompHeaderAccessor::wrap)
+                .peek(error -> assertEquals(StompCommand.ERROR, error.getCommand()))
+                .map(StompHeaderAccessor::getSessionId)
+                .toList();
     }
 
     private static Message<?> broadcastTo(String connectionId) {

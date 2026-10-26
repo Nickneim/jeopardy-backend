@@ -17,8 +17,10 @@ import java.time.Duration;
  *                    read directly
  * @param peerPort    the port of the instances' management server, where
  *                    {@link GameSessionsEndpoint} is
- * @param timeout     how long to wait for the other instances; one that
- *                    hasn't answered by then is left out of the list
+ * @param timeout     how long to wait for the DNS lookup, and then, again,
+ *                    for the other instances' answers (so a lobby request
+ *                    can take twice as long); an instance that hasn't
+ *                    answered by then is left out of the list
  */
 @ConfigurationProperties(prefix = "app.session-lobby")
 public record SessionLobbyProperties(

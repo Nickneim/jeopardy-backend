@@ -8,9 +8,11 @@ import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.repository.GameRepository;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,7 +89,15 @@ public class GameService {
                 )
         );
 
-        return gameRepository.findAll(GameSpecifications.matching(filter), pageable);
+        Specification<Game> matching = GameSpecifications.matching(filter);
+
+        // JPA can't skip more rows than an int counts, and no page that far
+        // has games: it's past the end, like any other page there.
+        if (pageable.getOffset() > Integer.MAX_VALUE) {
+            return new PageImpl<>(List.of(), pageable, gameRepository.count(matching));
+        }
+
+        return gameRepository.findAll(matching, pageable);
     }
 
     /**

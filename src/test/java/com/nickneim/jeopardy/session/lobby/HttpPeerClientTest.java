@@ -41,7 +41,8 @@ class HttpPeerClientTest {
         ArrayNode body = jsonMapper.createArrayNode()
                 .add(unknownState)
                 .add(jsonMapper.valueToTree(readable))
-                .add(noCreatedAt);
+                .add(noCreatedAt)
+                .addNull();
 
         assertEquals(List.of(readable), client.read(jsonMapper.writeValueAsString(body), SOURCE));
     }

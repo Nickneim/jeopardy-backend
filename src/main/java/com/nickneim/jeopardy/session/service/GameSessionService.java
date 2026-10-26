@@ -7,8 +7,10 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.SessionSettingsRequest;
 import com.nickneim.jeopardy.session.dto.SessionTimersRequest;
+import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
+import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -44,10 +46,16 @@ public class GameSessionService {
     private final Map<SessionCode, GameSession> sessions =
             new ConcurrentHashMap<>();
 
-    // Ids of closed sessions that may still be held by connected players or
-    // subscribers (isHeldByClosedSession). Each close drops the ones nobody
-    // holds any more, so it only keeps ids with someone still on them.
+    // Ids of closed sessions that may still be watched (isHeldByClosedSession).
+    // An id is dropped once it's asked about and nobody watches it, and every
+    // so often all of them are checked (see forgetUnwatchedIds), so they
+    // don't pile up.
     private final Set<SessionCode> closedIds = ConcurrentHashMap.newKeySet();
+
+    // closedIds is swept once it grows to this; see forgetUnwatchedIds.
+    // Guarded by closedIds.
+    private int closedIdsSweepAt = MIN_CLOSED_IDS_SWEEP;
+    static final int MIN_CLOSED_IDS_SWEEP = 64;
 
     private final GameSessionTimer timer;
     private final GameSessionBroadcaster broadcaster;
@@ -72,8 +80,8 @@ public class GameSessionService {
         this.clock = clock;
     }
 
-    /** A new session with a random id. */
-    public GameSession createSession(GameBoard board) {
+    // For tests, through TestGameSessions: a new session with a random id.
+    GameSession createSession(GameBoard board) {
         return createSession(SessionCode.random(), board);
     }
 
@@ -83,21 +91,26 @@ public class GameSessionService {
      * several instances can route the create, like every later request about
      * the session, to the instance that will hold it (docs/api.md §3.2).
      *
-     * <p>A closed session's id stays taken while any of its players is still
-     * connected. Those connections stay open after the close, and player ids
-     * start at 1 in every session, so in a new session under the same id
-     * each one would act as the new player with its old id. Nothing can add
-     * such a connection after the close, since the tokens are revoked. It
-     * also stays taken while anyone is subscribed to its topic: a spectator
-     * still showing the closed game would otherwise receive the new one's
-     * broadcasts as if they were that session's.
+     * <p>A closed session's id stays taken while anyone is subscribed to its
+     * topic: a spectator (or player) still showing the closed game would
+     * otherwise receive the new one's broadcasts as if they were that
+     * session's. Its players' connections, which stay open after the close,
+     * can't act in a new session under the id: their PlayerPrincipal names
+     * the closed session's instance.
      *
      * @throws GameSessionAlreadyExistsException if the id is taken
      */
     public GameSession createSession(SessionCode id, GameBoard board) {
         GameSession session = new GameSession(id, board, GameSessionTimeouts.defaults(), clock.instant());
 
-        if (isHeldByClosedSession(id) || sessions.putIfAbsent(id, session) != null) {
+        if (sessions.putIfAbsent(id, session) != null) {
+            throw new GameSessionAlreadyExistsException(id);
+        }
+        // Only checked once the id is ours: a session that closes after the
+        // check has already put its id in closedIds before freeing it, so
+        // whichever way the two race, this sees it.
+        if (isHeldByClosedSession(id)) {
+            sessions.remove(id, session);
             throw new GameSessionAlreadyExistsException(id);
         }
 
@@ -122,26 +135,21 @@ public class GameSessionService {
     }
 
     /**
-     * Whether a closed session still holds the id: one of its players is
-     * connected, or anyone is subscribed to its topic (see
-     * {@link #createSession(SessionCode, GameBoard)}). Only closed ids are
-     * checked, so the broker is never asked about the random ids of new
-     * sessions; an id is forgotten once nobody holds it.
+     * Whether a closed session still holds the id: anyone is subscribed to
+     * its topic (see {@link #createSession(SessionCode, GameBoard)}). Only
+     * closed ids are checked, so the broker is never asked about the random
+     * ids of new sessions; an id is forgotten once nobody watches it.
      */
     private boolean isHeldByClosedSession(SessionCode id) {
         if (!closedIds.contains(id)) {
             return false;
         }
-        if (isHeldNow(id)) {
+        if (watchers.hasWatchers(id)) {
             return true;
         }
 
         closedIds.remove(id);
         return false;
-    }
-
-    private boolean isHeldNow(SessionCode id) {
-        return connections.hasPlayersConnected(id) || watchers.hasWatchers(id);
     }
 
     /**
@@ -185,12 +193,12 @@ public class GameSessionService {
 
     /**
      * Forgets a session at once, without the CLOSED broadcast, as if this
-     * instance had lost it (as a restart does). Only tests use this, to set
-     * up that situation. The app itself always ends a session through
-     * {@link #closeSession}, so that clients see why it ended; don't call
-     * this from application code.
+     * instance had lost it (as a restart does). Only tests use this (through
+     * TestGameSessions), to set up that situation. The app itself always
+     * ends a session through {@link #closeSession}, so that clients see why
+     * it ended.
      */
-    public void removeSession(SessionCode sessionId) {
+    void removeSession(SessionCode sessionId) {
         timer.cancel(sessionId);
         timer.cancelCleanup(sessionId);
 
@@ -222,7 +230,7 @@ public class GameSessionService {
             GameSessionPlayer player = session.addPlayer(playerName, PlayerTokens.generate());
             playerTokens.register(
                     player.getToken(),
-                    new PlayerPrincipal(sessionId, player.getId())
+                    PlayerPrincipal.of(session, player.getId())
             );
 
             broadcast(session);
@@ -236,50 +244,35 @@ public class GameSessionService {
      * duration the request leaves out keeps its current value. There is no
      * timer to re-arm, since the lobby has none.
      */
-    public void updateTimers(
-            SessionCode sessionId,
-            Long playerId,
-            SessionTimersRequest request
-    ) {
-        actKeepingTimer(sessionId, session ->
-                session.updateTimeouts(playerId, request.applyTo(session.getTimeouts())));
+    public void updateTimers(PlayerPrincipal host, SessionTimersRequest request) {
+        actKeepingTimer(host, session ->
+                session.updateTimeouts(host.playerId(), request.applyTo(session.getTimeouts())));
     }
 
     /** The host's lobby settings. Like the timers, they have no timer to re-arm. */
-    public void updateSettings(
-            SessionCode sessionId,
-            Long playerId,
-            SessionSettingsRequest request
-    ) {
-        actKeepingTimer(sessionId, session -> session.updateLateJoin(playerId, request.allowLateJoin()));
+    public void updateSettings(PlayerPrincipal host, SessionSettingsRequest request) {
+        actKeepingTimer(host, session -> session.updateLateJoin(host.playerId(), request.allowLateJoin()));
     }
 
-    public void leave(
-            SessionCode sessionId,
-            Long playerId
-    ) {
-        GameSession session = getSession(sessionId);
+    public void leave(PlayerPrincipal player) {
+        GameSession session = sessionOf(player);
 
         synchronized (session) {
             GameSessionState before = session.getState();
-            GameSessionPlayer player = session.leave(playerId);
+            GameSessionPlayer departed = session.leave(player.playerId());
 
-            afterDeparture(session, player, before, LEFT_MESSAGE);
+            afterDeparture(session, departed, before, LEFT_MESSAGE);
         }
     }
 
-    public void kick(
-            SessionCode sessionId,
-            Long hostId,
-            Long playerId
-    ) {
-        GameSession session = getSession(sessionId);
+    public void kick(PlayerPrincipal host, Long playerId) {
+        GameSession session = sessionOf(host);
 
         synchronized (session) {
             GameSessionState before = session.getState();
-            GameSessionPlayer player = session.kick(hostId, playerId);
+            GameSessionPlayer kicked = session.kick(host.playerId(), playerId);
 
-            afterDeparture(session, player, before, KICKED_MESSAGE);
+            afterDeparture(session, kicked, before, KICKED_MESSAGE);
         }
     }
 
@@ -309,50 +302,66 @@ public class GameSessionService {
             broadcast(session);
         }
 
-        connections.close(new PlayerPrincipal(session.getId(), player.getId()), message);
+        connections.close(PlayerPrincipal.of(session, player.getId()), message);
     }
 
-    public void startGame(SessionCode sessionId, Long playerId) {
-        act(sessionId, session -> session.startGame(playerId));
+    public void startGame(PlayerPrincipal player) {
+        act(player, session -> session.startGame(player.playerId()));
     }
 
-    public void chooseClue(SessionCode sessionId, Long playerId, Long clueId) {
-        act(sessionId, session -> session.chooseClue(playerId, clueId));
+    public void chooseClue(PlayerPrincipal player, Long clueId) {
+        act(player, session -> session.chooseClue(player.playerId(), clueId));
     }
 
-    public void placeDailyDoubleWager(SessionCode sessionId, Long playerId, int wager) {
-        act(sessionId, session -> session.placeDailyDoubleWager(playerId, wager));
+    public void placeDailyDoubleWager(PlayerPrincipal player, int wager) {
+        act(player, session -> session.placeDailyDoubleWager(player.playerId(), wager));
     }
 
     // Final Jeopardy submissions don't change the state, so they deliberately
     // skip scheduleTimeout: re-arming the timer would restart the phase.
-    public void placeFinalJeopardyWager(SessionCode sessionId, Long playerId, int wager) {
-        actKeepingTimer(sessionId, session -> session.placeFinalJeopardyWager(playerId, wager));
+    public void placeFinalJeopardyWager(PlayerPrincipal player, int wager) {
+        actKeepingTimer(player, session -> session.placeFinalJeopardyWager(player.playerId(), wager));
     }
 
-    public void answerFinalJeopardy(SessionCode sessionId, Long playerId, String answer) {
-        actKeepingTimer(sessionId, session -> session.answerFinalJeopardy(playerId, answer));
+    public void answerFinalJeopardy(PlayerPrincipal player, String answer) {
+        actKeepingTimer(player, session -> session.answerFinalJeopardy(player.playerId(), answer));
     }
 
-    public void buzz(SessionCode sessionId, Long playerId) {
-        act(sessionId, session -> session.buzz(playerId));
+    public void buzz(PlayerPrincipal player) {
+        act(player, session -> session.buzz(player.playerId()));
     }
 
-    public void answerClue(SessionCode sessionId, Long playerId, String answer) {
-        act(sessionId, session -> session.answerClue(playerId, answer));
+    public void answerClue(PlayerPrincipal player, String answer) {
+        act(player, session -> session.answerClue(player.playerId(), answer));
     }
 
-    public void finishRevealingClue(SessionCode sessionId) {
+    // For tests, through TestGameSessions: real reveals end on their timers.
+    void finishRevealingClue(SessionCode sessionId) {
         onTimeout(sessionId, GameSessionState.REVEALING_CLUE, GameSession::finishRevealingClue);
     }
 
-    public void finishRevealingAnswer(SessionCode sessionId) {
+    void finishRevealingAnswer(SessionCode sessionId) {
         onTimeout(sessionId, GameSessionState.REVEALING_ANSWER, GameSession::finishRevealingAnswer);
     }
 
+    /**
+     * The session the player is acting in. It must be the very session they
+     * joined: a closed session's players are still connected, and a new
+     * session under its id has players with the same ids.
+     */
+    private GameSession sessionOf(PlayerPrincipal player) {
+        GameSession session = getSession(player.sessionId());
+
+        if (!player.isIn(session)) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
+        }
+
+        return session;
+    }
+
     /** The usual mutation: under the lock, act, re-arm the phase timer, broadcast. */
-    private void act(SessionCode sessionId, Consumer<GameSession> action) {
-        GameSession session = getSession(sessionId);
+    private void act(PlayerPrincipal player, Consumer<GameSession> action) {
+        GameSession session = sessionOf(player);
 
         synchronized (session) {
             action.accept(session);
@@ -363,8 +372,8 @@ public class GameSessionService {
     }
 
     /** For actions that leave the state alone: re-arming the timer would restart the phase. */
-    private void actKeepingTimer(SessionCode sessionId, Consumer<GameSession> action) {
-        GameSession session = getSession(sessionId);
+    private void actKeepingTimer(PlayerPrincipal player, Consumer<GameSession> action) {
+        GameSession session = sessionOf(player);
 
         synchronized (session) {
             action.accept(session);
@@ -450,7 +459,7 @@ public class GameSessionService {
      * every token in it. Connections stay open so clients can show the
      * closed session; a reconnect is rejected because the token is gone, and
      * GET /api/game-sessions/{id} returns 404. The id can't be reused while
-     * they're open (see {@link #createSession(SessionCode, GameBoard)}).
+     * anyone watches it (see {@link #createSession(SessionCode, GameBoard)}).
      * Called with the lock held.
      */
     private void closeSession(GameSession session, SessionCloseReason reason) {
@@ -460,16 +469,34 @@ public class GameSessionService {
         session.close(reason);
         broadcast(session);
 
-        // Tokens before the id is freed: a player still connecting could
-        // otherwise pass the interceptor's second token check after a new
-        // session took the id, and act as that session's player. Removed only
-        // if it's still this session, like everywhere else: one forgotten
-        // without a close (removeSession) can be closed later, after a new
-        // session took its id.
+        // Tokens before the id is freed, so nobody connects as one of its
+        // players once a new session may have the id (they couldn't act in
+        // it anyway: their principal names this session's instance). The id
+        // goes in closedIds before it's freed, so a create that takes it
+        // finds it there. Removed only if it's still this session, like
+        // everywhere else: one forgotten without a close (removeSession) can
+        // be closed later, after a new session took its id.
         session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
         closedIds.add(sessionId);
         sessions.remove(sessionId, session);
-        closedIds.removeIf(closedId -> !isHeldNow(closedId));
+        forgetUnwatchedIds();
+    }
+
+    /**
+     * Drops the closed ids nobody watches any more, once there are twice as
+     * many as after the last sweep. A sweep asks the broker about every
+     * closed id, so this way a close costs a constant number of lookups on
+     * average, while the ids still can't pile up.
+     */
+    private void forgetUnwatchedIds() {
+        synchronized (closedIds) {
+            if (closedIds.size() < closedIdsSweepAt) {
+                return;
+            }
+
+            closedIds.removeIf(closedId -> !watchers.hasWatchers(closedId));
+            closedIdsSweepAt = Math.max(MIN_CLOSED_IDS_SWEEP, 2 * closedIds.size());
+        }
     }
 
     private void scheduleTimeout(GameSession session) {

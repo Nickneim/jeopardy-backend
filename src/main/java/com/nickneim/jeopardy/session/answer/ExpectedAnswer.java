@@ -39,7 +39,7 @@ record ExpectedAnswer(int required, List<Option> options) {
 
         Matcher list = LIST.matcher(answer);
         if (list.matches()) {
-            required = Math.max(1, Integer.parseInt(list.group(1)));
+            required = Math.max(1, parseCount(list.group(1)));
             texts = splitOutside(list.group(2), '[', ']', '|', i -> false);
         }
 
@@ -49,6 +49,16 @@ record ExpectedAnswer(int required, List<Option> options) {
                 .toList();
 
         return new ExpectedAnswer(Math.min(required, Math.max(1, options.size())), options);
+    }
+
+    // A count too large for an int asks for more than any list has, and the
+    // count is capped at the number of options anyway.
+    private static int parseCount(String digits) {
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException exception) {
+            return Integer.MAX_VALUE;
+        }
     }
 
     /**

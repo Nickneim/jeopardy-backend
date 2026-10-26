@@ -33,7 +33,7 @@ class PlayerAuthenticationInterceptorTest {
     private PlayerAuthenticationInterceptor interceptor;
 
     private final PlayerPrincipal player =
-            new PlayerPrincipal(SessionCode.random(), 42L);
+            new PlayerPrincipal(SessionCode.random(), 3, 42L);
 
     @BeforeEach
     void setUp() {
@@ -78,7 +78,7 @@ class PlayerAuthenticationInterceptorTest {
 
     @Test
     void closingAPlayer_leavesOtherPlayersConnected() {
-        PlayerPrincipal other = new PlayerPrincipal(player.sessionId(), 43L);
+        PlayerPrincipal other = new PlayerPrincipal(player.sessionId(), player.sessionInstance(), 43L);
         registry.register("other-token", other);
         interceptor.preSend(message(StompCommand.CONNECT, "other-token", "ws-other"), null);
 

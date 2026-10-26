@@ -63,8 +63,10 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
     // STOMP session id (one per connection) -> the connection.
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
-    // Session id -> the ids of its players' connections; a session with none
-    // has no entry. The sets are only touched inside the map's compute calls.
+    // Session id -> the ids of its players' connections, so closing one
+    // player's connections doesn't look through everyone's; a session with
+    // none has no entry. The sets are only touched inside the map's compute
+    // calls.
     private final Map<SessionCode, Set<String>> connectionsBySession = new ConcurrentHashMap<>();
 
     private final MessageChannel clientOutboundChannel;
@@ -106,29 +108,29 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
     }
 
     /**
-     * Whether any player of a session with this id is still connected. A
-     * lookup, not a scan: every close asks it about each closed id still held.
-     */
-    public boolean hasPlayersConnected(SessionCode sessionId) {
-        return connectionsBySession.containsKey(sessionId);
-    }
-
-    /**
      * Closes every connection of this player, with {@code message} in the
      * ERROR frame. Frames already sent to them are delivered first; anything
      * sent after the ERROR frame is dropped.
      */
     public void close(PlayerPrincipal player, String message) {
+        List<String> sessionConnections = new ArrayList<>();
+        connectionsBySession.computeIfPresent(player.sessionId(), (sessionId, ids) -> {
+            sessionConnections.addAll(ids);
+            return ids;
+        });
+
         List<String> readyToClose = new ArrayList<>();
 
-        connections.forEach((connectionId, connection) -> {
-            if (!connection.player.equals(player)) {
-                return;
+        for (String connectionId : sessionConnections) {
+            Connection connection = connections.get(connectionId);
+
+            if (connection == null || !connection.player.equals(player)) {
+                continue;
             }
 
             synchronized (connection) {
                 if (connection.closing) {
-                    return;
+                    continue;
                 }
 
                 connection.closing = true;
@@ -140,7 +142,7 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
                     connection.closeMessage = message;
                 }
             }
-        });
+        }
 
         readyToClose.forEach(connectionId -> sendError(connectionId, message));
     }

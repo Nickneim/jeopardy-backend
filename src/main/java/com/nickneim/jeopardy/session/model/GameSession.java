@@ -11,13 +11,19 @@ import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class GameSession {
 
     // The lowest Daily Double wager, unless the round's values are lower still.
     private static final int MINIMUM_DAILY_DOUBLE_WAGER = 5;
 
+    private static final AtomicLong INSTANCE_IDS = new AtomicLong();
+
     private final SessionCode id;
+    // Tells this session apart from any other that has (or had) its id: a
+    // closed session's id can be reused, and player ids restart at 1.
+    private final long instanceId = INSTANCE_IDS.incrementAndGet();
     private final GameBoard board;
     private final Instant createdAt;
     // Every player still in the session, in join order. A player who left
@@ -78,6 +84,11 @@ public class GameSession {
 
     public SessionCode getId() {
         return id;
+    }
+
+    /** Unique among every session this server has created, unlike the id. */
+    public long getInstanceId() {
+        return instanceId;
     }
 
     public GameBoard getBoard() {

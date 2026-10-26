@@ -77,11 +77,14 @@ class HttpPeerClient implements PeerClient {
             String problem;
             try {
                 GameSessionSummaryResponse summary = jsonMapper.treeToValue(element, GameSessionSummaryResponse.class);
-                if (summary.id() != null && summary.state() != null && summary.createdAt() != null) {
+                if (summary == null) {
+                    problem = "null instead of a session";
+                } else if (summary.id() != null && summary.state() != null && summary.createdAt() != null) {
                     summaries.add(summary);
                     continue;
+                } else {
+                    problem = "missing id, state or createdAt";
                 }
-                problem = "missing id, state or createdAt";
             } catch (JacksonException exception) {
                 problem = exception.getOriginalMessage();
             }

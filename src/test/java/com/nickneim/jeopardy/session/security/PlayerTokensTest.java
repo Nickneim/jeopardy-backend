@@ -32,13 +32,19 @@ class PlayerTokensTest {
         assertEquals(1000, tokens.size());
     }
 
+    // It names the player's user destinations, so a player of an earlier
+    // session with the same id and player id must have another.
     @Test
-    void principalName_identifiesSessionAndPlayer() {
+    void principalName_identifiesSessionInstanceAndPlayer() {
         SessionCode sessionId = SessionCode.random();
 
         assertEquals(
-                sessionId + ":42",
-                new PlayerPrincipal(sessionId, 42L).getName()
+                sessionId + ":7:42",
+                new PlayerPrincipal(sessionId, 7, 42L).getName()
+        );
+        assertNotEquals(
+                new PlayerPrincipal(sessionId, 7, 42L).getName(),
+                new PlayerPrincipal(sessionId, 8, 42L).getName()
         );
     }
 }
