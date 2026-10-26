@@ -304,6 +304,10 @@ class GameBoardTest {
                 IllegalArgumentException.class,
                 () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.IMAGE, null)
         );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.IMAGE, " ")
+        );
         assertDoesNotThrow(
                 () -> new BoardClue(5L, 1, "Q", "A", 200, false, ClueType.VIDEO, "https://media.example/a.mp4")
         );

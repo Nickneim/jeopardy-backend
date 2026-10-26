@@ -48,7 +48,8 @@ public class Clue {
 
     /**
      * A null {@code clueType} means {@link ClueType#TEXT}. Like the database's
-     * check_media_url, a clue has a media URL exactly when it isn't text.
+     * check_media_url, a text clue has no media URL and any other clue has a
+     * non-blank one.
      */
     public Clue(
             String question,
@@ -63,15 +64,15 @@ public class Clue {
         this.rowNumber = rowNumber;
         this.clueType = Objects.requireNonNullElse(clueType, ClueType.TEXT);
         this.mediaUrl = mediaUrl;
+        this.category = Objects.requireNonNull(category, "category");
 
-        if ((this.clueType == ClueType.TEXT) != (mediaUrl == null)) {
+        if (!ClueType.hasValidMediaUrl(this.clueType, mediaUrl)) {
             throw new IllegalArgumentException(
                     "A " + this.clueType + " clue must "
                             + (this.clueType == ClueType.TEXT ? "not have" : "have")
                             + " a media URL"
             );
         }
-        this.category = category;
     }
 
     public Long getId() {

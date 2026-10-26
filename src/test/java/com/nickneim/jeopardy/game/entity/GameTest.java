@@ -67,6 +67,24 @@ class GameTest {
     }
 
     @Test
+    void newDailyDouble_comparesSavedGamesById() {
+        // The same saved game, loaded as two different objects.
+        Game sameGameElsewhere = new Game("Show #123", LocalDate.of(2025, 1, 1), "40");
+        ReflectionTestUtils.setField(game, "id", 7L);
+        ReflectionTestUtils.setField(sameGameElsewhere, "id", 7L);
+
+        assertDoesNotThrow(() -> new GameDailyDouble(sameGameElsewhere, dailyDoubleClue));
+
+        Game otherSavedGame = new Game("Show #124", LocalDate.of(2025, 1, 2), "40");
+        ReflectionTestUtils.setField(otherSavedGame, "id", 8L);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new GameDailyDouble(otherSavedGame, dailyDoubleClue)
+        );
+    }
+
+    @Test
     void newDailyDouble_hasTheGameAndClueIds() {
         ReflectionTestUtils.setField(game, "id", 7L);
 

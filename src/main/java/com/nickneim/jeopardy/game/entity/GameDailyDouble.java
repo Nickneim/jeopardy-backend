@@ -24,7 +24,7 @@ public class GameDailyDouble {
 
     public GameDailyDouble(Game game, Clue clue) {
         // The database checks the same (V3's trigger), but only on flush.
-        if (clue.getCategory().getGame() != game) {
+        if (!isSameGame(clue.getCategory().getGame(), game)) {
             throw new IllegalArgumentException("A daily double's clue must belong to its game");
         }
 
@@ -32,6 +32,16 @@ public class GameDailyDouble {
         this.id = new GameDailyDoubleId(game.getId(), clue.getId());
         this.game = game;
         this.clue = clue;
+    }
+
+    // By id once both are saved: entities from different persistence contexts,
+    // or a proxy and the real instance, are the same game without being the
+    // same object. Unsaved games can only be compared as objects.
+    private static boolean isSameGame(Game a, Game b) {
+        if (a.getId() != null && b.getId() != null) {
+            return a.getId().equals(b.getId());
+        }
+        return a == b;
     }
 
     public GameDailyDoubleId getId() {

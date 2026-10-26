@@ -47,9 +47,9 @@ public record BoardClue(
             throw new InvalidBoardException("clue " + id + " has a negative value: " + value);
         }
 
-        if ((clueType == ClueType.TEXT) != (mediaUrl == null)) {
+        if (!ClueType.hasValidMediaUrl(clueType, mediaUrl)) {
             throw new InvalidBoardException(
-                    "a " + clueType + " clue " + (mediaUrl == null ? "needs" : "can't have") + " a media URL: " + id
+                    "a " + clueType + " clue " + (clueType == ClueType.TEXT ? "can't have" : "needs") + " a media URL: " + id
             );
         }
     }

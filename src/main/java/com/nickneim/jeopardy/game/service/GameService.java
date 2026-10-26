@@ -48,7 +48,7 @@ public class GameService {
      * only runs inside the caller's transaction: without one it fails at
      * once instead of on the first lazy read.
      */
-    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY)
     public Game getGame(Long id) {
         return gameRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
@@ -75,7 +75,9 @@ public class GameService {
         return games.map(game -> GameSummaryResponse.from(game, clueCounts.get(game.getId())));
     }
 
-    public Page<Game> getGames(int page, int size, GameFilter filter) {
+    // Package-private: only getGameSummaries' transaction keeps the page and
+    // its counts consistent, so nothing else should call these two.
+    Page<Game> getGames(int page, int size, GameFilter filter) {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -92,7 +94,7 @@ public class GameService {
      * How many clues each game has, by game id, with one grouped query.
      * Games without clues map to 0.
      */
-    public Map<Long, Long> countClues(Collection<Game> games) {
+    Map<Long, Long> countClues(Collection<Game> games) {
         if (games.isEmpty()) {
             return Map.of();
         }

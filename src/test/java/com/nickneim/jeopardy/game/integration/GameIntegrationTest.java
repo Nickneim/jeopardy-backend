@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.repository.GameRepository;
+import com.nickneim.jeopardy.session.board.BoardClue;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -70,6 +71,77 @@ class GameIntegrationTest {
                 otherGame,
                 clueOfGame1
         )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void database_rejectsMovingADailyDoublesClueToAnotherGame() {
+        Long dailyDoubleClue = jdbcTemplate.queryForObject(
+                "SELECT clue_id FROM game_daily_double WHERE game_id = 1 LIMIT 1", Long.class);
+        // An empty category, so the move can't clash with another clue's row.
+        Long emptyCategory = jdbcTemplate.queryForObject(
+                "INSERT INTO category (name, column_number, game_id) VALUES ('TARGET', 1, ?) RETURNING id",
+                Long.class,
+                insertEmptyGame("Game Integration Test Game Clue Target")
+        );
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "UPDATE clue SET category_id = ? WHERE id = ?",
+                emptyCategory,
+                dailyDoubleClue
+        ))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("is a daily double of another game");
+    }
+
+    @Test
+    void database_rejectsMovingADailyDoublesCategoryToAnotherGame() {
+        Long categoryWithDailyDouble = jdbcTemplate.queryForObject("""
+                SELECT clue.category_id FROM game_daily_double
+                JOIN clue ON clue.id = game_daily_double.clue_id
+                WHERE game_daily_double.game_id = 1
+                LIMIT 1
+                """, Long.class);
+        // A game without categories, so the move can't clash with a column.
+        Long emptyGame = insertEmptyGame("Game Integration Test Game Category Target");
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "UPDATE category SET game_id = ? WHERE id = ?",
+                emptyGame,
+                categoryWithDailyDouble
+        ))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("has a daily double of another game");
+    }
+
+    private Long insertEmptyGame(String title) {
+        return jdbcTemplate.queryForObject(
+                "INSERT INTO game (title, game_date, season) VALUES (?, DATE '2025-03-01', '40') RETURNING id",
+                Long.class,
+                title
+        );
+    }
+
+    @Test
+    void database_rejectsBlankMediaUrl() {
+        Long categoryId = jdbcTemplate.queryForObject(
+                "SELECT id FROM category WHERE game_id = 1 LIMIT 1", Long.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO clue (question, answer, row_number, type, media_url, category_id)"
+                        + " VALUES ('Q', 'A', 10, 'IMAGE', ' ', ?)",
+                categoryId
+        ))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("check_media_url");
+    }
+
+    @Test
+    void database_rowLimitMatchesBoardClue() {
+        String check = jdbcTemplate.queryForObject(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'check_clue_row_number'",
+                String.class);
+
+        assertThat(check).contains("row_number <= " + BoardClue.MAX_ROW + ")");
     }
 
     @Test

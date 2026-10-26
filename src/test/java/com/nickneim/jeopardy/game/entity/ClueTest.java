@@ -66,6 +66,20 @@ class ClueTest {
                 "Question", "Answer", (short) 1, ClueType.IMAGE, "https://example.com/a.jpg", category));
     }
 
+    @Test
+    void newClue_rejectsBlankMediaUrl() {
+        Category category = new Category("CATEGORY", (short) 1, null, game);
+
+        assertThrows(IllegalArgumentException.class, () -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.IMAGE, "  ", category));
+    }
+
+    @Test
+    void newClue_needsACategory() {
+        assertThrows(NullPointerException.class, () -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.TEXT, null, null));
+    }
+
     private Clue clueAt(int column, int row) {
         Category category = new Category(
                 "CATEGORY",
