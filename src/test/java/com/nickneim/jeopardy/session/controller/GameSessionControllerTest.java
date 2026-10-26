@@ -228,6 +228,24 @@ class GameSessionControllerTest {
     }
 
     @Test
+    void joinSession_rejectsTooLongName() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+
+        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": \"" + "x".repeat(31) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "playerName must be at most 30 characters"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
     void joinSession_rejectsMissingName() throws Exception {
         SessionCode sessionId = SessionCode.random();
 

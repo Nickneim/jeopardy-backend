@@ -167,11 +167,12 @@ The session's current state: the same `GameSessionResponse` as the latest broadc
 
 Joins a session.
 
-- Request: `{ "playerName": "Nico" }` (must not be blank)
+- Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters)
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
 - The first player to join becomes the host (§6.4).
 - Unknown (or removed) session: `404 { "status": 404, "message": "Game session not found: <id>" }`
 - Missing or blank name: `400 { "status": 400, "message": "playerName must not be blank" }`
+- Name longer than 30 characters: `400 { "status": 400, "message": "playerName must be at most 30 characters" }`
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 
@@ -246,14 +247,16 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 | `leave` | none | Any state except `CLOSED` (§6.4) |
 | `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue` |
 | `buzz` | none | `WAITING_FOR_BUZZER`, unless you're in `playersLockedOut` |
-| `answer` | `{ "answer": string }` | `WAITING_FOR_ANSWER`, if you are `playerAnswering` |
+| `answer` | `{ "answer": string }` (at most 200 characters) | `WAITING_FOR_ANSWER`, if you are `playerAnswering` |
 | `place-daily-double-wager` | `{ "wager": number }` | `WAITING_FOR_DAILY_DOUBLE_WAGER`, if you chose the clue |
 | `place-final-jeopardy-wager` | `{ "wager": number }` | `FINAL_JEOPARDY_WAGERING` (can be changed until the phase ends) |
-| `answer-final-jeopardy` | `{ "answer": string }` | `FINAL_JEOPARDY_ANSWERING` (can be changed until the phase ends) |
+| `answer-final-jeopardy` | `{ "answer": string }` (at most 200 characters) | `FINAL_JEOPARDY_ANSWERING` (can be changed until the phase ends) |
 
 Every action requires a player who hasn't left. A player who has left can't act at all, even while they still hold a role (§6.4).
 
-A successful action produces a broadcast. A failed one produces an error on `/user/queue/errors` and nothing else.
+A successful action produces a broadcast. A failed one produces an error on `/user/queue/errors` and nothing else. Every action that fails gets an error, including one with an unreadable body and one that fails because of a server bug (`INTERNAL_ERROR`, §7).
+
+**Invalid bodies** get `INVALID_REQUEST` (§7). A missing required field or a too-long answer gets a message naming each invalid field, for example `"clueId must not be null"` or `"answer must be at most 200 characters"` (several are joined with `", "`); messages are always in English. An empty body on an action that takes one (`{}` counts as a body) gets `"Payload value must not be empty"`. A body that isn't JSON, or has a field of the wrong type (`{ "clueId": "abc" }`, or a wager too large for a 32-bit integer), gets `"Invalid request: the body isn't valid JSON for this action"`.
 
 **Messages from one connection are handled in the order they were sent.** For example, two `place-final-jeopardy-wager` messages sent back to back always leave the second wager in place, so there's no need to wait for a broadcast before sending the next message. There's no ordering between different connections: when two players act at the same moment, either can be first (see §7).
 
@@ -550,7 +553,8 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `CLUE_NOT_FOUND` | That clue isn't on this round's board |
 | `CLUE_ALREADY_PLAYED` | That clue was already chosen |
 | `INVALID_WAGER` | The wager is outside the allowed range (§6.2) |
-| `INVALID_REQUEST` | The payload is missing a field or malformed, or a timer is out of bounds (the message names the field, §6.3); also kicking yourself, and a destination whose session code isn't valid (§3.2) |
+| `INVALID_REQUEST` | The payload is missing a field, has a field of the wrong type, isn't JSON, or has a too-long answer (§4.3), or a timer is out of bounds (§6.3); also kicking yourself, and a destination whose session code isn't valid (§3.2) |
+| `INTERNAL_ERROR` | A bug on the server. The message is always `"Something went wrong on the server. Please try again."`, and the action may or may not have taken effect: rely on the next broadcast or a `GET` of the state |
 
 Timing races are normal: two players buzzing at the same moment means one wins and the other gets `INVALID_STATE`. Treat these errors as non-fatal.
 
@@ -590,7 +594,8 @@ type GameErrorCode =
   | "INVALID_REQUEST"
   | "UNAUTHENTICATED"
   | "NOT_HOST"
-  | "PLAYER_NOT_FOUND";
+  | "PLAYER_NOT_FOUND"
+  | "INTERNAL_ERROR";
 
 // ---------- REST: browsing ----------
 interface ApiErrorResponse {
@@ -716,7 +721,7 @@ interface GameSessionSummaryResponse {
   joinScore: number;          // a new player's starting score, never above 0
 }
 
-interface JoinSessionRequest { playerName: string; }
+interface JoinSessionRequest { playerName: string; }  // 1–30 characters, not blank
 interface JoinSessionResponse {
   playerId: number;      // 1, 2, 3... within the session
   token: string;         // secret: only for the CONNECT header
@@ -724,10 +729,10 @@ interface JoinSessionResponse {
 
 // ---------- WebSocket: actions ----------
 interface ChooseClueRequest { clueId: number; }
-interface AnswerClueRequest { answer: string; }
+interface AnswerClueRequest { answer: string; }  // at most 200 characters
 interface PlaceDailyDoubleWagerRequest { wager: number; }
 interface PlaceFinalJeopardyWagerRequest { wager: number; }
-interface AnswerFinalJeopardyRequest { answer: string; }
+interface AnswerFinalJeopardyRequest { answer: string; }  // at most 200 characters
 type UpdateTimersRequest = Partial<SessionTimers>;  // host only, WAITING_FOR_START
 interface KickPlayerRequest { playerId: number; }  // host only
 interface UpdateSettingsRequest { allowLateJoin: boolean; }  // host only, WAITING_FOR_START
@@ -844,4 +849,4 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 - **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast. With several instances, only the sessions on the instance that stopped are lost.
 - **Changing the number of instances moves some sessions' routing.** When an instance is added or removed, the load balancer sends some session ids to a different instance than before. Open connections stay where they are and keep working, but new requests for those sessions (a refresh, a join, a reconnect) reach an instance without them and get a 404. Keep the number of instances fixed while games are running.
 - **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4); the timers keep the game moving around an absent player.
-- **No limits** on the number of players, duplicate names or name length.
+- **No limits** on the number of players or duplicate names. Names are capped at 30 characters (§3.2) and answers at 200 (§4.3).

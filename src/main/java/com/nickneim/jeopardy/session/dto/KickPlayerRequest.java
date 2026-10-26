@@ -4,5 +4,5 @@ import jakarta.validation.constraints.NotNull;
 
 /** The player the host wants to remove. */
 public record KickPlayerRequest(
-        @NotNull Long playerId
+        @NotNull(message = "must not be null") Long playerId
 ) {}

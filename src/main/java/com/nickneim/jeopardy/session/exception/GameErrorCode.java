@@ -11,5 +11,6 @@ public enum GameErrorCode {
     INVALID_REQUEST,
     UNAUTHENTICATED,
     NOT_HOST,
-    PLAYER_NOT_FOUND
+    PLAYER_NOT_FOUND,
+    INTERNAL_ERROR
 }

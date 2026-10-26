@@ -7,7 +7,10 @@ import com.nickneim.jeopardy.session.security.PlayerPrincipal;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,6 +19,7 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 
 import java.util.stream.Collectors;
 
@@ -27,6 +31,8 @@ import java.util.stream.Collectors;
  */
 @Controller
 public class GameSessionWebSocketController {
+
+    private static final Logger log = LoggerFactory.getLogger(GameSessionWebSocketController.class);
 
     private final GameSessionService gameSessionService;
 
@@ -231,16 +237,49 @@ public class GameSessionWebSocketController {
     ) {
         BindingResult bindingResult = exception.getBindingResult();
 
-        String message = bindingResult == null
+        // Field errors name their field. An empty body isn't one: it's a
+        // global error ("Payload value must not be empty").
+        String message = bindingResult == null || !bindingResult.hasErrors()
                 ? "Invalid request!"
-                : bindingResult.getFieldErrors()
+                : bindingResult.getAllErrors()
                         .stream()
-                        .map(error -> error.getField() + " " + error.getDefaultMessage())
+                        .map(error -> error instanceof FieldError fieldError
+                                ? fieldError.getField() + " " + fieldError.getDefaultMessage()
+                                : error.getDefaultMessage())
                         .collect(Collectors.joining(", "));
 
         return new GameSessionErrorResponse(
                 GameErrorCode.INVALID_REQUEST.name(),
                 message
+        );
+    }
+
+    // A body that isn't JSON, or has a field of the wrong type, such as
+    // {"clueId": "abc"} or a wager too large for an int. Jackson's message
+    // names internal classes, so it isn't passed on.
+    @MessageExceptionHandler(MessageConversionException.class)
+    @SendToUser(value = "/queue/errors", broadcast = false)
+    public GameSessionErrorResponse handleUnreadableRequest(
+            MessageConversionException exception
+    ) {
+        return new GameSessionErrorResponse(
+                GameErrorCode.INVALID_REQUEST.name(),
+                "Invalid request: the body isn't valid JSON for this action"
+        );
+    }
+
+    // Anything else is a server bug. Without this the sender would get no
+    // reply at all; the more specific handlers above still win.
+    @MessageExceptionHandler(Exception.class)
+    @SendToUser(value = "/queue/errors", broadcast = false)
+    public GameSessionErrorResponse handleUnexpected(
+            Exception exception
+    ) {
+        log.error("A STOMP action failed", exception);
+
+        return new GameSessionErrorResponse(
+                GameErrorCode.INTERNAL_ERROR.name(),
+                "Something went wrong on the server. Please try again."
         );
     }
 

@@ -46,6 +46,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -1518,6 +1519,118 @@ class GameSessionWebSocketIntegrationTest {
 
         assertEquals("INVALID_REQUEST", error.code());
         assertEquals("buzzerMs must be between 1000 and 300000", error.message());
+    }
+
+    @Test
+    void aFieldOfTheWrongType_isRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/choose-clue",
+                Map.of("clueId", "abc")
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals("Invalid request: the body isn't valid JSON for this action", error.message());
+    }
+
+    // This client sends an empty Map as an empty body, not as "{}" (which
+    // would get "clueId must not be null").
+    @Test
+    void anEmptyBody_isRejectedWithAMessage()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/choose-clue",
+                Map.of()
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals("Payload value must not be empty", error.message());
+    }
+
+    @Test
+    void aWagerTooLargeForAnInt_isRejected()
+            throws Exception {
+
+        GameSession session = createSessionWaitingForWager();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/place-daily-double-wager",
+                Map.of("wager", 99_999_999_999L)
+        );
+
+        assertEquals("INVALID_REQUEST", awaitError(errors).code());
+    }
+
+    @Test
+    void aTooLongAnswer_isRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        answer(
+                stompSession,
+                session.getId(),
+                new AnswerClueRequest("x".repeat(201))
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals("INVALID_REQUEST", error.code());
+        assertEquals("answer must be at most 200 characters", error.message());
+    }
+
+    // STOMP has no Accept-Language, so default messages would follow the
+    // server's default locale.
+    @Test
+    void validationMessages_areNotLocalized()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        Locale defaultLocale = Locale.getDefault();
+        Locale.setDefault(Locale.GERMAN);
+
+        try {
+            chooseClue(
+                    stompSession,
+                    session.getId(),
+                    new ChooseClueRequest(null)
+            );
+
+            assertEquals("clueId must not be null", awaitError(errors).message());
+        } finally {
+            Locale.setDefault(defaultLocale);
+        }
     }
 
     @Test
