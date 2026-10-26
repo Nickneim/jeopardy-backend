@@ -214,6 +214,8 @@ public class GameSession {
         }
 
         GameSessionPlayer player = new GameSessionPlayer(nextPlayerId, name, joinScore, token);
+        // Nothing is waited for until they connect (see setAway).
+        player.setAway(true);
         addPlayer(player);
 
         return player;
@@ -304,9 +306,7 @@ public class GameSession {
         requireActivePlayer(playerId);
         requireHost(playerId, "Only the host can change the timers!");
 
-        if (state != GameSessionState.WAITING_FOR_START) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Timers can only be changed before the game starts!");
-        }
+        requireState(GameSessionState.WAITING_FOR_START, "Timers can only be changed before the game starts!");
 
         timeouts = newTimeouts;
     }
@@ -319,9 +319,7 @@ public class GameSession {
         requireActivePlayer(playerId);
         requireHost(playerId, "Only the host can change the settings!");
 
-        if (state != GameSessionState.WAITING_FOR_START) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Settings can only be changed before the game starts!");
-        }
+        requireState(GameSessionState.WAITING_FOR_START, "Settings can only be changed before the game starts!");
 
         allowLateJoin = allowed;
     }
@@ -486,9 +484,7 @@ public class GameSession {
     // -------------------------------------------------------------------------
 
     public void startGame(Long playerId) {
-        if (!state.equals(GameSessionState.WAITING_FOR_START)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Game has already started!");
-        }
+        requireState(GameSessionState.WAITING_FOR_START, "Game has already started!");
         requireActivePlayer(playerId);
         requireHost(playerId, "Only the host can start the game!");
 
@@ -508,9 +504,7 @@ public class GameSession {
     }
 
     public void chooseClue(Long playerId, Long clueId) {
-        if (!state.equals(GameSessionState.CHOOSING_CLUE)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't choose a clue right now!");
-        }
+        requireState(GameSessionState.CHOOSING_CLUE, "You can't choose a clue right now!");
         requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't choose a clue right now!");
@@ -546,7 +540,7 @@ public class GameSession {
      * This keeps a game moving even if the chooser has left.
      */
     public void timeoutChoosingClue() {
-        requirePhase(GameSessionState.CHOOSING_CLUE);
+        requireState(GameSessionState.CHOOSING_CLUE);
 
         BoardClue clue = board.getRound(round)
                 .orElseThrow()
@@ -561,9 +555,7 @@ public class GameSession {
     }
 
     public void placeDailyDoubleWager(Long playerId, int wager) {
-        if (!state.equals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager a bet right now!");
-        }
+        requireState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, "You can't wager a bet right now!");
         GameSessionPlayer player = requireActivePlayer(playerId);
         if (!playerChoosingClue.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
@@ -584,7 +576,7 @@ public class GameSession {
 
     /** The chooser didn't wager in time, so they wager the minimum. */
     public void timeoutDailyDoubleWager() {
-        requirePhase(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
+        requireState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
 
         dailyDoubleWager = minimumDailyDoubleWager(getPlayer(playerChoosingClue));
         setState(GameSessionState.REVEALING_CLUE);
@@ -616,7 +608,7 @@ public class GameSession {
     }
 
     public void finishRevealingClue() {
-        requirePhase(GameSessionState.REVEALING_CLUE);
+        requireState(GameSessionState.REVEALING_CLUE);
 
         playersAlreadyBuzzed.clear();
 
@@ -628,9 +620,7 @@ public class GameSession {
     }
 
     public void buzz(Long playerId) {
-        if (!state.equals(GameSessionState.WAITING_FOR_BUZZER)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't buzz right now!");
-        }
+        requireState(GameSessionState.WAITING_FOR_BUZZER, "You can't buzz right now!");
         requireActivePlayer(playerId);
         if (playersAlreadyBuzzed.contains(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You already buzzed!");
@@ -640,8 +630,74 @@ public class GameSession {
         setState(GameSessionState.WAITING_FOR_ANSWER);
     }
 
+    public void timeoutBuzzer() {
+        requireState(GameSessionState.WAITING_FOR_BUZZER);
+
+        setState(GameSessionState.REVEALING_ANSWER);
+    }
+
+    public void answerClue(Long playerId, String answer) {
+        requireState(GameSessionState.WAITING_FOR_ANSWER, "You can't answer right now!");
+        requireActivePlayer(playerId);
+        // On a Daily Double the chooser counts as the buzzer (see playClue).
+        if (!playerWhoBuzzed.equals(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
+        }
+
+        AnswerCheck check = checkAnswer(answer);
+        resolveAnswer(new ClueAnswer(playerId, answer, check));
+    }
+
+    public void timeoutAnswer() {
+        requireState(GameSessionState.WAITING_FOR_ANSWER);
+
+        resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
+    }
+
+    /**
+     * Applies an answer (or a timeout) to the clue in play: the answerer wins
+     * or loses the stake, a correct answer takes control of the board, and
+     * the clue ends unless someone else can still buzz.
+     */
+    private void resolveAnswer(ClueAnswer clueAnswer) {
+        boolean dailyDouble = board.isDailyDouble(chosenClueId);
+        GameSessionPlayer player = getPlayer(clueAnswer.playerId());
+        int stake = dailyDouble ? dailyDoubleWager : board.getClue(chosenClueId).value();
+
+        clueAnswers.add(clueAnswer);
+        changeScore(player, clueAnswer.correct() ? stake : -stake);
+
+        if (clueAnswer.correct()) {
+            playerChoosingClue = clueAnswer.playerId();
+        }
+
+        if (clueAnswer.correct() || dailyDouble || haveAllPresentPlayersBuzzed()) {
+            setState(GameSessionState.REVEALING_ANSWER);
+        } else {
+            setState(GameSessionState.WAITING_FOR_BUZZER);
+        }
+    }
+
+    /**
+     * Checks an answer to the clue in play (in Final Jeopardy, its clue).
+     * Double and Final Jeopardy need the question form ("What is ..."); the
+     * Jeopardy round doesn't.
+     */
+    private AnswerCheck checkAnswer(String answer) {
+        return board.checkAnswer(chosenClueId, answer, round != GameRound.JEOPARDY);
+    }
+
+    // Players who have left can't buzz and players who are away won't, so
+    // neither is waited for.
+    private boolean haveAllPresentPlayersBuzzed() {
+        return getActivePlayers()
+                .stream()
+                .filter(player -> !player.isAway())
+                .allMatch(player -> playersAlreadyBuzzed.contains(player.getId()));
+    }
+
     public void finishRevealingAnswer() {
-        requirePhase(GameSessionState.REVEALING_ANSWER);
+        requireState(GameSessionState.REVEALING_ANSWER);
 
         if (!getAvailableClues().isEmpty()) {
             handOverControlIfDeparted();
@@ -658,7 +714,11 @@ public class GameSession {
                     }
                     enterRound(next);
                 },
-                () -> setState(GameSessionState.FINISHED_GAME)
+                () -> {
+                    // Nobody chooses once the game is over.
+                    playerChoosingClue = null;
+                    setState(GameSessionState.FINISHED_GAME);
+                }
         );
     }
 
@@ -678,27 +738,28 @@ public class GameSession {
         setState(GameSessionState.FINAL_JEOPARDY_WAGERING);
     }
 
+    /** What has been submitted for Final Jeopardy (nothing before it starts). */
+    public FinalJeopardy getFinalJeopardy() {
+        return finalJeopardy;
+    }
+
     /** See {@link FinalJeopardy#placeWager} for the allowed wagers. */
     public void placeFinalJeopardyWager(Long playerId, int wager) {
-        if (state != GameSessionState.FINAL_JEOPARDY_WAGERING) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't wager on Final Jeopardy right now!");
-        }
+        requireState(GameSessionState.FINAL_JEOPARDY_WAGERING, "You can't wager on Final Jeopardy right now!");
 
         finalJeopardy.placeWager(requireActivePlayer(playerId), wager);
     }
 
     /** Players who didn't wager in time wager 0 (see {@link FinalJeopardy#getWager}). */
     public void timeoutFinalJeopardyWagering() {
-        requirePhase(GameSessionState.FINAL_JEOPARDY_WAGERING);
+        requireState(GameSessionState.FINAL_JEOPARDY_WAGERING);
 
         setState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
     }
 
     /** A player may change their answer until the answering phase ends. */
     public void answerFinalJeopardy(Long playerId, String answer) {
-        if (state != GameSessionState.FINAL_JEOPARDY_ANSWERING) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer Final Jeopardy right now!");
-        }
+        requireState(GameSessionState.FINAL_JEOPARDY_ANSWERING, "You can't answer Final Jeopardy right now!");
         requireActivePlayer(playerId);
 
         AnswerCheck check = checkAnswer(answer);
@@ -706,19 +767,23 @@ public class GameSession {
     }
 
     public void timeoutFinalJeopardyAnswering() {
-        requirePhase(GameSessionState.FINAL_JEOPARDY_ANSWERING);
+        requireState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
 
         setState(GameSessionState.FINAL_JEOPARDY_REVEALING);
     }
 
     /** Applies every wager (no answer counts as wrong) and ends the game. */
     public void finishFinalJeopardyReveal() {
-        requirePhase(GameSessionState.FINAL_JEOPARDY_REVEALING);
+        requireState(GameSessionState.FINAL_JEOPARDY_REVEALING);
 
         // Applied together, so the join score sees the final scores at once.
         changeScores(finalJeopardy.scoreChanges(players));
         setState(GameSessionState.FINISHED_GAME);
     }
+
+    // -------------------------------------------------------------------------
+    // Scoring
+    // -------------------------------------------------------------------------
 
     private void changeScore(GameSessionPlayer player, int amount) {
         changeScores(Map.of(player, amount));
@@ -761,44 +826,14 @@ public class GameSession {
         }
     }
 
-    /** What has been submitted for Final Jeopardy (nothing before it starts). */
-    public FinalJeopardy getFinalJeopardy() {
-        return finalJeopardy;
-    }
-
-    public void timeoutBuzzer() {
-        requirePhase(GameSessionState.WAITING_FOR_BUZZER);
-
-        setState(GameSessionState.REVEALING_ANSWER);
-    }
-
-    public void timeoutAnswer() {
-        requirePhase(GameSessionState.WAITING_FOR_ANSWER);
-
-        resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
-    }
+    // -------------------------------------------------------------------------
+    // Away
+    // -------------------------------------------------------------------------
 
     /**
-     * Checks an answer to the clue in play (in Final Jeopardy, its clue).
-     * Double and Final Jeopardy need the question form ("What is ..."); the
-     * Jeopardy round doesn't.
-     */
-    private AnswerCheck checkAnswer(String answer) {
-        return board.checkAnswer(chosenClueId, answer, round != GameRound.JEOPARDY);
-    }
-
-    // Players who have left can't buzz and players who are away won't, so
-    // neither is waited for.
-    private boolean haveAllPresentPlayersBuzzed() {
-        return getActivePlayers()
-                .stream()
-                .filter(player -> !player.isAway())
-                .allMatch(player -> playersAlreadyBuzzed.contains(player.getId()));
-    }
-
-    /**
-     * Records whether a player is away: they had connected, and now have no
-     * open connection. It never changes the state, so a page reload can't cut
+     * Records whether a player is away: they have no open connection (a new
+     * player is away until they first connect, see {@link #addPlayer(String,
+     * String)}). It never changes the state, so a page reload can't cut
      * a phase short; it only matters from the next answer on.
      *
      * @return whether anything changed
@@ -820,6 +855,10 @@ public class GameSession {
 
         return !active.isEmpty() && active.stream().allMatch(GameSessionPlayer::isAway);
     }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
     private GameSessionPlayer getPlayer(Long playerId) {
         return players.stream().filter(player -> player.getId().equals(playerId)).findFirst().orElse(null);
@@ -849,53 +888,19 @@ public class GameSession {
     }
 
     // For the timers: a phase can only end while it's the current one.
-    private void requirePhase(GameSessionState phase) {
-        if (state != phase) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "The game isn't in " + phase + " right now!");
+    private void requireState(GameSessionState phase) {
+        requireState(phase, "The game isn't in " + phase + " right now!");
+    }
+
+    private void requireState(GameSessionState expected, String message) {
+        if (state != expected) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, message);
         }
     }
 
     private void requireOpen() {
         if (state == GameSessionState.CLOSED) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "This session has ended!");
-        }
-    }
-
-    public void answerClue(Long playerId, String answer) {
-        if (!state.equals(GameSessionState.WAITING_FOR_ANSWER)) {
-            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "You can't answer right now!");
-        }
-        requireActivePlayer(playerId);
-        // On a Daily Double the chooser counts as the buzzer (see playClue).
-        if (!playerWhoBuzzed.equals(playerId)) {
-            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
-        }
-
-        AnswerCheck check = checkAnswer(answer);
-        resolveAnswer(new ClueAnswer(playerId, answer, check));
-    }
-
-    /**
-     * Applies an answer (or a timeout) to the clue in play: the answerer wins
-     * or loses the stake, a correct answer takes control of the board, and
-     * the clue ends unless someone else can still buzz.
-     */
-    private void resolveAnswer(ClueAnswer clueAnswer) {
-        boolean dailyDouble = board.isDailyDouble(chosenClueId);
-        GameSessionPlayer player = getPlayer(clueAnswer.playerId());
-        int stake = dailyDouble ? dailyDoubleWager : board.getClue(chosenClueId).value();
-
-        clueAnswers.add(clueAnswer);
-        changeScore(player, clueAnswer.correct() ? stake : -stake);
-
-        if (clueAnswer.correct()) {
-            playerChoosingClue = clueAnswer.playerId();
-        }
-
-        if (clueAnswer.correct() || dailyDouble || haveAllPresentPlayersBuzzed()) {
-            setState(GameSessionState.REVEALING_ANSWER);
-        } else {
-            setState(GameSessionState.WAITING_FOR_BUZZER);
         }
     }
 

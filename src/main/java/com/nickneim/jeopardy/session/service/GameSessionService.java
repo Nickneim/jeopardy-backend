@@ -250,17 +250,16 @@ public class GameSessionService {
 
     /**
      * The host changes the phase durations before the game starts. Any
-     * duration the request leaves out keeps its current value. There is no
-     * timer to re-arm, since the lobby has none.
+     * duration the request leaves out keeps its current value.
      */
     public void updateTimers(PlayerPrincipal host, SessionTimersRequest request) {
-        actKeepingTimer(host, session ->
+        act(host, session ->
                 session.updateTimeouts(host.playerId(), request.applyTo(session.getTimeouts())));
     }
 
-    /** The host's lobby settings. Like the timers, they have no timer to re-arm. */
+    /** The host's lobby settings. */
     public void updateSettings(PlayerPrincipal host, SessionSettingsRequest request) {
-        actKeepingTimer(host, session -> session.updateLateJoin(host.playerId(), request.allowLateJoin()));
+        act(host, session -> session.updateLateJoin(host.playerId(), request.allowLateJoin()));
     }
 
     public void leave(PlayerPrincipal player) {
@@ -295,16 +294,10 @@ public class GameSessionService {
             if (session.getActivePlayers().isEmpty() && session.getState() != GameSessionState.FINISHED_GAME) {
                 closeSession(session, SessionCloseReason.ABANDONED);
             } else {
-                // A departure usually leaves the phase alone, and re-arming
-                // the timer then would restart it. It changes it when the
-                // last player who could still buzz leaves, and when a
-                // departed chooser's control passes on: the new chooser gets
-                // the full time to pick.
-                if (session.getState() != stateBefore
-                        || !Objects.equals(session.getPlayerChoosingClue(), chooserBefore)) {
-                    scheduleTimeout(session);
-                }
-
+                // Usually the phase goes on: the last player who could still
+                // buzz leaving ends it, and a departed chooser's control
+                // passing on gives the new chooser the full time to pick.
+                scheduleTimeoutIfPhaseChanged(session, stateBefore, chooserBefore);
                 broadcast(session);
             }
 
@@ -351,14 +344,12 @@ public class GameSessionService {
         act(player, session -> session.placeDailyDoubleWager(player.playerId(), wager));
     }
 
-    // Final Jeopardy submissions don't change the state, so they deliberately
-    // skip scheduleTimeout: re-arming the timer would restart the phase.
     public void placeFinalJeopardyWager(PlayerPrincipal player, int wager) {
-        actKeepingTimer(player, session -> session.placeFinalJeopardyWager(player.playerId(), wager));
+        act(player, session -> session.placeFinalJeopardyWager(player.playerId(), wager));
     }
 
     public void answerFinalJeopardy(PlayerPrincipal player, String answer) {
-        actKeepingTimer(player, session -> session.answerFinalJeopardy(player.playerId(), answer));
+        act(player, session -> session.answerFinalJeopardy(player.playerId(), answer));
     }
 
     public void buzz(PlayerPrincipal player) {
@@ -375,8 +366,7 @@ public class GameSessionService {
         mutate(
                 getSession(sessionId),
                 session -> session.getState() == GameSessionState.REVEALING_CLUE,
-                GameSession::finishRevealingClue,
-                true
+                GameSession::finishRevealingClue
         );
     }
 
@@ -384,8 +374,7 @@ public class GameSessionService {
         mutate(
                 getSession(sessionId),
                 session -> session.getState() == GameSessionState.REVEALING_ANSWER,
-                GameSession::finishRevealingAnswer,
-                true
+                GameSession::finishRevealingAnswer
         );
     }
 
@@ -404,38 +393,49 @@ public class GameSessionService {
         return session;
     }
 
-    /** The usual mutation: under the lock, act, re-arm the phase timer, broadcast. */
+    /** A player's action, applied through {@link #mutate}. */
     private void act(PlayerPrincipal player, Consumer<GameSession> action) {
-        mutate(sessionOf(player), session -> true, action, true);
-    }
-
-    /** For actions that leave the state alone: re-arming the timer would restart the phase. */
-    private void actKeepingTimer(PlayerPrincipal player, Consumer<GameSession> action) {
-        mutate(sessionOf(player), session -> true, action, false);
+        mutate(sessionOf(player), session -> true, action);
     }
 
     /**
      * Every mutation goes through here: under the session's lock, and only
      * if {@code stillValid} holds, apply the action, re-arm the phase timer
-     * if asked, and broadcast.
+     * if it started a new phase, and broadcast.
      */
     private void mutate(
             GameSession session,
             Predicate<GameSession> stillValid,
-            Consumer<GameSession> action,
-            boolean rescheduleTimer
+            Consumer<GameSession> action
     ) {
         synchronized (session) {
             if (!stillValid.test(session)) {
                 return;
             }
 
+            GameSessionState stateBefore = session.getState();
+            Long chooserBefore = session.getPlayerChoosingClue();
             action.accept(session);
 
-            if (rescheduleTimer) {
-                scheduleTimeout(session);
-            }
+            scheduleTimeoutIfPhaseChanged(session, stateBefore, chooserBefore);
             broadcast(session);
+        }
+    }
+
+    /**
+     * Re-arms the phase timer if the state changed or someone else got
+     * control. Anything else (a Final Jeopardy wager or answer, a lobby
+     * setting, most departures) leaves the phase going: re-arming the timer
+     * would restart it.
+     */
+    private void scheduleTimeoutIfPhaseChanged(
+            GameSession session,
+            GameSessionState stateBefore,
+            Long chooserBefore
+    ) {
+        if (session.getState() != stateBefore
+                || !Objects.equals(session.getPlayerChoosingClue(), chooserBefore)) {
+            scheduleTimeout(session);
         }
     }
 
@@ -622,8 +622,7 @@ public class GameSessionService {
                 current -> sessions.get(current.getId()) == current
                         && current.getState() == armedIn
                         && current.getPhaseTimerId() == timerId,
-                action,
-                true
+                action
         );
     }
 

@@ -1942,6 +1942,28 @@ class GameSessionServiceTest {
         assertSame(session, gameSessionService.getSession(session.getId()));
     }
 
+    // Their tab may have closed before it connected.
+    @Test
+    void playerWhoNeverConnected_countsAsAway_untilTheyConnect() {
+        GameSession session = gameSessionService.createSession(
+                board(new BoardClue(CLUE_ID, 1, "Question", "Correct answer", 200, false))
+        );
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        assertTrue(player.isAway());
+
+        gameSessionService.startGame(player(session.getId(), player.getId()));
+
+        captureAbandonment(session);
+        clearInvocations(timer);
+        PlayerPrincipal principal = PlayerPrincipal.of(session, player.getId());
+        when(connections.isConnected(principal)).thenReturn(true);
+
+        gameSessionService.onPlayerConnectionsChanged(new PlayerConnectionsChanged(principal));
+
+        assertFalse(player.isAway());
+        verify(timer).cancelAbandonment(session.getId());
+    }
+
     // Both have their own, longer cleanup timeouts.
     @Test
     void everyoneAway_inTheLobbyOrAFinishedGame_closesNothing() {

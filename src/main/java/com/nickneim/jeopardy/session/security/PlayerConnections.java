@@ -257,7 +257,7 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
 
     private void finished(Message<?> message) {
         String connectionId = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
-        Connection connection = connectionOf(message);
+        Connection connection = connectionId == null ? null : connections.get(connectionId);
 
         if (connection == null) {
             return;

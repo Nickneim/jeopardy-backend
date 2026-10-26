@@ -1793,7 +1793,7 @@ class GameSessionWebSocketIntegrationTest {
     }
 
     @Test
-    void playerWithoutAConnection_isAway_untilTheyReconnect()
+    void playerWithoutAConnection_isAway_untilTheyConnect()
             throws Exception {
 
         GameSession session = createSessionWithPlayer();
@@ -1802,9 +1802,12 @@ class GameSessionWebSocketIntegrationTest {
         BlockingQueue<GameSessionResponse> messages = subscribeToSession(watcher, session.getId());
         awaitSubscriptions(watcher, session.getId());
         messages.clear();
+        assertTrue(player.isAway());
 
         StompSession connection = connect(tokenOf(session));
-        assertFalse(player.isAway());
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> !player.isAway());
+        assertFalse(awaitMessage(messages).players().getFirst().away());
 
         connection.disconnect();
 

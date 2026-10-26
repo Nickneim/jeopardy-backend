@@ -57,9 +57,9 @@ public class GameSessionPlayer {
     }
 
     /**
-     * True while the player has no open connection, after having had one
-     * (a closed tab, a lost network). Unlike leaving, it ends when they
-     * reconnect. A player who joined but hasn't connected yet isn't away.
+     * True while the player has no open connection: from joining until they
+     * first connect, and whenever they lose it (a closed tab, a lost
+     * network). Unlike leaving, it ends when they (re)connect.
      */
     public boolean isAway() {
         return away;

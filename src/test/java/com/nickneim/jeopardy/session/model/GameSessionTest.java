@@ -2009,6 +2009,24 @@ class GameSessionTest {
         noFinal.finishRevealingAnswer();
 
         assertEquals(GameSessionState.FINISHED_GAME, noFinal.getState());
+        assertNull(noFinal.getPlayerChoosingClue());
+    }
+
+    // A tab closed before it connected leaves nobody to wait for.
+    @Test
+    void joinedPlayer_isAwayUntilTheyConnect_andIsntWaitedFor() {
+        GameSessionPlayer joined = session.addPlayer("Joined", PlayerTokens.generate());
+        assertTrue(joined.isAway());
+        session.startGame(player1.getId());
+        session.chooseClue(player1.getId(), jeopardyClue1.id());
+        session.finishRevealingClue();
+        session.buzz(player1.getId());
+        session.answerClue(player1.getId(), "Wrong");
+        session.buzz(player2.getId());
+
+        session.answerClue(player2.getId(), "Wrong");
+
+        assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
     }
 
     @Test

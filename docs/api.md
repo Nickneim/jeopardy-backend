@@ -79,7 +79,7 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 | `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Leading and trailing spaces are ignored; empty or blank means no filter. |
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
-| `playable` | (none) | Optional. `true`: only games with at least one clue (the only ones a session can be created from, §3.2). `false`: only games without clues. Omit it to list both. |
+| `playable` | (none) | Optional. `true`: only games with at least one clue (a session can only be created from one of these, §3.2; it can still be rejected with `UNPLAYABLE_GAME` for another reason, such as an answer no response could match). `false`: only games without clues. Omit it to list both. |
 
 All filters are optional and combine with AND. Ordering and paging stay the same when filtering, and `totalElements` / `totalPages` count only the matching games. A page past the last one (however far) returns an empty `content` with the real totals.
 
@@ -297,11 +297,11 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `phaseDurationMs` | Full length of the current phase in milliseconds, or `null` if the state has no timer (§6.3) |
 | `phaseRemainingMs` | Milliseconds left in the current phase when the server built this response (never negative), or `null` if the state has no timer |
 | `timers` | The session's configured phase durations in milliseconds (`SessionTimers`, §6.3). Always present, so the lobby can show them. |
-| `players` | `{ id, name, score, leaving, away }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed, and, from `FINAL_JEOPARDY_REVEALING` on, for everyone who left, since they stay in the results (§6.4); show them as leaving. Removed players aren't listed at all. `away` is `true` while a player who had connected has no open connection (a closed tab, a lost network); it turns `false` again when they reconnect (§6.4). |
+| `players` | `{ id, name, score, leaving, away }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed, and, from `FINAL_JEOPARDY_REVEALING` on, for everyone who left, since they stay in the results (§6.4); show them as leaving. Removed players aren't listed at all. `away` is `true` while a player has no open connection: from joining until they first connect, and whenever they lose it (a closed tab, a lost network); it turns `false` when they (re)connect (§6.4). |
 | `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`. |
 | `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
 | `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
-| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses. |
+| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses, and once the game has finished. |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
@@ -465,7 +465,7 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 
 **Kicking.** The host sends `kick` with another player's id. The kicked player is treated **exactly** like a player who leaves (below). Kicking yourself is rejected with `INVALID_REQUEST` (use `leave`). Kicking an id that isn't an active player in the session, including one who has already left, is rejected with `PLAYER_NOT_FOUND`.
 
-**Away.** A closed tab or a dropped connection is not leaving: the player keeps their place, score and role, the timers act for them, and they can reconnect with their token. While a player who had connected has no open connection, they're marked `away: true` (in a broadcast of its own), and it turns `false` when they reconnect. A player who joined but hasn't connected yet isn't `away`. The buzzer doesn't wait for `away` players (§6.2), and when every player who hasn't left is `away` for 2 minutes during a game, the session is closed (§6.5). An `away` chooser keeps control, but control that passes to someone new (the start of Double Jeopardy, or a chooser leaving) skips `away` players unless everyone is `away`.
+**Away.** A closed tab or a dropped connection is not leaving: the player keeps their place, score and role, the timers act for them, and they can reconnect with their token. While a player has no open connection, they're marked `away: true` (in a broadcast of its own), and it turns `false` when they reconnect. A new player is `away` from joining until their first connection, so a player whose tab closed before it connected is never waited for. The buzzer doesn't wait for `away` players (§6.2), and when every player who hasn't left is `away` for 2 minutes during a game, the session is closed (§6.5). An `away` chooser keeps control, but control that passes to someone new (the start of Double Jeopardy, or a chooser leaving) skips `away` players unless everyone is `away`.
 
 **Leaving.** A player leaves only by sending `leave` (or being kicked).
 
@@ -502,7 +502,7 @@ Sessions live in memory and are removed automatically:
 | Session | Removed | `closeReason` |
 |---|---|---|
 | Every player has left, or every remaining player is marked `leaving`, except in `FINISHED_GAME` (see its row) | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
-| Every player who hasn't left is `away` (§6.4), during a game (not in `WAITING_FOR_START` or `FINISHED_GAME`, which have their own timeouts below) | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting or joining stops it) | `ABANDONED` |
+| Every player who hasn't left is `away` (§6.4), during a game (not in `WAITING_FOR_START` or `FINISHED_GAME`, which have their own timeouts below) | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting, or a new player connecting, stops it) | `ABANDONED` |
 | `WAITING_FOR_START` with no change for **30 minutes** (a change is anything that's broadcast: a join, a leave, a kick, new timers). A session nobody joins counts from its creation. | After 30 minutes without a change | `IDLE` |
 | `FINISHED_GAME` with no change for **10 minutes** (counted from the end of the game, or from the last player leaving after it) | After 10 minutes without a change | `FINISHED` |
 
@@ -647,7 +647,7 @@ interface GameListParams {
   title?: string;        // case-insensitive substring
   from?: string;         // "YYYY-MM-DD", inclusive
   to?: string;           // "YYYY-MM-DD", inclusive
-  playable?: boolean;    // true: only games with clues; false: only games without
+  playable?: boolean;    // true: only games with clues (one can still be UNPLAYABLE_GAME); false: only games without
 }
 
 interface PageResponse<T> {
@@ -780,7 +780,7 @@ interface PlayerResponse {
   name: string;
   score: number;
   leaving: boolean;      // left but still holds a role, or left once the results are shown (§6.4)
-  away: boolean;         // had connected, and has no open connection now (§6.4)
+  away: boolean;         // no open connection now, including before the first (§6.4)
 }
 
 type ClueSlotStatus = "AVAILABLE" | "PLAYED" | "EMPTY";

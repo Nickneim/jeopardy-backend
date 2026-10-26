@@ -551,6 +551,10 @@ class GameSessionHostAndLeavingTest {
         ana = session.addPlayer("Ana", PlayerTokens.generate());
         ben = session.addPlayer("Ben", PlayerTokens.generate());
         cy = session.addPlayer("Cy", PlayerTokens.generate());
+        // Joined players are away until they connect.
+        for (GameSessionPlayer player : List.of(ana, ben, cy)) {
+            session.setAway(player.getId(), false);
+        }
     }
 
     private void chooseAndBuzz(BoardClue clue, GameSessionPlayer buzzer) {
