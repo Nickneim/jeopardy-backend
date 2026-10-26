@@ -184,11 +184,20 @@ public class PeerSessions {
             return false;
         }
         if (last.isDone()) {
-            CompletableFuture<?> retry = fetchAsync(address)
-                    .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS);
-            // Only one lobby request starts the retry.
+            // The request starts only once this lobby request has won the
+            // entry, so concurrent lobby requests start one retry, not one each.
+            CompletableFuture<Object> retry = new CompletableFuture<>();
             if (failing.replace(address, last, retry)) {
                 watch(address, retry);
+                fetchAsync(address)
+                        .orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
+                        .whenComplete((result, failure) -> {
+                            if (failure == null) {
+                                retry.complete(result);
+                            } else {
+                                retry.completeExceptionally(failure);
+                            }
+                        });
             }
         }
         return true;

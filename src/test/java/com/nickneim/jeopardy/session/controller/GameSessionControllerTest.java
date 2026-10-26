@@ -25,6 +25,7 @@ import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpHeaders;
@@ -261,6 +262,12 @@ class GameSessionControllerTest {
             \\u0645\\u06CC\\u200C\\u062E\\u0648\\u0627\\u0647\\u0645 | می‌خواهم
             # So do the tags of a flag (Scotland), at the end of the name.
             Ana \\uD83C\\uDFF4\\uDB40\\uDC67\\uDB40\\uDC62\\uDB40\\uDC73\\uDB40\\uDC63\\uDB40\\uDC74\\uDB40\\uDC7F | Ana 🏴󠁧󠁢󠁳󠁣󠁴󠁿
+            # Tags anywhere else hide text, so they go: "Nico" followed by a hidden "hi".
+            Nico\\uDB40\\uDC68\\uDB40\\uDC69                      | Nico
+            # A soft hyphen, an invisible times and a Mongolian vowel separator go.
+            N\\u00ADi\\u2062c\\u180Eo                          | Nico
+            # A Hangul filler (renders as nothing) goes; next-line and a braille blank are spaces.
+            Ni\\u3164co\\u0085Mary\\u2800Jane                 | Nico Mary Jane
             """)
     void joinSession_cleansTheInsideOfTheName(String sent, String joinedAs) throws Exception {
         SessionCode sessionId = SessionCode.random();
@@ -277,11 +284,20 @@ class GameSessionControllerTest {
         verify(gameSessionService).joinSession(sessionId, joinedAs);
     }
 
-    @Test
-    void joinSession_rejectsANameOfOnlyJoiners() throws Exception {
+    // Each sent as JSON escapes: only joiners, Hangul fillers, braille
+    // blanks, a combining accent alone, and a flag's tags without the flag.
+    @ParameterizedTest
+    @ValueSource(strings = {
+            " \\u200D\\u200C ",
+            "\\u3164\\u115F\\u1160\\uFFA0",
+            "\\u2800\\u2800\\u2800",
+            "\\u0301\\u20DD",
+            "\\uDB40\\uDC67\\uDB40\\uDC62\\uDB40\\uDC7F"
+    })
+    void joinSession_rejectsANameThatShowsNothing(String sent) throws Exception {
         mockMvc.perform(post("/api/game-sessions/" + SessionCode.random() + "/players")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"playerName\": \" \\u200D\\u200C \"}"))
+                        .content("{\"playerName\": \"" + sent + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("playerName must not be blank"));
 

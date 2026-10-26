@@ -16,9 +16,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -183,6 +189,45 @@ class PeerSessionsTest {
 
         down.set(false);
         assertEventually(() -> Set.copyOf(peerSessions.fetch()).equals(Set.of(fromA, fromB)));
+    }
+
+    @Test
+    void concurrentLobbyRequests_startOneRetryOfAFailedInstance() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        peerSessions = new PeerSessions(
+                properties(""),
+                name -> List.of("10.0.0.1", "10.0.0.2"),
+                address -> {
+                    if (address.equals("10.0.0.1")) {
+                        return List.of(fromA);
+                    }
+                    // The first request fails; retries hang, so they stay in flight.
+                    if (calls.incrementAndGet() == 1) {
+                        throw new IOException("Connection refused");
+                    }
+                    await(release);
+                    return List.of(fromB);
+                }
+        );
+        assertEquals(List.of(fromA), peerSessions.fetch());
+
+        try (ExecutorService lobby = Executors.newFixedThreadPool(10)) {
+            CountDownLatch start = new CountDownLatch(1);
+            List<Future<List<GameSessionSummaryResponse>>> fetches = IntStream.range(0, 10)
+                    .mapToObj(i -> lobby.submit(() -> {
+                        await(start);
+                        return peerSessions.fetch();
+                    }))
+                    .toList();
+            start.countDown();
+            for (Future<List<GameSessionSummaryResponse>> fetch : fetches) {
+                assertEquals(List.of(fromA), fetch.get(5, TimeUnit.SECONDS));
+            }
+        }
+
+        assertEventually(() -> calls.get() >= 2);
+        Thread.sleep(100);
+        assertEquals(2, calls.get());
     }
 
     @Test

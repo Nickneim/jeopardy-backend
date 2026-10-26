@@ -149,8 +149,7 @@ class GameSessionServiceTest {
     // 1 again, so in a new session under the id they'd act as its players.
     @Test
     void closedSessionsId_staysTakenWhileItsPlayersAreConnected() {
-        SessionCode id = SessionCode.random();
-        when(connections.hasPlayersConnected(id)).thenReturn(true);
+        SessionCode id = closeSessionHeldBy(() -> when(connections.hasPlayersConnected(any())).thenReturn(true));
 
         assertThrows(
                 GameSessionAlreadyExistsException.class,
@@ -172,8 +171,7 @@ class GameSessionServiceTest {
     // new session's broadcasts as that game's.
     @Test
     void closedSessionsId_staysTakenWhileAnyoneWatchesIt() {
-        SessionCode id = SessionCode.random();
-        when(watchers.hasWatchers(id)).thenReturn(true);
+        SessionCode id = closeSessionHeldBy(() -> when(watchers.hasWatchers(any())).thenReturn(true));
 
         assertThrows(
                 GameSessionAlreadyExistsException.class,
@@ -184,9 +182,51 @@ class GameSessionServiceTest {
                 () -> gameSessionService.createSession(id, createBoard())
         );
 
-        when(watchers.hasWatchers(id)).thenReturn(false);
+        when(watchers.hasWatchers(any())).thenReturn(false);
 
         assertEquals(id, gameSessionService.createSession(id, createBoard()).getId());
+    }
+
+    // Asking the broker about every random new id would fill its cache of
+    // destinations with topics nobody watches, pushing out the live ones.
+    @Test
+    void anIdThatNeverHadASession_isNeverAskedAbout() {
+        SessionCode id = SessionCode.random();
+
+        gameSessionService.requireUnusedId(id);
+        gameSessionService.createSession(id, createBoard());
+
+        verifyNoInteractions(watchers);
+        verify(connections, never()).hasPlayersConnected(any());
+    }
+
+    // Each close drops the closed ids nobody holds any more, so they don't
+    // pile up and are never asked about again.
+    @Test
+    void aClosedIdNobodyHolds_isForgottenAtTheNextClose() {
+        SessionCode held = closeSessionHeldBy(() -> when(watchers.hasWatchers(any())).thenReturn(true));
+        when(watchers.hasWatchers(any())).thenReturn(false);
+
+        closeSessionHeldBy(() -> {});
+        clearInvocations(watchers);
+
+        gameSessionService.requireUnusedId(held);
+        verifyNoInteractions(watchers);
+    }
+
+    /**
+     * Creates a session and closes it (its only player leaves), with
+     * {@code holders} stubbing who still holds its id at the close.
+     */
+    private SessionCode closeSessionHeldBy(Runnable holders) {
+        GameSession session = createSession();
+        GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
+        holders.run();
+
+        gameSessionService.leave(session.getId(), player.getId());
+
+        assertThrows(GameSessionNotFoundException.class, () -> gameSessionService.getSession(session.getId()));
+        return session.getId();
     }
 
     // A player still connecting passes the interceptor's second token check

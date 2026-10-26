@@ -25,6 +25,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -42,6 +43,11 @@ public class GameSessionService {
 
     private final Map<SessionCode, GameSession> sessions =
             new ConcurrentHashMap<>();
+
+    // Ids of closed sessions that may still be held by connected players or
+    // subscribers (isHeldByClosedSession). Each close drops the ones nobody
+    // holds any more, so it only keeps ids with someone still on them.
+    private final Set<SessionCode> closedIds = ConcurrentHashMap.newKeySet();
 
     private final GameSessionTimer timer;
     private final GameSessionBroadcaster broadcaster;
@@ -115,8 +121,26 @@ public class GameSessionService {
         }
     }
 
-    // See createSession(SessionCode, GameBoard).
+    /**
+     * Whether a closed session still holds the id: one of its players is
+     * connected, or anyone is subscribed to its topic (see
+     * {@link #createSession(SessionCode, GameBoard)}). Only closed ids are
+     * checked, so the broker is never asked about the random ids of new
+     * sessions; an id is forgotten once nobody holds it.
+     */
     private boolean isHeldByClosedSession(SessionCode id) {
+        if (!closedIds.contains(id)) {
+            return false;
+        }
+        if (isHeldNow(id)) {
+            return true;
+        }
+
+        closedIds.remove(id);
+        return false;
+    }
+
+    private boolean isHeldNow(SessionCode id) {
         return connections.hasPlayersConnected(id) || watchers.hasWatchers(id);
     }
 
@@ -443,7 +467,9 @@ public class GameSessionService {
         // without a close (removeSession) can be closed later, after a new
         // session took its id.
         session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
+        closedIds.add(sessionId);
         sessions.remove(sessionId, session);
+        closedIds.removeIf(closedId -> !isHeldNow(closedId));
     }
 
     private void scheduleTimeout(GameSession session) {
