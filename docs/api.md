@@ -47,7 +47,7 @@ Key ideas:
 
 ## 3. REST API
 
-All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language`.
+All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language` A body that isn't JSON, is missing, or has a field of the wrong type (`{ "gameId": "abc" }`, or a number too large for its field) gets `400` with `"Invalid request: the body isn't valid JSON for this request"`.
 
 Any other error (an unexpected server error, or a malformed path such as a game id that isn't a number) uses Spring's default body instead: `{ "timestamp", "status", "error", "path" }`. It has no stack trace and no exception message, so show a generic error for it.
 
@@ -75,7 +75,7 @@ Errors (all `400` with an `ApiErrorResponse`):
 
 | Cause | `message` |
 |---|---|
-| Invalid `page` or `size` | `"Invalid request parameters"` |
+| Invalid `page` or `size` (out of range or not a whole number) | `"Invalid request parameters"` |
 | `from` or `to` isn't a valid `YYYY-MM-DD` date (for example `2025-02-30` or `02/01/2025`) | `"Invalid date for 'from': expected YYYY-MM-DD"` (or `'to'`) |
 | `from` is after `to` | `"'from' must not be after 'to'"` |
 | `playable` isn't a boolean | `"Invalid value for 'playable': expected true or false"` |
@@ -143,7 +143,7 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 
 The list is a snapshot: a session can start, fill up or close right after. Use `joinable` to decide whether to offer "Join" or only "Watch"; anyone can watch any listed session.
 
-Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
+Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` (out of range or not a whole number) → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
 
 #### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 

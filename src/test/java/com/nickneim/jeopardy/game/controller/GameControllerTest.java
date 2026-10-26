@@ -533,11 +533,39 @@ class GameControllerTest {
     }
 
     @Test
-    void getGames_leavesNonDateTypeMismatchesToSpringDefaults() throws Exception {
-        // A non-numeric page kept Spring's default 400 (no ApiErrorResponse
-        // body) before the date filters were added, and still does.
+    void getGames_rejectsNonNumericPageLikeAnOutOfRangeOne() throws Exception {
         mockMvc.perform(get("/api/games")
                         .param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "Invalid request parameters"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGames_rejectsNonNumericSize() throws Exception {
+        mockMvc.perform(get("/api/games")
+                        .param("size", "1.5"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                {
+                    "status": 400,
+                    "message": "Invalid request parameters"
+                }
+                """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameService);
+    }
+
+    @Test
+    void getGame_leavesNonNumericIdsToSpringDefaults() throws Exception {
+        // A malformed path keeps Spring's default 400 (no ApiErrorResponse body).
+        mockMvc.perform(get("/api/games/abc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(""));
 

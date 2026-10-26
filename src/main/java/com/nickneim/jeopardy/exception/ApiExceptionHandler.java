@@ -12,6 +12,7 @@ import com.nickneim.jeopardy.session.model.SessionCode;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -102,6 +103,19 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, message.isEmpty() ? "Invalid request body" : message);
     }
 
+    /**
+     * A request body that isn't valid JSON, is missing, or has a field of the
+     * wrong type, such as {"gameId": "abc"}. Jackson's message names internal
+     * classes, so it isn't passed on.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiErrorResponse handleUnreadableRequestBody(
+            HttpMessageNotReadableException exception
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "Invalid request: the body isn't valid JSON for this request");
+    }
+
     @ExceptionHandler(InvalidGameFilterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrorResponse handleInvalidGameFilter(InvalidGameFilterException exception) {
@@ -109,10 +123,10 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Only date and boolean filter parameters and session codes get an
-     * ApiErrorResponse. Rethrowing any other mismatch (such as a non-numeric
-     * page or id) leaves it to Spring's default 400 handling, as before these
-     * existed.
+     * Only date, boolean and int (page and size) parameters and session codes
+     * get an ApiErrorResponse; a non-numeric page or size gets the same
+     * message as an out-of-range one. Rethrowing any other mismatch (such as
+     * a non-numeric id) leaves it to Spring's default 400 handling.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -126,6 +140,8 @@ public class ApiExceptionHandler {
             message = "Invalid date for " + parameter + ": expected YYYY-MM-DD";
         } else if (exception.getRequiredType() == Boolean.class) {
             message = "Invalid value for " + parameter + ": expected true or false";
+        } else if (exception.getRequiredType() == int.class) {
+            message = "Invalid request parameters";
         } else if (exception.getRequiredType() == SessionCode.class) {
             message = "Invalid session code: expected " + SessionCode.LENGTH + " letters and digits";
         } else {

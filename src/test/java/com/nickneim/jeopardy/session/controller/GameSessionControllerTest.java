@@ -313,6 +313,67 @@ class GameSessionControllerTest {
     }
 
     @Test
+    void createSession_rejectsAGameIdOfTheWrongType() throws Exception {
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"gameId\": \"abc\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "Invalid request: the body isn't valid JSON for this request"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameBoardService, gameSessionService);
+    }
+
+    @Test
+    void createSession_rejectsMissingBody() throws Exception {
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "Invalid request: the body isn't valid JSON for this request"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameBoardService, gameSessionService);
+    }
+
+    @Test
+    void joinSession_rejectsMalformedJson() throws Exception {
+        mockMvc.perform(post("/api/game-sessions/" + SessionCode.random() + "/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "Invalid request: the body isn't valid JSON for this request"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(gameSessionService);
+    }
+
+    @Test
+    void listSessions_rejectsNonNumericPage() throws Exception {
+        mockMvc.perform(get("/api/game-sessions").param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("""
+                        {
+                            "status": 400,
+                            "message": "Invalid request parameters"
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verifyNoInteractions(sessionLobby);
+    }
+
+    @Test
     void createSession_rejectsMissingGameId() throws Exception {
         mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
