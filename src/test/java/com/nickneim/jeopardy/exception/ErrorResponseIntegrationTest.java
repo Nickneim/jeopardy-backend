@@ -45,7 +45,7 @@ class ErrorResponseIntegrationTest {
 
     @Test
     void unexpectedError_returnsNoStackTraceOrExceptionMessage() {
-        when(gameService.getGames(anyInt(), anyInt(), any(GameFilter.class)))
+        when(gameService.getGameSummaries(anyInt(), anyInt(), any(GameFilter.class)))
                 .thenThrow(new IllegalStateException(INTERNAL_DETAIL));
 
         String body = restTestClient.get()

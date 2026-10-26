@@ -23,6 +23,11 @@ public class GameDailyDouble {
     }
 
     public GameDailyDouble(Game game, Clue clue) {
+        // The database checks the same (V3's trigger), but only on flush.
+        if (clue.getCategory().getGame() != game) {
+            throw new IllegalArgumentException("A daily double's clue must belong to its game");
+        }
+
         // @MapsId fills in ids that aren't generated yet when this is saved.
         this.id = new GameDailyDoubleId(game.getId(), clue.getId());
         this.game = game;

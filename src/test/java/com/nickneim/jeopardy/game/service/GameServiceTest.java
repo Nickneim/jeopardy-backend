@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.game.service;
 
+import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.ClueType;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -285,6 +287,27 @@ class GameServiceTest {
         assertEquals(
                 Map.of(1L, 61L, 2L, 0L),
                 gameService.countClues(List.of(withClues, withoutClues))
+        );
+    }
+
+    @Test
+    void getGameSummaries_addsEachGamesClueCount() {
+        Game withClues = new Game("Show #1", LocalDate.of(2025, 1, 2), "40");
+        Game withoutClues = new Game("Show #2", LocalDate.of(2025, 1, 1), "40");
+        ReflectionTestUtils.setField(withClues, "id", 1L);
+        ReflectionTestUtils.setField(withoutClues, "id", 2L);
+
+        when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(withClues, withoutClues), PageRequest.of(0, 20), 2));
+        when(gameRepository.countCluesByGameIds(Set.of(1L, 2L)))
+                .thenReturn(List.of(new GameClueCount(1L, 61L)));
+
+        assertEquals(
+                List.of(
+                        GameSummaryResponse.from(withClues, 61),
+                        GameSummaryResponse.from(withoutClues, 0)
+                ),
+                gameService.getGameSummaries(0, 20, GameFilter.NONE).getContent()
         );
     }
 

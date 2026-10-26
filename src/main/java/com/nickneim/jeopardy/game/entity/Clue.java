@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.type.PostgreSQLEnumJdbcType;
 
+import java.util.Objects;
+
 @Entity
 @Table(
         name = "clue",
@@ -44,6 +46,10 @@ public class Clue {
     protected Clue() {
     }
 
+    /**
+     * A null {@code clueType} means {@link ClueType#TEXT}. Like the database's
+     * check_media_url, a clue has a media URL exactly when it isn't text.
+     */
     public Clue(
             String question,
             String answer,
@@ -55,8 +61,16 @@ public class Clue {
         this.question = question;
         this.answer = answer;
         this.rowNumber = rowNumber;
-        this.clueType = clueType;
+        this.clueType = Objects.requireNonNullElse(clueType, ClueType.TEXT);
         this.mediaUrl = mediaUrl;
+
+        if ((this.clueType == ClueType.TEXT) != (mediaUrl == null)) {
+            throw new IllegalArgumentException(
+                    "A " + this.clueType + " clue must "
+                            + (this.clueType == ClueType.TEXT ? "not have" : "have")
+                            + " a media URL"
+            );
+        }
         this.category = category;
     }
 

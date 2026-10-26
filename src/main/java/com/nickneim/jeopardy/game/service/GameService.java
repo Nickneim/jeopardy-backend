@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.game.service;
 
 
+import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.entity.Game;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
@@ -41,6 +43,12 @@ public class GameService {
     }
 
 
+    /**
+     * The game's categories, clues and daily doubles load lazily, so this
+     * only runs inside the caller's transaction: without one it fails at
+     * once instead of on the first lazy read.
+     */
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Game getGame(Long id) {
         return gameRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
@@ -53,6 +61,18 @@ public class GameService {
     @Transactional(readOnly = true)
     public GameResponse getGameResponse(Long id) {
         return GameResponse.from(getGame(id));
+    }
+
+    /**
+     * A page of GET /api/games. The page and its clue counts are read in one
+     * transaction, so they come from the same state of the database.
+     */
+    @Transactional(readOnly = true)
+    public Page<GameSummaryResponse> getGameSummaries(int page, int size, GameFilter filter) {
+        Page<Game> games = getGames(page, size, filter);
+        Map<Long, Long> clueCounts = countClues(games.getContent());
+
+        return games.map(game -> GameSummaryResponse.from(game, clueCounts.get(game.getId())));
     }
 
     public Page<Game> getGames(int page, int size, GameFilter filter) {

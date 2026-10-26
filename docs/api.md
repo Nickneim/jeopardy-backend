@@ -75,8 +75,8 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 |---|---|---|
 | `page` | `0` | ≥ 0 (0-based) |
 | `size` | `20` | 1–100 |
-| `season` | (none) | Optional exact filter, for example `"40"` (values from `GET /api/games/seasons`). Empty or blank means no filter. |
-| `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Empty or blank means no filter. |
+| `season` | (none) | Optional exact, case-insensitive filter, for example `"40"` (values from `GET /api/games/seasons`). Leading and trailing spaces are ignored; empty or blank means no filter. |
+| `title` | (none) | Optional case-insensitive substring of the title. `%` and `_` are plain characters, not wildcards. Leading and trailing spaces are ignored; empty or blank means no filter. |
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `playable` | (none) | Optional. `true`: only games with at least one clue (the only ones a session can be created from, §3.2). `false`: only games without clues. Omit it to list both. |

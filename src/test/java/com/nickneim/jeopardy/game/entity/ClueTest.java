@@ -44,6 +44,28 @@ class ClueTest {
         assertFalse(clueAt(12, 1).isFinalClue());
     }
 
+    @Test
+    void newClue_withoutTypeIsText() {
+        Category category = new Category("CATEGORY", (short) 1, null, game);
+
+        assertEquals(
+                ClueType.TEXT,
+                new Clue("Question", "Answer", (short) 1, null, null, category).getClueType()
+        );
+    }
+
+    @Test
+    void newClue_hasMediaUrlExactlyWhenNotText() {
+        Category category = new Category("CATEGORY", (short) 1, null, game);
+
+        assertThrows(IllegalArgumentException.class, () -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.IMAGE, null, category));
+        assertThrows(IllegalArgumentException.class, () -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.TEXT, "https://example.com/a.jpg", category));
+        assertDoesNotThrow(() -> new Clue(
+                "Question", "Answer", (short) 1, ClueType.IMAGE, "https://example.com/a.jpg", category));
+    }
+
     private Clue clueAt(int column, int row) {
         Category category = new Category(
                 "CATEGORY",

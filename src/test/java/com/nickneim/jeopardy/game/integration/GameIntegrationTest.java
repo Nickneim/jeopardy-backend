@@ -18,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
@@ -25,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
@@ -47,6 +50,38 @@ class GameIntegrationTest {
 
     @Autowired
     private GameRepository gameRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Test
+    void database_rejectsDailyDoubleWithClueFromAnotherGame() {
+        Long clueOfGame1 = jdbcTemplate.queryForObject("""
+                SELECT clue.id FROM clue
+                JOIN category ON category.id = clue.category_id
+                WHERE category.game_id = 1
+                LIMIT 1
+                """, Long.class);
+        Long otherGame = jdbcTemplate.queryForObject(
+                "SELECT id FROM game WHERE id <> 1 LIMIT 1", Long.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO game_daily_double (game_id, clue_id) VALUES (?, ?)",
+                otherGame,
+                clueOfGame1
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void database_rejectsClueBelowTheLastPlayableRow() {
+        Long categoryId = jdbcTemplate.queryForObject(
+                "SELECT id FROM category WHERE game_id = 1 LIMIT 1", Long.class);
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "INSERT INTO clue (question, answer, row_number, category_id) VALUES ('Q', 'A', 11, ?)",
+                categoryId
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
 
     @Test
     void getGame_returnsSavedDailyDoublesInClueIdOrder() {
@@ -245,6 +280,20 @@ class GameIntegrationTest {
                     assertThat(body.content().get(2).title())
                             .isEqualTo("Game Integration Test Game 23");
                 });
+    }
+
+    @Test
+    void getGames_matchesSeasonCaseInsensitively() {
+        gameRepository.save(new Game("Game Integration Test Game Masters", LocalDate.of(2025, 3, 1), "jm"));
+
+        assertThat(titlesOf("/api/games?season=JM"))
+                .containsExactly("Game Integration Test Game Masters");
+    }
+
+    @Test
+    void getGames_trimsTheTitle() {
+        assertThat(titlesOf("/api/games?title={title}", "  Test Game 25  "))
+                .containsExactly("Game Integration Test Game 25");
     }
 
     @Test

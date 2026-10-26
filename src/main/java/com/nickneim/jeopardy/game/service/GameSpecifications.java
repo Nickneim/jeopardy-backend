@@ -61,9 +61,12 @@ final class GameSpecifications {
         };
     }
 
+    // Case-insensitive, like the title, so "JM" finds the "jm" season.
     private static Specification<Game> hasSeason(String season) {
-        return (game, query, builder) ->
-                builder.equal(game.get("season"), season);
+        return (game, query, builder) -> builder.equal(
+                builder.lower(game.get("season")),
+                builder.lower(builder.literal(season))
+        );
     }
 
     // Case-insensitive substring match. %, _ and \ in the search text match

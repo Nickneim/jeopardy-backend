@@ -5,8 +5,9 @@ import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import java.time.LocalDate;
 
 /**
- * The optional filters of GET /api/games. A null field doesn't filter, and a
- * blank season or title is treated as null. from and to are inclusive.
+ * The optional filters of GET /api/games. A null field doesn't filter.
+ * season and title are trimmed, and a blank one is treated as null. from and
+ * to are inclusive.
  * playable true keeps only games with at least one clue, false only games
  * without any.
  */
@@ -21,16 +22,15 @@ public record GameFilter(
     public static final GameFilter NONE = new GameFilter(null, null, null, null, null);
 
     public GameFilter {
-        if (season != null && season.isBlank()) {
-            season = null;
-        }
-
-        if (title != null && title.isBlank()) {
-            title = null;
-        }
+        season = trimToNull(season);
+        title = trimToNull(title);
 
         if (from != null && to != null && from.isAfter(to)) {
             throw new InvalidGameFilterException("'from' must not be after 'to'");
         }
+    }
+
+    private static String trimToNull(String text) {
+        return text == null || text.isBlank() ? null : text.strip();
     }
 }

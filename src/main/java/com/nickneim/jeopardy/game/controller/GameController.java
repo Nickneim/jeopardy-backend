@@ -4,19 +4,16 @@ import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.SeasonResponse;
-import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/games")
@@ -52,17 +49,10 @@ public class GameController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) Boolean playable
     ) {
-        Page<Game> games = gameService.getGames(
+        return PageResponse.from(gameService.getGameSummaries(
                 page,
                 size,
                 new GameFilter(season, title, from, to, playable)
-        );
-
-        Map<Long, Long> clueCounts = gameService.countClues(games.getContent());
-
-        return PageResponse.from(games.map(game -> GameSummaryResponse.from(
-                game,
-                clueCounts.getOrDefault(game.getId(), 0L)
-        )));
+        ));
     }
 }

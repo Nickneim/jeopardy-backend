@@ -32,7 +32,7 @@ class DevProfileErrorResponseIntegrationTest {
 
     @Test
     void unexpectedError_includesStackTraceAndMessage() {
-        when(gameService.getGames(anyInt(), anyInt(), any(GameFilter.class)))
+        when(gameService.getGameSummaries(anyInt(), anyInt(), any(GameFilter.class)))
                 .thenThrow(new IllegalStateException("something broke"));
 
         String body = restTestClient.get()

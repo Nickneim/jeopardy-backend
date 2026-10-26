@@ -22,8 +22,11 @@ class GameFilterTest {
     }
 
     @Test
-    void keepsTitleAsGiven() {
-        assertEquals(" Show ", new GameFilter(null, " Show ", null, null, null).title());
+    void trimsTitleAndSeason() {
+        GameFilter filter = new GameFilter(" jm ", " Show ", null, null, null);
+
+        assertEquals("jm", filter.season());
+        assertEquals("Show", filter.title());
     }
 
     @Test

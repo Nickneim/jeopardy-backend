@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.game.controller;
 
 import com.nickneim.jeopardy.game.dto.GameResponse;
+import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.entity.*;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
@@ -19,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -224,13 +224,13 @@ class GameControllerTest {
         ReflectionTestUtils.setField(game1, "id", 123L);
         ReflectionTestUtils.setField(game2, "id", 122L);
 
-        Page<Game> gamePage = new PageImpl<>(
-                List.of(game1, game2),
+        Page<GameSummaryResponse> gamePage = new PageImpl<>(
+                List.of(GameSummaryResponse.from(game1, 0), GameSummaryResponse.from(game2, 0)),
                 PageRequest.of(1, 20),
                 42
         );
 
-        when(gameService.getGames(1, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(1, 20, GameFilter.NONE))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -260,18 +260,18 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(1, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(1, 20, GameFilter.NONE);
     }
 
     @Test
     void getGames_usesDefaultPageAndSize() throws Exception {
-        Page<Game> emptyPage = new PageImpl<>(
+        Page<GameSummaryResponse> emptyPage = new PageImpl<>(
                 List.of(),
                 PageRequest.of(0, 20),
                 0
         );
 
-        when(gameService.getGames(0, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
                 .thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/games"))
@@ -286,7 +286,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(0, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE);
     }
 
     @Test
@@ -357,13 +357,13 @@ class GameControllerTest {
         ReflectionTestUtils.setField(game1, "id", 123L);
         ReflectionTestUtils.setField(game2, "id", 122L);
 
-        Page<Game> gamePage = new PageImpl<>(
-                List.of(game1, game2),
+        Page<GameSummaryResponse> gamePage = new PageImpl<>(
+                List.of(GameSummaryResponse.from(game1, 0), GameSummaryResponse.from(game2, 0)),
                 PageRequest.of(1, 20),
                 42
         );
 
-        when(gameService.getGames(1, 20, new GameFilter("39", null, null, null, null)))
+        when(gameService.getGameSummaries(1, 20, new GameFilter("39", null, null, null, null)))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -394,7 +394,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGames(1, 20, new GameFilter("39", null, null, null, null));
+        verify(gameService).getGameSummaries(1, 20, new GameFilter("39", null, null, null, null));
     }
 
     @Test
@@ -407,7 +407,7 @@ class GameControllerTest {
                 true
         );
 
-        when(gameService.getGames(0, 20, filter))
+        when(gameService.getGameSummaries(0, 20, filter))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games")
@@ -418,20 +418,20 @@ class GameControllerTest {
                         .param("playable", "true"))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGames(0, 20, filter);
+        verify(gameService).getGameSummaries(0, 20, filter);
     }
 
     @Test
     void getGames_passesPlayableFalse() throws Exception {
         GameFilter filter = new GameFilter(null, null, null, null, false);
 
-        when(gameService.getGames(0, 20, filter))
+        when(gameService.getGameSummaries(0, 20, filter))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games").param("playable", "false"))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGames(0, 20, filter);
+        verify(gameService).getGameSummaries(0, 20, filter);
     }
 
     @Test
@@ -456,12 +456,13 @@ class GameControllerTest {
         ReflectionTestUtils.setField(withClues, "id", 123L);
         ReflectionTestUtils.setField(withoutClues, "id", 725L);
 
-        List<Game> games = List.of(withClues, withoutClues);
+        List<GameSummaryResponse> summaries = List.of(
+                GameSummaryResponse.from(withClues, 61),
+                GameSummaryResponse.from(withoutClues, 0)
+        );
 
-        when(gameService.getGames(0, 20, GameFilter.NONE))
-                .thenReturn(new PageImpl<>(games, PageRequest.of(0, 20), 2));
-        when(gameService.countClues(games))
-                .thenReturn(Map.of(123L, 61L, 725L, 0L));
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
+                .thenReturn(new PageImpl<>(summaries, PageRequest.of(0, 20), 2));
 
         mockMvc.perform(get("/api/games"))
                 .andExpect(status().isOk())
@@ -481,14 +482,14 @@ class GameControllerTest {
 
     @Test
     void getGames_treatsBlankTitleAsNoFilter() throws Exception {
-        when(gameService.getGames(0, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games")
                         .param("title", "  "))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGames(0, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE);
     }
 
     @Test

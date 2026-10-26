@@ -79,15 +79,4 @@ public class Category {
     public List<Clue> getClues() {
         return clues;
     }
-
-    public boolean isJeopardyRound() {
-        return GameRound.fromColumn(getColumnNumber()) == GameRound.JEOPARDY;
-    }
-
-    public boolean isDoubleJeopardyRound() {
-        return GameRound.fromColumn(getColumnNumber()) == GameRound.DOUBLE_JEOPARDY;
-    }
-    public boolean isFinalJeopardy() {
-        return GameRound.fromColumn(getColumnNumber()) == GameRound.FINAL_JEOPARDY;
-    }
 }

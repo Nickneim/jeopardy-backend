@@ -69,9 +69,4 @@ public class Game {
     public List<GameDailyDouble> getDailyDoubles() {
         return dailyDoubles;
     }
-
-    public boolean isDailyDouble(Long clueId) {
-        return dailyDoubles.stream()
-                .anyMatch(dailyDouble -> dailyDouble.getClue().getId().equals(clueId));
-    }
 }

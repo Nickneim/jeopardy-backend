@@ -57,18 +57,13 @@ class GameTest {
     }
 
     @Test
-    void isDailyDouble_returnsTrueForDailyDoubleClue() {
-        assertTrue(game.isDailyDouble(dailyDoubleClue.getId()));
-    }
+    void newDailyDouble_rejectsClueFromAnotherGame() {
+        Game otherGame = new Game("Show #124", LocalDate.of(2025, 1, 2), "40");
 
-    @Test
-    void isDailyDouble_returnsFalseForNormalClue() {
-        assertFalse(game.isDailyDouble(normalClue.getId()));
-    }
-
-    @Test
-    void isDailyDouble_returnsFalseForUnknownClue() {
-        assertFalse(game.isDailyDouble(999L));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new GameDailyDouble(otherGame, normalClue)
+        );
     }
 
     @Test
