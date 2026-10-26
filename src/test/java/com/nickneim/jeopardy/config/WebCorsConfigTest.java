@@ -79,6 +79,26 @@ class WebCorsConfigTest {
     }
 
     @Test
+    void createSessionPreflightFromTheFrontend_isAllowed() throws Exception {
+        mockMvc.perform(options("/api/game-sessions/" + SessionCode.random())
+                        .header("Origin", FRONTEND)
+                        .header("Access-Control-Request-Method", "PUT")
+                        .header("Access-Control-Request-Headers", "content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND));
+    }
+
+    // No endpoint takes DELETE, so the browser mustn't be told it may send one.
+    @Test
+    void deletePreflightFromTheFrontend_isRejected() throws Exception {
+        mockMvc.perform(options("/api/game-sessions/" + SessionCode.random())
+                        .header("Origin", FRONTEND)
+                        .header("Access-Control-Request-Method", "DELETE"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
+
+    @Test
     void createSessionPreflightFromAnotherSite_isRejected() throws Exception {
         mockMvc.perform(options("/api/game-sessions")
                         .header("Origin", OTHER_SITE)

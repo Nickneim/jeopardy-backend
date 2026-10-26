@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.integration;
 
 import com.nickneim.jeopardy.TestcontainersConfiguration;
+import com.nickneim.jeopardy.config.WebSocketConfig;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -41,6 +42,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -51,10 +53,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -143,6 +147,54 @@ class GameSessionWebSocketIntegrationTest {
                 ExecutionException.class,
                 () -> connectFromOrigin("https://evil.example")
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Heartbeats
+    // -------------------------------------------------------------------------
+
+    // Without heartbeats a connection that dies without closing is never
+    // noticed, so the server must agree to them when the client asks.
+    @Test
+    void connectingWithHeartbeats_agreesToThem()
+            throws Exception {
+
+        // The client needs a scheduler of its own to send heartbeats.
+        ThreadPoolTaskScheduler clientScheduler = new ThreadPoolTaskScheduler();
+        clientScheduler.initialize();
+        stompClient.setTaskScheduler(clientScheduler);
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.setHeartbeat(new long[] {5_000, 5_000});
+
+        CompletableFuture<StompHeaders> connected = new CompletableFuture<>();
+
+        stompClient
+                .connectAsync(
+                        "ws://localhost:" + port + "/ws",
+                        new WebSocketHttpHeaders(),
+                        connectHeaders,
+                        new StompSessionHandlerAdapter() {
+                            @Override
+                            public void afterConnected(StompSession session, StompHeaders headers) {
+                                connected.complete(headers);
+                            }
+                        }
+                )
+                .get(
+                        5,
+                        TimeUnit.SECONDS
+                );
+
+        try {
+            assertArrayEquals(
+                    new long[] {WebSocketConfig.HEARTBEAT_MILLIS, WebSocketConfig.HEARTBEAT_MILLIS},
+                    connected.get(5, TimeUnit.SECONDS).getHeartbeat()
+            );
+        } finally {
+            stompClient.stop();
+            clientScheduler.shutdown();
+        }
     }
 
     // -------------------------------------------------------------------------
