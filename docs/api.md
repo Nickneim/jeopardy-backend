@@ -96,7 +96,7 @@ Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
 
 #### `GET /api/games/seasons`
 
-Every season that has at least one game, with its game count, for example to fill a season filter. Not paged. Response: `SeasonResponse[]`, for example `[{ "season": "42", "gameCount": 230 }, …]`.
+Every season that has at least one game, with its game count, for example to fill a season filter. Not paged. Seasons that differ only in case count as one season and are shown in lowercase, since the `season` filter is case-insensitive. Response: `SeasonResponse[]`, for example `[{ "season": "42", "gameCount": 230 }, …]`.
 
 Order, newest first:
 

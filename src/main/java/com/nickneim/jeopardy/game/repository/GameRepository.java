@@ -10,12 +10,17 @@ import java.util.List;
 
 public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificationExecutor<Game> {
 
+    /**
+     * Every season with its game count. Seasons that differ only in case are
+     * one season, shown in lowercase, as the case-insensitive season filter
+     * of GET /api/games treats them.
+     */
     @Query("""
             SELECT new com.nickneim.jeopardy.game.repository.SeasonGameCount(
-                g.season, COUNT(g), MAX(g.gameDate)
+                LOWER(g.season), COUNT(g), MAX(g.gameDate)
             )
             FROM Game g
-            GROUP BY g.season
+            GROUP BY LOWER(g.season)
             """)
     List<SeasonGameCount> findSeasonGameCounts();
 
