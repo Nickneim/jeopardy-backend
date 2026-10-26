@@ -60,20 +60,9 @@ public class GameController {
 
         Map<Long, Long> clueCounts = gameService.countClues(games.getContent());
 
-        List<GameSummaryResponse> content = games.getContent()
-                .stream()
-                .map(game -> GameSummaryResponse.from(
-                        game,
-                        clueCounts.getOrDefault(game.getId(), 0L)
-                ))
-                .toList();
-
-        return new PageResponse<>(
-                content,
-                games.getNumber(),
-                games.getSize(),
-                games.getTotalElements(),
-                games.getTotalPages()
-        );
+        return PageResponse.from(games.map(game -> GameSummaryResponse.from(
+                game,
+                clueCounts.getOrDefault(game.getId(), 0L)
+        )));
     }
 }

@@ -14,7 +14,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SessionLobbyTest {
@@ -71,6 +73,14 @@ class SessionLobbyTest {
         assertEquals(3, page.totalElements());
         assertEquals(2, page.totalPages());
         assertEquals(List.of(), lobby.listSessions(false, 5, 2).content());
+    }
+
+    // The controller validates paging too; this guards other callers.
+    @Test
+    void rejectsInvalidPagingBeforeAskingThePeers() {
+        assertThrows(IllegalArgumentException.class, () -> lobby.listSessions(false, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> lobby.listSessions(false, -1, 20));
+        verifyNoInteractions(peerSessions);
     }
 
     // Without its own address configured, an instance also gets its sessions

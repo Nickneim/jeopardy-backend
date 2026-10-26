@@ -110,6 +110,7 @@ class GameSessionEndToEndIntegrationTest {
                 .json("""
                     {
                         "status": 422,
+                        "code": "UNPLAYABLE_GAME",
                         "message": "Game %d can't be played: the board has no clues"
                     }
                     """.formatted(gameId), JsonCompareMode.STRICT);
@@ -135,6 +136,7 @@ class GameSessionEndToEndIntegrationTest {
                 .json("""
                     {
                         "status": 400,
+                        "code": "INVALID_REQUEST",
                         "message": "playerName must not be blank"
                     }
                     """, JsonCompareMode.STRICT);

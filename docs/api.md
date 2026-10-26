@@ -47,7 +47,21 @@ Key ideas:
 
 ## 3. REST API
 
-All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "message": "..." }`). That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language` A body that isn't JSON, is missing, or has a field of the wrong type (`{ "gameId": "abc" }`, or a number too large for its field) gets `400` with `"Invalid request: the body isn't valid JSON for this request"`.
+All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "code": "GAME_NOT_FOUND", "message": "..." }`). `status` is always the HTTP status. React to `code`, not to the message, since several errors share a status (two different `409`s on a join or create, say):
+
+| `code` | Status | When |
+|---|---|---|
+| `INVALID_REQUEST` | `400` | A query parameter, path session code or body that isn't valid (every `400` below) |
+| `GAME_NOT_FOUND` | `404` | Unknown game id (`GET /api/games/{id}`, or creating a session from one) |
+| `CLUE_NOT_FOUND` | `404` | Unknown clue id (`GET /api/clues/{id}`) |
+| `SESSION_NOT_FOUND` | `404` | Unknown or removed session |
+| `SESSION_ALREADY_EXISTS` | `409` | Creating a session under a code in use: pick another code |
+| `SESSION_NOT_JOINABLE` | `409` | Joining a session that doesn't take new players right now |
+| `UNPLAYABLE_GAME` | `422` | Creating a session from a game that can't be played |
+
+`SESSION_NOT_FOUND` is a `GameErrorCode` (§7): a game error that reaches REST keeps its STOMP code, so `code` is typed `ApiErrorCode | GameErrorCode` (§8). No other `GameErrorCode` is sent over REST today.
+
+That includes request bodies that fail validation (a missing or blank field): `400` with a message naming each invalid field, for example `"playerName must not be blank"` (several are joined with `", "`). Messages are always in English, whatever the `Accept-Language` A body that isn't JSON, is missing, or has a field of the wrong type (`{ "gameId": "abc" }`, or a number too large for its field) gets `400` with `"Invalid request: the body isn't valid JSON for this request"`.
 
 Any other error (an unexpected server error, or a malformed path such as a game id that isn't a number) uses Spring's default body instead: `{ "timestamp", "status", "error", "path" }`. It has no stack trace and no exception message, so show a generic error for it.
 
@@ -71,7 +85,7 @@ All filters are optional and combine with AND. Ordering and paging stay the same
 
 Response: `PageResponse<GameSummaryResponse>`. Each game's `clueCount` is how many clues it has. Some imported games, such as the newest ones, have none: they can be browsed but not played, so show them differently or hide them with `playable=true`.
 
-Errors (all `400` with an `ApiErrorResponse`):
+Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
 
 | Cause | `message` |
 |---|---|
@@ -93,7 +107,7 @@ Pass a `season` value unchanged as the `season` filter of `GET /api/games`.
 
 #### `GET /api/games/{id}`
 
-A full game with every category and clue. **It includes answers and Daily Double locations**, which is fine for browsing and single-player use, but never send it to other players in a multiplayer game. Response: `GameResponse`. Unknown id: `404 { "status": 404, "message": "Game not found: 999" }`.
+A full game with every category and clue. **It includes answers and Daily Double locations**, which is fine for browsing and single-player use, but never send it to other players in a multiplayer game. Response: `GameResponse`. Unknown id: `404 { "status": 404, "code": "GAME_NOT_FOUND", "message": "Game not found: 999" }`.
 
 #### `GET /api/clues/{id}`
 
@@ -103,7 +117,7 @@ One clue. Response: `ClueResponse`, whose `gameId` is the game it belongs to (fo
 
 #### Session codes
 
-A session's id is a 5-character **session code**, such as `7KQ2M`, everywhere: in paths, in `session` parameters, in STOMP destinations and in every response's `id`. Responses always give it in uppercase. When reading a code from the path or a destination, the backend is lenient about how someone typed it: lowercase is accepted, and `O`, `I` and `L` are read as `0`, `1` and `1`, so `7kq2m` and `7KQ2M` are the same session. Anything else that isn't 5 characters of the alphabet (see the create below) gets `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }` over REST, and `INVALID_REQUEST` with the same message over STOMP (§7). Normalize a typed code the same way before using it as the `session` parameter, so that it's routed like the server's own.
+A session's id is a 5-character **session code**, such as `7KQ2M`, everywhere: in paths, in `session` parameters, in STOMP destinations and in every response's `id`. Responses always give it in uppercase. When reading a code from the path or a destination, the backend is lenient about how someone typed it: lowercase is accepted, and `O`, `I` and `L` are read as `0`, `1` and `1`, so `7kq2m` and `7KQ2M` are the same session. Anything else that isn't 5 characters of the alphabet (see the create below) gets `400 { "status": 400, "code": "INVALID_REQUEST", "message": "Invalid session code: expected 5 letters and digits" }` over REST, and `INVALID_REQUEST` with the same message over STOMP (§7). Normalize a typed code the same way before using it as the `session` parameter, so that it's routed like the server's own.
 
 #### Routing: the `session` parameter
 
@@ -143,7 +157,7 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 
 The list is a snapshot: a session can start, fill up or close right after. Use `joinable` to decide whether to offer "Join" or only "Watch"; anyone can watch any listed session.
 
-Errors (all `400` with an `ApiErrorResponse`): invalid `page` or `size` (out of range or not a whole number) → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
+Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`): invalid `page` or `size` (out of range or not a whole number) → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
 
 #### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 
@@ -152,11 +166,11 @@ Creates a live session from a stored game, **under a code the client chooses**. 
 - `sessionId`: a new **session code**, 5 random characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (Crockford's base32: digits and uppercase letters without I, L, O and U), for example `7KQ2M`. Pick each character with `crypto.getRandomValues()`. Codes are short so that people can read them out and type them; they aren't secret (the lobby lists every session, and only a player's token proves who they are).
 - Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
 - `201 { "id": "7KQ2M" }`: the same code.
-- Code already in use: `409 { "status": 409, "message": "Game session already exists: <code>" }`, checked before the game (so a code in use gets a 409 even with an unknown game). The code of a closed session counts as in use while any of its players is still connected (§6.5), since player ids start at 1 again in every session. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
-- A code that isn't valid (see below): `400 { "status": 400, "message": "Invalid session code: expected 5 letters and digits" }`.
+- Code already in use: `409 { "status": 409, "code": "SESSION_ALREADY_EXISTS", "message": "Game session already exists: <code>" }`, checked before the game (so a code in use gets a 409 even with an unknown game). The code of a closed session counts as in use while any of its players is still connected (§6.5), since player ids start at 1 again in every session. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
+- A code that isn't valid (see below): `400 { "status": 400, "code": "INVALID_REQUEST", "message": "Invalid session code: expected 5 letters and digits" }`.
 - Unknown game: 404.
-- Game that can't be played: `422 { "status": 422, "message": "Game 725 can't be played: the board has no clues" }`. Usually a game without clues (some imported games, such as the newest ones, have none); the message gives any other reason, such as a clue whose stored answer no response could match. The game itself is valid and can still be browsed.
-- Missing `gameId`: `400 { "status": 400, "message": "gameId must not be null" }`
+- Game that can't be played: `422 { "status": 422, "code": "UNPLAYABLE_GAME", "message": "Game 725 can't be played: the board has no clues" }`. Usually a game without clues (some imported games, such as the newest ones, have none); the message gives any other reason, such as a clue whose stored answer no response could match. The game itself is valid and can still be browsed.
+- Missing `gameId`: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "gameId must not be null" }`
 - A session nobody joins is removed after 30 minutes (§6.5).
 
 #### `GET /api/game-sessions/{sessionId}?session={sessionId}`
@@ -170,13 +184,13 @@ Joins a session.
 - Request: `{ "playerName": "Nico" }` (must not be blank, at most 30 characters). Spaces and invisible characters at either end (ordinary, non-breaking and zero-width spaces, control characters) are removed first, so `" Nico "` joins as `"Nico"`, a name of only such characters counts as blank, and the length is that of the trimmed name.
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
 - The first player to join becomes the host (§6.4).
-- Unknown (or removed) session: `404 { "status": 404, "message": "Game session not found: <id>" }`
-- Missing or blank name: `400 { "status": 400, "message": "playerName must not be blank" }`
-- Name longer than 30 characters: `400 { "status": 400, "message": "playerName must be at most 30 characters" }`
+- Unknown (or removed) session: `404 { "status": 404, "code": "SESSION_NOT_FOUND", "message": "Game session not found: <id>" }`
+- Missing or blank name: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "playerName must not be blank" }`
+- Name longer than 30 characters: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "playerName must be at most 30 characters" }`
 
 **The token is a secret.** Only the joining player receives it. Store it (for example in `sessionStorage` or `localStorage`, keyed by session id) so the player can reconnect after a refresh, and never display it or send it anywhere except the CONNECT header. Joining also broadcasts the updated player list to the session's topic.
 
-Players can join in the lobby and mid-game, unless the host has blocked joining after the start (`allowLateJoin: false`, §6.6). Then a join after `WAITING_FOR_START` returns `409 { "status": 409, "message": "This game has already started and doesn't accept new players" }`. Joining the lobby is always allowed. Whatever `allowLateJoin` says, nobody can join once Final Jeopardy's wagering is over, `409 { "status": 409, "message": "Final Jeopardy is underway and doesn't accept new players" }`, or once the game has finished, `409 { "status": 409, "message": "This game has finished and doesn't accept new players" }` (§6.6). Watching (§4.1) never needs a join.
+Players can join in the lobby and mid-game, unless the host has blocked joining after the start (`allowLateJoin: false`, §6.6). Then a join after `WAITING_FOR_START` returns `409 { "status": 409, "code": "SESSION_NOT_JOINABLE", "message": "This game has already started and doesn't accept new players" }`. Joining the lobby is always allowed. Whatever `allowLateJoin` says, nobody can join once Final Jeopardy's wagering is over, `409 { "status": 409, "code": "SESSION_NOT_JOINABLE", "message": "Final Jeopardy is underway and doesn't accept new players" }`, or once the game has finished, `409 { "status": 409, "code": "SESSION_NOT_JOINABLE", "message": "This game has finished and doesn't accept new players" }` (§6.6). Watching (§4.1) never needs a join.
 
 Every new player starts with the session's current `joinScore` (0 until someone's score drops below 0, §6.6), shown in their `PlayerResponse.score`. Someone who left can join again the same way, under any name (even the same one): they become a new player with a new id and token and the current `joinScore`, and nothing else from their old self carries over.
 
@@ -599,8 +613,17 @@ type GameErrorCode =
   | "INTERNAL_ERROR";
 
 // ---------- REST: browsing ----------
+type ApiErrorCode =
+  | "INVALID_REQUEST"
+  | "GAME_NOT_FOUND"
+  | "CLUE_NOT_FOUND"
+  | "UNPLAYABLE_GAME"
+  | "SESSION_ALREADY_EXISTS"
+  | "SESSION_NOT_JOINABLE";
+
 interface ApiErrorResponse {
-  status: number;
+  status: number;        // the HTTP status
+  code: ApiErrorCode | GameErrorCode;   // only SESSION_NOT_FOUND of GameErrorCode today (§3)
   message: string;
 }
 

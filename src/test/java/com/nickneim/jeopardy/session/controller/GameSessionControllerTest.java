@@ -113,6 +113,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 409,
+                            "code": "SESSION_ALREADY_EXISTS",
                             "message": "Game session already exists: %s"
                         }
                         """.formatted(sessionId), JsonCompareMode.STRICT));
@@ -176,6 +177,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 422,
+                            "code": "UNPLAYABLE_GAME",
                             "message": "Game 725 can't be played: the board has no clues"
                         }
                         """, JsonCompareMode.STRICT));
@@ -220,6 +222,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "playerName must not be blank"
                         }
                         """, JsonCompareMode.STRICT));
@@ -255,6 +258,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "playerName must not be blank"
                         }
                         """, JsonCompareMode.STRICT));
@@ -273,6 +277,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "playerName must be at most 30 characters"
                         }
                         """, JsonCompareMode.STRICT));
@@ -291,6 +296,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "playerName must not be blank"
                         }
                         """, JsonCompareMode.STRICT));
@@ -321,6 +327,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "Invalid request: the body isn't valid JSON for this request"
                         }
                         """, JsonCompareMode.STRICT));
@@ -336,6 +343,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "Invalid request: the body isn't valid JSON for this request"
                         }
                         """, JsonCompareMode.STRICT));
@@ -352,6 +360,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "Invalid request: the body isn't valid JSON for this request"
                         }
                         """, JsonCompareMode.STRICT));
@@ -366,6 +375,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "Invalid request parameters"
                         }
                         """, JsonCompareMode.STRICT));
@@ -382,6 +392,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 400,
+                            "code": "INVALID_REQUEST",
                             "message": "gameId must not be null"
                         }
                         """, JsonCompareMode.STRICT));
@@ -405,6 +416,7 @@ class GameSessionControllerTest {
                         """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("SESSION_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Game session not found: " + sessionId));
     }
 
@@ -457,6 +469,7 @@ class GameSessionControllerTest {
                     .andExpect(content().json("""
                             {
                                 "status": 400,
+                                "code": "INVALID_REQUEST",
                                 "message": "Invalid session code: expected 5 letters and digits"
                             }
                             """, JsonCompareMode.STRICT));
@@ -507,6 +520,7 @@ class GameSessionControllerTest {
                 .andExpect(content().json("""
                         {
                             "status": 409,
+                            "code": "SESSION_NOT_JOINABLE",
                             "message": "This game has already started and doesn't accept new players"
                         }
                         """, JsonCompareMode.STRICT));
@@ -647,6 +661,7 @@ class GameSessionControllerTest {
 
         mockMvc.perform(get("/api/game-sessions/" + sessionId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404));
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("SESSION_NOT_FOUND"));
     }
 }

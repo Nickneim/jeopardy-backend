@@ -15,29 +15,34 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDate;
 import java.util.stream.Collectors;
 
+/**
+ * Every handler returns its status through error(...), which also puts it in
+ * the body, so the status line and ApiErrorResponse.status can't disagree.
+ */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler({
-            GameNotFoundException.class,
-            ClueNotFoundException.class
-    })
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiErrorResponse handleNotFound(RuntimeException exception) {
-        return error(HttpStatus.NOT_FOUND, exception.getMessage());
+    @ExceptionHandler(GameNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleGameNotFound(GameNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, ApiErrorCode.GAME_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(ClueNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleClueNotFound(ClueNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, ApiErrorCode.CLUE_NOT_FOUND, exception.getMessage());
     }
 
     /**
      * A game rule broken by a REST call. The only one today is a missing
      * session (GameSessionNotFoundException, 404); the rest are STOMP
      * errors, mapped here so that one reaching REST is a 4xx, not a 500.
+     * The body keeps the GameErrorCode, since several share a status.
      */
     @ExceptionHandler(InvalidGameActionException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidGameAction(
@@ -52,36 +57,37 @@ public class ApiExceptionHandler {
             case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
 
-        return ResponseEntity.status(status).body(error(status, exception.getMessage()));
+        return error(status, exception.getCode().name(), exception.getMessage());
     }
 
     // 422 rather than 409: the request is well formed and the game exists, but
     // its content can't be used to create a session. Nothing about the
     // server's state conflicts with it, and retrying won't help.
     @ExceptionHandler(UnplayableGameException.class)
-    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
-    public ApiErrorResponse handleUnplayableGame(UnplayableGameException exception) {
-        return error(HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleUnplayableGame(UnplayableGameException exception) {
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, ApiErrorCode.UNPLAYABLE_GAME, exception.getMessage());
     }
 
     // 409: the request is fine, but the session's state doesn't allow it:
     // it doesn't take new players right now (GameSession.isJoinable), or
     // (for a create) its id is already in use.
-    @ExceptionHandler({
-            SessionNotJoinableException.class,
-            GameSessionAlreadyExistsException.class
-    })
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiErrorResponse handleConflict(RuntimeException exception) {
-        return error(HttpStatus.CONFLICT, exception.getMessage());
+    @ExceptionHandler(SessionNotJoinableException.class)
+    public ResponseEntity<ApiErrorResponse> handleSessionNotJoinable(SessionNotJoinableException exception) {
+        return error(HttpStatus.CONFLICT, ApiErrorCode.SESSION_NOT_JOINABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(GameSessionAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleSessionAlreadyExists(
+            GameSessionAlreadyExistsException exception
+    ) {
+        return error(HttpStatus.CONFLICT, ApiErrorCode.SESSION_ALREADY_EXISTS, exception.getMessage());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleConstraintViolation(
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(
             ConstraintViolationException exception
     ) {
-        return error(HttpStatus.BAD_REQUEST, "Invalid request parameters");
+        return invalidRequest("Invalid request parameters");
     }
 
     /**
@@ -89,8 +95,7 @@ public class ApiExceptionHandler {
      * The message names every invalid field, e.g. "playerName must not be blank".
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleInvalidRequestBody(
+    public ResponseEntity<ApiErrorResponse> handleInvalidRequestBody(
             MethodArgumentNotValidException exception
     ) {
         String message = exception.getBindingResult()
@@ -100,7 +105,7 @@ public class ApiExceptionHandler {
                 .sorted()
                 .collect(Collectors.joining(", "));
 
-        return error(HttpStatus.BAD_REQUEST, message.isEmpty() ? "Invalid request body" : message);
+        return invalidRequest(message.isEmpty() ? "Invalid request body" : message);
     }
 
     /**
@@ -109,17 +114,15 @@ public class ApiExceptionHandler {
      * classes, so it isn't passed on.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleUnreadableRequestBody(
+    public ResponseEntity<ApiErrorResponse> handleUnreadableRequestBody(
             HttpMessageNotReadableException exception
     ) {
-        return error(HttpStatus.BAD_REQUEST, "Invalid request: the body isn't valid JSON for this request");
+        return invalidRequest("Invalid request: the body isn't valid JSON for this request");
     }
 
     @ExceptionHandler(InvalidGameFilterException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleInvalidGameFilter(InvalidGameFilterException exception) {
-        return error(HttpStatus.BAD_REQUEST, exception.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleInvalidGameFilter(InvalidGameFilterException exception) {
+        return invalidRequest(exception.getMessage());
     }
 
     /**
@@ -129,8 +132,7 @@ public class ApiExceptionHandler {
      * a non-numeric id) leaves it to Spring's default 400 handling.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorResponse handleInvalidFilterValue(
+    public ResponseEntity<ApiErrorResponse> handleInvalidFilterValue(
             MethodArgumentTypeMismatchException exception
     ) throws MethodArgumentTypeMismatchException {
         String parameter = "'" + exception.getName() + "'";
@@ -148,11 +150,19 @@ public class ApiExceptionHandler {
             throw exception;
         }
 
-        return error(HttpStatus.BAD_REQUEST, message);
+        return invalidRequest(message);
     }
 
-    private static ApiErrorResponse error(HttpStatus status, String message) {
-        return new ApiErrorResponse(status.value(), message);
+    private static ResponseEntity<ApiErrorResponse> invalidRequest(String message) {
+        return error(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST, message);
+    }
+
+    private static ResponseEntity<ApiErrorResponse> error(HttpStatus status, ApiErrorCode code, String message) {
+        return error(status, code.name(), message);
+    }
+
+    private static ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status).body(new ApiErrorResponse(status.value(), code, message));
     }
 
 }

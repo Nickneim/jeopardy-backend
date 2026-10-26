@@ -152,6 +152,7 @@ class GameIntegrationTest {
                 .json("""
                     {
                         "status": 404,
+                        "code": "GAME_NOT_FOUND",
                         "message": "Game not found: 999"
                     }
                     """);
@@ -422,6 +423,7 @@ class GameIntegrationTest {
                 .json("""
                     {
                         "status": 400,
+                        "code": "INVALID_REQUEST",
                         "message": "Invalid value for 'playable': expected true or false"
                     }
                     """);
@@ -437,6 +439,7 @@ class GameIntegrationTest {
                 .json("""
                     {
                         "status": 400,
+                        "code": "INVALID_REQUEST",
                         "message": "Invalid date for 'from': expected YYYY-MM-DD"
                     }
                     """);
@@ -452,6 +455,7 @@ class GameIntegrationTest {
                 .json("""
                     {
                         "status": 400,
+                        "code": "INVALID_REQUEST",
                         "message": "'from' must not be after 'to'"
                     }
                     """);

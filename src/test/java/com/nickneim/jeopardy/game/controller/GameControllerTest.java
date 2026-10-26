@@ -199,6 +199,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                     {
                         "status": 404,
+                        "code": "GAME_NOT_FOUND",
                         "message": "Game not found: 999"
                     }
                     """));
@@ -297,6 +298,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid request parameters"
                 }
                 """));
@@ -313,6 +315,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid request parameters"
                 }
                 """));
@@ -329,6 +332,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid request parameters"
                 }
                 """));
@@ -437,6 +441,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid value for 'playable': expected true or false"
                 }
                 """, JsonCompareMode.STRICT));
@@ -494,6 +499,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid date for 'from': expected YYYY-MM-DD"
                 }
                 """, JsonCompareMode.STRICT));
@@ -509,6 +515,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid date for 'to': expected YYYY-MM-DD"
                 }
                 """, JsonCompareMode.STRICT));
@@ -525,6 +532,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "'from' must not be after 'to'"
                 }
                 """, JsonCompareMode.STRICT));
@@ -540,6 +548,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid request parameters"
                 }
                 """, JsonCompareMode.STRICT));
@@ -555,6 +564,7 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "status": 400,
+                    "code": "INVALID_REQUEST",
                     "message": "Invalid request parameters"
                 }
                 """, JsonCompareMode.STRICT));

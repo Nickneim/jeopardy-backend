@@ -94,6 +94,7 @@ class ClueControllerTest {
                 .andExpect(content().json("""
                     {
                         "status": 404,
+                        "code": "CLUE_NOT_FOUND",
                         "message": "Clue not found: 999"
                     }
                     """));

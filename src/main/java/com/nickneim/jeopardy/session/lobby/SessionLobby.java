@@ -6,6 +6,9 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -40,6 +43,9 @@ public class SessionLobby {
             int page,
             int size
     ) {
+        // Rejects a negative page or a size below 1 before any peer is asked.
+        Pageable pageable = PageRequest.of(page, size);
+
         // A session is only ever on one instance, but if this instance's
         // address isn't configured, it answers for itself too: keep the
         // summary read directly.
@@ -55,15 +61,9 @@ public class SessionLobby {
                         .thenComparing(GameSessionSummaryResponse::id))
                 .toList();
 
-        int from = (int) Math.min((long) page * size, matching.size());
+        int from = (int) Math.min(pageable.getOffset(), matching.size());
         int to = Math.min(from + size, matching.size());
 
-        return new PageResponse<>(
-                matching.subList(from, to),
-                page,
-                size,
-                matching.size(),
-                (matching.size() + size - 1) / size
-        );
+        return PageResponse.from(new PageImpl<>(matching.subList(from, to), pageable, matching.size()));
     }
 }
