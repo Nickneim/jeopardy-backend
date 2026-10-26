@@ -138,11 +138,12 @@ public class PeerSessions {
                             .orTimeout(remaining, TimeUnit.NANOSECONDS)
                             .exceptionally(failure -> {
                                 Throwable cause = failure instanceof CompletionException ? failure.getCause() : failure;
-                                // An answer that's just late still counts.
-                                CompletableFuture<?> late = answer.orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS);
-                                if (failing.putIfAbsent(address, late) == null) {
+                                // An answer that's just late still counts, for one more
+                                // timeout. Armed only by the lobby request that stored it.
+                                if (failing.putIfAbsent(address, answer) == null) {
                                     log.warn("Leaving out the sessions of {} until it answers: {}", address, cause.toString());
-                                    watch(address, late);
+                                    answer.orTimeout(properties.timeout().toNanos(), TimeUnit.NANOSECONDS);
+                                    watch(address, answer);
                                 }
                                 return List.of();
                             });

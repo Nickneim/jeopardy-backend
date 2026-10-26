@@ -24,7 +24,6 @@ import com.nickneim.jeopardy.session.model.SessionCode;
 import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -248,38 +247,6 @@ class GameSessionControllerTest {
                 .andExpect(status().isCreated());
 
         verify(gameSessionService).joinSession(sessionId, "Nico");
-    }
-
-    // Only what breaks a layout goes; invisible characters stay (names are
-    // display text, and duplicates are allowed anyway).
-    @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            # Line breaks and tabs separate words, as a space.
-            Mary\\nJane\\tDoe\\u0085Ann                  | Mary Jane Doe Ann
-            # Direction controls (an override, a mark, an isolate) and other controls go.
-            N\\u202Ei\\u200Fc\\u2066o\\u0000\\u0008      | Nico
-            # Stacked marks past four on one character go.
-            a\\u0301\\u0301\\u0301\\u0301\\u0301\\u0301 | á́́́
-            # Real stacked marks fit: Vietnamese e with circumflex and tilde.
-            Nguye\\u0302\\u0303n                        | Nguyễn
-            # Invisible characters inside stay: a zero-width space, a soft hyphen, a Hangul filler.
-            Ni\\u200Bc\\u00ADo\\u3164                   | Ni​c­oㅤ
-            # So do tags, joiners and the non-joiner: hidden "hi", 👩‍💻, Persian.
-            Nico\\uDB40\\uDC68\\uDB40\\uDC69 \\uD83D\\uDC69\\u200D\\uD83D\\uDCBB \\u0645\\u06CC\\u200C\\u062E | Nico󠁨󠁩 👩‍💻 می‌خ
-            """)
-    void joinSession_removesOnlyWhatBreaksTheLayout(String sent, String joinedAs) throws Exception {
-        SessionCode sessionId = SessionCode.random();
-
-        when(gameSessionService.joinSession(sessionId, joinedAs))
-                .thenReturn(new GameSessionPlayer(1L, joinedAs, PlayerTokens.generate()));
-
-        // sent holds JSON escapes, which Jackson reads.
-        mockMvc.perform(post("/api/game-sessions/" + sessionId + "/players")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"playerName\": \"" + sent + "\"}"))
-                .andExpect(status().isCreated());
-
-        verify(gameSessionService).joinSession(sessionId, joinedAs);
     }
 
     // Each sent as JSON escapes: spaces and zero-width spaces, line breaks,

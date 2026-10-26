@@ -176,6 +176,35 @@ class PlayerConnectionsTest {
     }
 
     @Test
+    void hasPlayersConnected_staysTrueUntilTheSessionsLastConnectionEnds() {
+        PlayerPrincipal secondPlayer = new PlayerPrincipal(player.sessionId(), 2L);
+        connections.connected("ws-2", secondPlayer);
+        // The same player again, on another tab.
+        connections.connected("ws-3", player);
+
+        connections.disconnected(CONNECTION);
+        connections.disconnected("ws-3");
+        assertTrue(connections.hasPlayersConnected(player.sessionId()));
+
+        connections.disconnected("ws-2");
+        assertFalse(connections.hasPlayersConnected(player.sessionId()));
+
+        // Disconnecting twice changes nothing.
+        connections.disconnected("ws-2");
+        assertFalse(connections.hasPlayersConnected(player.sessionId()));
+    }
+
+    @Test
+    void aConnectionIdRecordedAgain_countsOnlyForItsLatestSession() {
+        PlayerPrincipal elsewhere = new PlayerPrincipal(SessionCode.random(), 1L);
+
+        connections.connected(CONNECTION, elsewhere);
+
+        assertFalse(connections.hasPlayersConnected(player.sessionId()));
+        assertTrue(connections.hasPlayersConnected(elsewhere.sessionId()));
+    }
+
+    @Test
     void otherConnections_areNotTracked() {
         Message<?> broadcast = broadcastTo("anonymous");
 

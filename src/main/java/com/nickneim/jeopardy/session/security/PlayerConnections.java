@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +63,10 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
     // STOMP session id (one per connection) -> the connection.
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
+    // Session id -> the ids of its players' connections; a session with none
+    // has no entry. The sets are only touched inside the map's compute calls.
+    private final Map<SessionCode, Set<String>> connectionsBySession = new ConcurrentHashMap<>();
+
     private final MessageChannel clientOutboundChannel;
 
     // The outbound channel is lazy because the broker configuration that
@@ -73,18 +78,39 @@ public class PlayerConnections implements ExecutorChannelInterceptor {
     }
 
     public void connected(String connectionId, PlayerPrincipal player) {
-        connections.put(connectionId, new Connection(player));
+        Connection previous = connections.put(connectionId, new Connection(player));
+
+        if (previous != null) {
+            forget(connectionId, previous);
+        }
+        connectionsBySession.compute(player.sessionId(), (sessionId, ids) -> {
+            Set<String> updated = ids == null ? new HashSet<>() : ids;
+            updated.add(connectionId);
+            return updated;
+        });
     }
 
     public void disconnected(String connectionId) {
-        connections.remove(connectionId);
+        Connection connection = connections.remove(connectionId);
+
+        if (connection != null) {
+            forget(connectionId, connection);
+        }
     }
 
-    /** Whether any player of a session with this id is still connected. */
+    private void forget(String connectionId, Connection connection) {
+        connectionsBySession.computeIfPresent(connection.player.sessionId(), (sessionId, ids) -> {
+            ids.remove(connectionId);
+            return ids.isEmpty() ? null : ids;
+        });
+    }
+
+    /**
+     * Whether any player of a session with this id is still connected. A
+     * lookup, not a scan: every close asks it about each closed id still held.
+     */
     public boolean hasPlayersConnected(SessionCode sessionId) {
-        return connections.values()
-                .stream()
-                .anyMatch(connection -> connection.player.sessionId().equals(sessionId));
+        return connectionsBySession.containsKey(sessionId);
     }
 
     /**
