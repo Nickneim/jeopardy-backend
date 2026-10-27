@@ -360,6 +360,15 @@ class GameBoardTest {
     }
 
     @Test
+    void from_copiesTheGamesTitleSeasonAndDate() {
+        GameBoard board = GameBoard.from(createGame());
+
+        assertEquals("Show #123", board.getTitle());
+        assertEquals("40", board.getSeason());
+        assertEquals(LocalDate.of(2025, 1, 1), board.getGameDate());
+    }
+
+    @Test
     void from_usesClueValuesForEachRound() {
         GameBoard board = GameBoard.from(createGame());
 

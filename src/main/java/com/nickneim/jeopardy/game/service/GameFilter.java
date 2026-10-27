@@ -1,8 +1,10 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
+import com.nickneim.jeopardy.exception.InvalidParameterException;
 
 import java.time.LocalDate;
+
+import static com.nickneim.jeopardy.dto.QueryParameters.trimToNull;
 
 /**
  * The optional filters of GET /api/games. A null field doesn't filter.
@@ -26,11 +28,7 @@ public record GameFilter(
         title = trimToNull(title);
 
         if (from != null && to != null && from.isAfter(to)) {
-            throw new InvalidGameFilterException("'from' must not be after 'to'");
+            throw new InvalidParameterException("'from' must not be after 'to'");
         }
-    }
-
-    private static String trimToNull(String text) {
-        return text == null || text.isBlank() ? null : text.strip();
     }
 }

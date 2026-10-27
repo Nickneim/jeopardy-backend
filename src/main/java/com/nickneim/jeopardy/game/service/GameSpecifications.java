@@ -1,10 +1,17 @@
 package com.nickneim.jeopardy.game.service;
 
+import com.nickneim.jeopardy.dto.SortDirection;
 import com.nickneim.jeopardy.game.entity.Clue;
 import com.nickneim.jeopardy.game.entity.Game;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Nulls;
+import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -14,6 +21,9 @@ import java.util.List;
 final class GameSpecifications {
 
     private static final char LIKE_ESCAPE = '\\';
+
+    // Postgres's built-in collation that compares by Unicode code point.
+    private static final String CODE_POINT_ORDER = "ucs_basic";
 
     private GameSpecifications() {}
 
@@ -41,6 +51,61 @@ final class GameSpecifications {
         }
 
         return Specification.allOf(specifications);
+    }
+
+    /**
+     * Orders the query by {@code sort}, then by id in the same direction.
+     * It filters nothing, and leaves the page's count query alone.
+     */
+    static Specification<Game> sortedBy(GameSort sort) {
+        return (game, query, builder) -> {
+            if (query.getResultType() == Long.class) {
+                return builder.conjunction();
+            }
+
+            boolean ascending = sort.direction() == SortDirection.ASC;
+            List<Order> orders = new ArrayList<>();
+
+            switch (sort.field()) {
+                // By code point, as the lobby's String.CASE_INSENSITIVE_ORDER
+                // compares: the database's own collation mostly ignores spaces
+                // and punctuation, so it put "Show #100 - Tuesday" before
+                // "Show #10 - Monday".
+                case TITLE -> orders.add(order(
+                        builder,
+                        ((HibernateCriteriaBuilder) builder).collate(builder.lower(game.get("title")), CODE_POINT_ORDER),
+                        ascending
+                ));
+                // As Seasons.order: specials have no number, so they come
+                // after the numbered seasons, by name.
+                case SEASON -> {
+                    orders.add(order(builder, game.get("seasonNumber"), ascending));
+                    orders.add(order(builder, builder.lower(game.get("season")), ascending));
+                }
+                case GAME_DATE -> orders.add(order(builder, game.get("gameDate"), ascending));
+                case CLUE_COUNT -> orders.add(order(builder, clueCount(game, query, builder), ascending));
+            }
+
+            orders.add(order(builder, game.get("id"), ascending));
+            query.orderBy(orders);
+
+            return builder.conjunction();
+        };
+    }
+
+    private static Order order(CriteriaBuilder builder, Expression<?> expression, boolean ascending) {
+        return ascending
+                ? builder.asc(expression, Nulls.LAST)
+                : builder.desc(expression, Nulls.LAST);
+    }
+
+    // A correlated subquery, so sorting by it loads no clues.
+    private static Expression<Long> clueCount(Root<Game> game, CriteriaQuery<?> query, CriteriaBuilder builder) {
+        Subquery<Long> count = query.subquery(Long.class);
+        Root<Clue> clue = count.from(Clue.class);
+
+        return count.select(builder.count(clue))
+                .where(builder.equal(clue.get("category").get("game").get("id"), game.get("id")));
     }
 
     // An EXISTS subquery, so no clue is loaded or counted. It also applies to

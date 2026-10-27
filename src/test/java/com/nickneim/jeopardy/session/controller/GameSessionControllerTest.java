@@ -1,5 +1,7 @@
 package com.nickneim.jeopardy.session.controller;
 
+import com.nickneim.jeopardy.session.lobby.SessionSort;
+import com.nickneim.jeopardy.session.lobby.SessionFilter;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.session.board.BoardCategory;
@@ -15,6 +17,8 @@ import com.nickneim.jeopardy.session.exception.GameSessionNotFoundException;
 import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
 import com.nickneim.jeopardy.session.lobby.SessionLobby;
+import com.nickneim.jeopardy.session.lobby.SessionStage;
+import com.nickneim.jeopardy.dto.SortDirection;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
@@ -35,6 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -613,13 +618,13 @@ class GameSessionControllerTest {
         SessionCode sessionId = SessionCode.random();
         GameSession session = new GameSession(
                 sessionId,
-                new GameBoard(7L, "Show #7", oneClueBoard().getRounds()),
+                new GameBoard(7L, "Show #7", "1", LocalDate.of(1984, 9, 18), oneClueBoard().getRounds()),
                 GameSessionTimeouts.defaults(),
                 Instant.parse("2026-10-09T12:30:00Z")
         );
         session.addPlayer("Nico", PlayerTokens.generate());
 
-        when(sessionLobby.listSessions(false, 0, 20)).thenReturn(new PageResponse<>(
+        when(sessionLobby.listSessions(SessionFilter.NONE, SessionSort.DEFAULT, 0, 20)).thenReturn(new PageResponse<>(
                 List.of(GameSessionSummaryResponse.from(session)), 0, 20, 1, 1
         ));
 
@@ -631,6 +636,8 @@ class GameSessionControllerTest {
                                 "id": "%s",
                                 "gameId": 7,
                                 "gameTitle": "Show #7",
+                                "gameSeason": "1",
+                                "gameDate": "1984-09-18",
                                 "state": "WAITING_FOR_START",
                                 "round": "JEOPARDY",
                                 "playerCount": 1,
@@ -650,13 +657,13 @@ class GameSessionControllerTest {
 
     @Test
     void listSessions_passesThePagingAndFilter() throws Exception {
-        when(sessionLobby.listSessions(true, 2, 5))
+        when(sessionLobby.listSessions(new SessionFilter(null, null, false, true), SessionSort.DEFAULT, 2, 5))
                 .thenReturn(new PageResponse<>(List.of(), 2, 5, 0, 0));
 
         mockMvc.perform(get("/api/game-sessions?page=2&size=5&includeFinished=true"))
                 .andExpect(status().isOk());
 
-        verify(sessionLobby).listSessions(true, 2, 5);
+        verify(sessionLobby).listSessions(new SessionFilter(null, null, false, true), SessionSort.DEFAULT, 2, 5);
     }
 
     @Test
@@ -676,6 +683,72 @@ class GameSessionControllerTest {
         mockMvc.perform(get("/api/game-sessions?includeFinished=maybe"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid value for 'includeFinished': expected true or false"));
+    }
+
+    @Test
+    void listSessions_passesTheFiltersAndSort() throws Exception {
+        SessionFilter filter = new SessionFilter("nico", SessionStage.DOUBLE_JEOPARDY, true, false);
+        SessionSort sort = new SessionSort(SessionSort.Field.HOST_NAME, SortDirection.DESC);
+        when(sessionLobby.listSessions(filter, sort, 0, 20))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/game-sessions?search= Nico &stage=DOUBLE_JEOPARDY&joinable=true"
+                        + "&sort=hostName&direction=desc"))
+                .andExpect(status().isOk());
+
+        verify(sessionLobby).listSessions(filter, sort, 0, 20);
+    }
+
+    @Test
+    void listSessions_sortsAscendingByDefaultExceptForTheDefaultSort() throws Exception {
+        when(sessionLobby.listSessions(any(), any(), anyInt(), anyInt()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/game-sessions?sort=playerCount")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/game-sessions?sort=createdAt")).andExpect(status().isOk());
+
+        verify(sessionLobby).listSessions(
+                SessionFilter.NONE, new SessionSort(SessionSort.Field.PLAYER_COUNT, SortDirection.ASC), 0, 20);
+        verify(sessionLobby).listSessions(SessionFilter.NONE, SessionSort.DEFAULT, 0, 20);
+    }
+
+    @Test
+    void listSessions_stageFinishedIncludesFinishedSessions() throws Exception {
+        when(sessionLobby.listSessions(any(), any(), anyInt(), anyInt()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/game-sessions?stage=FINISHED")).andExpect(status().isOk());
+
+        verify(sessionLobby).listSessions(
+                new SessionFilter(null, SessionStage.FINISHED, false, true), SessionSort.DEFAULT, 0, 20);
+    }
+
+    @Test
+    void listSessions_rejectsUnknownStageSortAndDirection_beforeAskingTheLobby() throws Exception {
+        mockMvc.perform(get("/api/game-sessions?stage=PLAYING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value(
+                        "Invalid value for 'stage': expected one of LOBBY, JEOPARDY, DOUBLE_JEOPARDY, "
+                                + "FINAL_JEOPARDY, FINISHED"));
+
+        mockMvc.perform(get("/api/game-sessions?sort=score"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value(
+                        "Invalid value for 'sort': expected one of id, gameTitle, gameSeason, gameDate, "
+                                + "hostName, playerCount, stage, createdAt"));
+
+        mockMvc.perform(get("/api/game-sessions?direction=up"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Invalid value for 'direction': expected one of asc, desc"));
+
+        mockMvc.perform(get("/api/game-sessions?joinable=maybe"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid value for 'joinable': expected true or false"));
+
+        verifyNoInteractions(sessionLobby);
     }
 
     private GameBoard oneClueBoard() {

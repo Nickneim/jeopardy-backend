@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.game.controller;
 
+import com.nickneim.jeopardy.game.service.GameSort;
 import com.nickneim.jeopardy.game.dto.GameResponse;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.entity.*;
@@ -230,7 +231,7 @@ class GameControllerTest {
                 42
         );
 
-        when(gameService.getGameSummaries(1, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(1, 20, GameFilter.NONE, GameSort.DEFAULT))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -260,7 +261,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGameSummaries(1, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(1, 20, GameFilter.NONE, GameSort.DEFAULT);
     }
 
     @Test
@@ -271,7 +272,7 @@ class GameControllerTest {
                 0
         );
 
-        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT))
                 .thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/games"))
@@ -286,7 +287,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT);
     }
 
     @Test
@@ -363,7 +364,7 @@ class GameControllerTest {
                 42
         );
 
-        when(gameService.getGameSummaries(1, 20, new GameFilter("39", null, null, null, null)))
+        when(gameService.getGameSummaries(1, 20, new GameFilter("39", null, null, null, null), GameSort.DEFAULT))
                 .thenReturn(gamePage);
 
         mockMvc.perform(get("/api/games")
@@ -394,7 +395,7 @@ class GameControllerTest {
                 }
                 """));
 
-        verify(gameService).getGameSummaries(1, 20, new GameFilter("39", null, null, null, null));
+        verify(gameService).getGameSummaries(1, 20, new GameFilter("39", null, null, null, null), GameSort.DEFAULT);
     }
 
     @Test
@@ -407,7 +408,7 @@ class GameControllerTest {
                 true
         );
 
-        when(gameService.getGameSummaries(0, 20, filter))
+        when(gameService.getGameSummaries(0, 20, filter, GameSort.DEFAULT))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games")
@@ -418,20 +419,20 @@ class GameControllerTest {
                         .param("playable", "true"))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGameSummaries(0, 20, filter);
+        verify(gameService).getGameSummaries(0, 20, filter, GameSort.DEFAULT);
     }
 
     @Test
     void getGames_passesPlayableFalse() throws Exception {
         GameFilter filter = new GameFilter(null, null, null, null, false);
 
-        when(gameService.getGameSummaries(0, 20, filter))
+        when(gameService.getGameSummaries(0, 20, filter, GameSort.DEFAULT))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games").param("playable", "false"))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGameSummaries(0, 20, filter);
+        verify(gameService).getGameSummaries(0, 20, filter, GameSort.DEFAULT);
     }
 
     @Test
@@ -461,7 +462,7 @@ class GameControllerTest {
                 GameSummaryResponse.from(withoutClues, 0)
         );
 
-        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT))
                 .thenReturn(new PageImpl<>(summaries, PageRequest.of(0, 20), 2));
 
         mockMvc.perform(get("/api/games"))
@@ -482,14 +483,14 @@ class GameControllerTest {
 
     @Test
     void getGames_treatsBlankTitleAsNoFilter() throws Exception {
-        when(gameService.getGameSummaries(0, 20, GameFilter.NONE))
+        when(gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/games")
                         .param("title", "  "))
                 .andExpect(status().isOk());
 
-        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE);
+        verify(gameService).getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT);
     }
 
     @Test

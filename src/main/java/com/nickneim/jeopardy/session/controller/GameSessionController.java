@@ -8,7 +8,10 @@ import com.nickneim.jeopardy.session.dto.GameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
 import com.nickneim.jeopardy.session.dto.JoinSessionRequest;
 import com.nickneim.jeopardy.session.dto.JoinSessionResponse;
+import com.nickneim.jeopardy.session.lobby.SessionFilter;
 import com.nickneim.jeopardy.session.lobby.SessionLobby;
+import com.nickneim.jeopardy.session.lobby.SessionSort;
+import com.nickneim.jeopardy.session.lobby.SessionStage;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.service.GameBoardService;
@@ -43,17 +46,27 @@ public class GameSessionController {
 
     /**
      * Sessions to join or watch, for a lobby page, from every instance.
-     * Finished sessions are left out unless {@code includeFinished}.
-     * Summaries hold no secrets.
+     * Finished sessions are left out unless {@code includeFinished} (or
+     * {@code stage=FINISHED}). Summaries hold no secrets.
      */
     @GetMapping
     public PageResponse<GameSessionSummaryResponse> listSessions(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
             // Boolean, not boolean, so a bad value gets ApiExceptionHandler's message.
-            @RequestParam(defaultValue = "false") Boolean includeFinished
+            @RequestParam(defaultValue = "false") Boolean includeFinished,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String stage,
+            // true lists only joinable sessions; false doesn't filter.
+            @RequestParam(defaultValue = "false") Boolean joinable,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String direction
     ) {
-        return sessionLobby.listSessions(includeFinished, page, size);
+        // Parsed before the lobby asks any other instance.
+        SessionFilter filter = new SessionFilter(search, SessionStage.parse(stage), joinable, includeFinished);
+        SessionSort order = SessionSort.parse(sort, direction);
+
+        return sessionLobby.listSessions(filter, order, page, size);
     }
 
     /**

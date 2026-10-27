@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.SessionCode;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -17,6 +18,9 @@ public record GameSessionSummaryResponse(
         SessionCode id,
         Long gameId,
         String gameTitle,
+        // The game's season and air date, null when gameId is.
+        String gameSeason,
+        LocalDate gameDate,
         GameSessionState state,
         GameRound round,
         int playerCount,
@@ -42,6 +46,8 @@ public record GameSessionSummaryResponse(
                 session.getId(),
                 session.getBoard().getGameId(),
                 session.getBoard().getTitle(),
+                session.getBoard().getSeason(),
+                session.getBoard().getGameDate(),
                 session.getState(),
                 session.getRound(),
                 activePlayers.size(),

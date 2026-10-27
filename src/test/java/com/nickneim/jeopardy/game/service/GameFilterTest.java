@@ -1,6 +1,6 @@
 package com.nickneim.jeopardy.game.service;
 
-import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
+import com.nickneim.jeopardy.exception.InvalidParameterException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -47,8 +47,8 @@ class GameFilterTest {
 
     @Test
     void rejectsFromAfterTo() {
-        InvalidGameFilterException exception = assertThrows(
-                InvalidGameFilterException.class,
+        InvalidParameterException exception = assertThrows(
+                InvalidParameterException.class,
                 () -> new GameFilter(
                         null,
                         null,

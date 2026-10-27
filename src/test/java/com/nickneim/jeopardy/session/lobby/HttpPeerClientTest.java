@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,6 +59,8 @@ class HttpPeerClientTest {
                 SessionCode.random(),
                 735L,
                 "Show #735",
+                "6",
+                LocalDate.of(1990, 1, 1),
                 GameSessionState.WAITING_FOR_START,
                 GameRound.JEOPARDY,
                 1,

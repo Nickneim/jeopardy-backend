@@ -6,6 +6,7 @@ import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.game.dto.SeasonResponse;
 import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
+import com.nickneim.jeopardy.game.service.GameSort;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -47,12 +48,15 @@ public class GameController {
             @RequestParam(required = false) String title,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) Boolean playable
+            @RequestParam(required = false) Boolean playable,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String direction
     ) {
         return PageResponse.from(gameService.getGameSummaries(
                 page,
                 size,
-                new GameFilter(season, title, from, to, playable)
+                new GameFilter(season, title, from, to, playable),
+                GameSort.parse(sort, direction)
         ));
     }
 }

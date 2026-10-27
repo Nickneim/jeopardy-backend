@@ -1,5 +1,7 @@
 package com.nickneim.jeopardy.game.service;
 
+import com.nickneim.jeopardy.dto.SortDirection;
+import com.nickneim.jeopardy.exception.InvalidParameterException;
 import com.nickneim.jeopardy.game.dto.GameSummaryResponse;
 import com.nickneim.jeopardy.game.entity.Category;
 import com.nickneim.jeopardy.game.entity.Clue;
@@ -161,7 +163,7 @@ class GameServiceTest {
                 .thenReturn(gamePage);
 
         Page<Game> returnedPage =
-                gameService.getGames(0, 20, GameFilter.NONE);
+                gameService.getGames(0, 20, GameFilter.NONE, GameSort.DEFAULT);
 
         assertEquals(gamePage, returnedPage);
 
@@ -184,7 +186,7 @@ class GameServiceTest {
                 .thenReturn(emptyPage);
 
         Page<Game> returnedPage =
-                gameService.getGames(0, 20, GameFilter.NONE);
+                gameService.getGames(0, 20, GameFilter.NONE, GameSort.DEFAULT);
 
         assertTrue(returnedPage.isEmpty());
         assertEquals(0, returnedPage.getNumber());
@@ -206,7 +208,7 @@ class GameServiceTest {
         when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(gamePage);
 
-        gameService.getGames(2, 10, GameFilter.NONE);
+        gameService.getGames(2, 10, GameFilter.NONE, GameSort.DEFAULT);
 
         verify(gameRepository).findAll(
                 any(Specification.class),
@@ -217,30 +219,53 @@ class GameServiceTest {
         );
     }
 
+    // The specification orders the query, so the page itself is unsorted.
+    // Each order is checked against the database in GameSortIntegrationTest.
     @Test
-    void getGames_sortsByGameDateDescendingThenIdDescending() {
-        Page<Game> gamePage = new PageImpl<>(
-                List.of(),
-                Pageable.ofSize(20),
-                0
-        );
-
+    void getGames_leavesTheOrderToTheSpecification() {
         when(gameRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(gamePage);
+                .thenReturn(Page.empty());
 
-        gameService.getGames(0, 20, GameFilter.NONE);
+        gameService.getGames(0, 20, GameFilter.NONE, GameSort.DEFAULT);
 
         verify(gameRepository).findAll(
                 any(Specification.class),
-                argThat((Pageable pageable) -> {
-                    var orders = pageable.getSort().toList();
+                argThat((Pageable pageable) -> pageable.getSort().isUnsorted())
+        );
+    }
 
-                    return orders.size() == 2
-                            && orders.get(0).getProperty().equals("gameDate")
-                            && orders.get(0).isDescending()
-                            && orders.get(1).getProperty().equals("id")
-                            && orders.get(1).isDescending();
-                })
+    @Test
+    void parseSort_defaultsToNewestFirst_andOtherSortsToAscending() {
+        assertEquals(GameSort.DEFAULT, GameSort.parse(null, null));
+        assertEquals(GameSort.DEFAULT, GameSort.parse("gameDate", ""));
+        assertEquals(new GameSort(GameSort.Field.GAME_DATE, SortDirection.ASC), GameSort.parse("gameDate", "asc"));
+        assertEquals(new GameSort(GameSort.Field.CLUE_COUNT, SortDirection.ASC), GameSort.parse("clueCount", null));
+        assertEquals(new GameSort(GameSort.Field.TITLE, SortDirection.DESC), GameSort.parse("TITLE", "Desc"));
+    }
+
+    @Test
+    void parseSort_rejectsUnknownValues() {
+        assertEquals(
+                "Invalid value for 'sort': expected one of title, season, gameDate, clueCount",
+                assertThrows(InvalidParameterException.class, () -> GameSort.parse("color", null)).getMessage()
+        );
+        assertEquals(
+                "Invalid value for 'direction': expected one of asc, desc",
+                assertThrows(InvalidParameterException.class, () -> GameSort.parse(null, "up")).getMessage()
+        );
+    }
+
+    @Test
+    void seasonOrder_putsNumberedSeasonsNumericallyBeforeSpecialsInBothDirections() {
+        List<String> seasons = List.of("jm", "10", "pcj", "9", "JM2", "40");
+
+        assertEquals(
+                List.of("9", "10", "40", "jm", "JM2", "pcj"),
+                seasons.stream().sorted(Seasons.order(SortDirection.ASC)).toList()
+        );
+        assertEquals(
+                List.of("40", "10", "9", "pcj", "JM2", "jm"),
+                seasons.stream().sorted(Seasons.order(SortDirection.DESC)).toList()
         );
     }
 
@@ -266,7 +291,8 @@ class GameServiceTest {
         Page<Game> returnedPage = gameService.getGames(
                 0,
                 20,
-                new GameFilter("39", "show", LocalDate.of(2025, 1, 1), null, null)
+                new GameFilter("39", "show", LocalDate.of(2025, 1, 1), null, null),
+                GameSort.DEFAULT
         );
 
         assertEquals(1, returnedPage.getContent().size());
@@ -307,7 +333,7 @@ class GameServiceTest {
                         GameSummaryResponse.from(withClues, 61),
                         GameSummaryResponse.from(withoutClues, 0)
                 ),
-                gameService.getGameSummaries(0, 20, GameFilter.NONE).getContent()
+                gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT).getContent()
         );
     }
 

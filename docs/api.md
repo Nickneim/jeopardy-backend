@@ -69,7 +69,7 @@ Any other error (an unexpected server error, or a malformed path such as a game 
 
 #### `GET /api/games`
 
-A paged list of games, newest first (by `gameDate`, then `id`).
+A paged list of games, sortable and filterable. By default newest first (by `gameDate`, then `id`, both descending).
 
 | Query param | Default | Rules |
 |---|---|---|
@@ -80,8 +80,17 @@ A paged list of games, newest first (by `gameDate`, then `id`).
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `playable` | (none) | Optional. `true`: only games with at least one clue (a session can only be created from one of these, §3.2; it can still be rejected with `UNPLAYABLE_GAME` for another reason, such as an answer no response could match). `false`: only games without clues. Omit it to list both. |
+| `sort` | `gameDate` | One of `title`, `season`, `gameDate`, `clueCount` (see below) |
+| `direction` | `desc` for `gameDate`, `asc` for any other `sort` | `asc` or `desc` |
 
-All filters are optional and combine with AND. Ordering and paging stay the same when filtering, and `totalElements` / `totalPages` count only the matching games. A page past the last one (however far) returns an empty `content` with the real totals.
+All filters are optional and combine with AND. `totalElements` / `totalPages` count only the matching games. A page past the last one (however far) returns an empty `content` with the real totals.
+
+**Sorting** applies to every matching game before paging, so page 2 continues page 1's order. Ties are broken by `id`, in the same direction. `sort` and `direction` values are case-insensitive, and an empty one means its default. The sorts:
+
+- `title`: case-insensitive, character by character (spaces and punctuation count), the same as the lobby's `gameTitle` sort. It's text order, not numeric: `Show #10 - …`, `Show #100 - …`, `Show #11 - …`.
+- `season`: like `GET /api/games/seasons`: numbered seasons as numbers (`"9"` before `"10"`), then the special seasons (`"jm"`, `"pcj"`) by name, case-insensitive. The direction applies to both, but **special seasons come after the numbered ones in both directions**: `asc` is `9, 10, 40, jm, pcj`, `desc` is `40, 10, 9, pcj, jm`.
+- `gameDate`: the air date.
+- `clueCount`: the number of clues (so games without clues come first with `asc`).
 
 Response: `PageResponse<GameSummaryResponse>`. Each game's `clueCount` is how many clues it has. Some imported games, such as the newest ones, have none: they can be browsed but not played, so show them differently or hide them with `playable=true`.
 
@@ -93,6 +102,8 @@ Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
 | `from` or `to` isn't a valid `YYYY-MM-DD` date (for example `2025-02-30` or `02/01/2025`) | `"Invalid date for 'from': expected YYYY-MM-DD"` (or `'to'`) |
 | `from` is after `to` | `"'from' must not be after 'to'"` |
 | `playable` isn't a boolean | `"Invalid value for 'playable': expected true or false"` |
+| `sort` isn't one of the four | `"Invalid value for 'sort': expected one of title, season, gameDate, clueCount"` |
+| `direction` isn't `asc` or `desc` | `"Invalid value for 'direction': expected one of asc, desc"` |
 
 #### `GET /api/games/seasons`
 
@@ -136,9 +147,24 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `page` | `0` | ≥ 0 (0-based) |
 | `size` | `20` | 1–100 |
 | `includeFinished` | `false` | `true` also lists sessions in `FINISHED_GAME` (they stay in memory for 10 minutes, §6.5) |
+| `search` | (none) | Optional case-insensitive substring of `gameTitle` or `hostName` (either matches). Leading and trailing spaces are ignored; empty or blank means no filter. |
+| `stage` | (none) | Optional, one of the stages below |
+| `joinable` | `false` | `true`: only sessions whose `joinable` is `true`. `false` doesn't filter. |
+| `sort` | `createdAt` | One of `id`, `gameTitle`, `gameSeason`, `gameDate`, `hostName`, `playerCount`, `stage`, `createdAt` |
+| `direction` | `desc` for `createdAt`, `asc` for any other `sort` | `asc` or `desc` |
 
-- **Filtering:** by default every session that hasn't finished: lobbies (`WAITING_FOR_START`) and games in progress. Closed sessions are never listed, because they're already gone.
-- **Order:** newest first by `createdAt`, then by `id`.
+`stage` values (they're not in the response: derive a session's stage from `state` and `round` the same way):
+
+| `stage` | Sessions |
+|---|---|
+| `LOBBY` | `WAITING_FOR_START` |
+| `JEOPARDY` | A game in progress (any state but `WAITING_FOR_START`, `FINISHED_GAME` and `CLOSED`) whose `round` is `JEOPARDY` |
+| `DOUBLE_JEOPARDY` | The same, in `DOUBLE_JEOPARDY` |
+| `FINAL_JEOPARDY` | The same, in `FINAL_JEOPARDY` (the `FINAL_JEOPARDY_*` states) |
+| `FINISHED` | `FINISHED_GAME`. This implies `includeFinished=true`. |
+
+- **Filtering:** by default every session that hasn't finished: lobbies (`WAITING_FOR_START`) and games in progress. Closed sessions are never listed, because they're already gone. All filters combine with AND, and apply to every instance's sessions before paging, so `totalElements` / `totalPages` count only the matches.
+- **Order:** by default newest first by `createdAt`. Like the filters, sorting covers every instance's sessions together, before paging. Ties are broken by `id`, in the same direction. Values that are `null` (`gameTitle`, `gameSeason`, `gameDate`, `hostName`) sort **last in both directions**. `gameTitle` and `hostName` are case-insensitive, `gameSeason` sorts like `season` in `GET /api/games` (numbered seasons as numbers, then specials by name, specials after numbered ones in both directions), and `stage` sorts in the order `LOBBY`, `JEOPARDY`, `DOUBLE_JEOPARDY`, `FINAL_JEOPARDY`, `FINISHED`. `stage`, `sort` and `direction` values are case-insensitive, and an empty one means its default.
 - Response: `PageResponse<GameSessionSummaryResponse>` (the same page shape as `GET /api/games`):
 
 | Field | Meaning |
@@ -146,6 +172,8 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `id` | Session id |
 | `gameId` | The stored game it was created from (`null` for a board that isn't in the database; there are none yet) |
 | `gameTitle` | That game's title (`null` if it has none) |
+| `gameSeason` | That game's season, as in `GameSummaryResponse.season` (`null` when `gameId` is) |
+| `gameDate` | That game's air date, `YYYY-MM-DD` (`null` when `gameId` is) |
 | `state` | The session's `GameSessionState` (§6). Use it to show "waiting for players" vs "in progress". |
 | `round` | The round being played, or about to be |
 | `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
@@ -157,7 +185,15 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 
 The list is a snapshot: a session can start, fill up or close right after. Use `joinable` to decide whether to offer "Join" or only "Watch"; anyone can watch any listed session.
 
-Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`): invalid `page` or `size` (out of range or not a whole number) → `"Invalid request parameters"`; `includeFinished` isn't a boolean → `"Invalid value for 'includeFinished': expected true or false"`.
+Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
+
+| Cause | `message` |
+|---|---|
+| Invalid `page` or `size` (out of range or not a whole number) | `"Invalid request parameters"` |
+| `includeFinished` or `joinable` isn't a boolean | `"Invalid value for 'includeFinished': expected true or false"` (or `'joinable'`) |
+| Unknown `stage` | `"Invalid value for 'stage': expected one of LOBBY, JEOPARDY, DOUBLE_JEOPARDY, FINAL_JEOPARDY, FINISHED"` |
+| Unknown `sort` | `"Invalid value for 'sort': expected one of id, gameTitle, gameSeason, gameDate, hostName, playerCount, stage, createdAt"` |
+| `direction` isn't `asc` or `desc` | `"Invalid value for 'direction': expected one of asc, desc"` |
 
 #### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 
@@ -654,7 +690,13 @@ interface GameListParams {
   from?: string;         // "YYYY-MM-DD", inclusive
   to?: string;           // "YYYY-MM-DD", inclusive
   playable?: boolean;    // true: only games with clues (one can still be UNPLAYABLE_GAME); false: only games without
+  sort?: GameSort;       // default "gameDate"
+  direction?: SortDirection;  // default "desc" for "gameDate", otherwise "asc"
 }
+
+type SortDirection = "asc" | "desc";
+// "season": numbered seasons as numbers, then specials by name (specials last in both directions)
+type GameSort = "title" | "season" | "gameDate" | "clueCount";
 
 interface PageResponse<T> {
   content: T[];
@@ -745,14 +787,35 @@ interface CreateGameSessionResponse { id: SessionCode; }
 interface GameSessionListParams {
   page?: number;              // default 0
   size?: number;              // default 20, max 100
-  includeFinished?: boolean;  // default false
+  includeFinished?: boolean;  // default false; stage "FINISHED" implies true
+  search?: string;            // case-insensitive substring of gameTitle or hostName
+  stage?: SessionStage;
+  joinable?: boolean;         // true: only joinable sessions; false doesn't filter
+  sort?: GameSessionSort;     // default "createdAt"
+  direction?: SortDirection;  // default "desc" for "createdAt", otherwise "asc"; nulls always last
 }
+
+// Sorts in this order. Not a response field: LOBBY is WAITING_FOR_START, FINISHED is
+// FINISHED_GAME, and the others are a game in progress in that round.
+type SessionStage = "LOBBY" | "JEOPARDY" | "DOUBLE_JEOPARDY" | "FINAL_JEOPARDY" | "FINISHED";
+
+type GameSessionSort =
+  | "id"
+  | "gameTitle"     // case-insensitive
+  | "gameSeason"    // like GameSort "season"
+  | "gameDate"
+  | "hostName"      // case-insensitive
+  | "playerCount"
+  | "stage"
+  | "createdAt";
 
 // GET /api/game-sessions returns PageResponse<GameSessionSummaryResponse>
 interface GameSessionSummaryResponse {
   id: SessionCode;
   gameId: number | null;
   gameTitle: string | null;
+  gameSeason: string | null;  // null when gameId is
+  gameDate: string | null;    // "YYYY-MM-DD", null when gameId is
   state: GameSessionState;
   round: GameRound;
   playerCount: number;        // players who haven't left

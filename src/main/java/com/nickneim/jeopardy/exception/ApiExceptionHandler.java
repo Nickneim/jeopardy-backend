@@ -3,7 +3,6 @@ package com.nickneim.jeopardy.exception;
 import com.nickneim.jeopardy.dto.ApiErrorResponse;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
-import com.nickneim.jeopardy.game.exception.InvalidGameFilterException;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
@@ -121,8 +120,9 @@ public class ApiExceptionHandler {
         return invalidRequest("Invalid request: the body isn't valid JSON for this request");
     }
 
-    @ExceptionHandler(InvalidGameFilterException.class)
-    public ResponseEntity<ApiErrorResponse> handleInvalidGameFilter(InvalidGameFilterException exception) {
+    // An unknown sort, direction or stage, or a 'from' after 'to'.
+    @ExceptionHandler(InvalidParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidParameter(InvalidParameterException exception) {
         return invalidRequest(exception.getMessage());
     }
 

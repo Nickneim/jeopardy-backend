@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.exception;
 
+import com.nickneim.jeopardy.game.service.GameSort;
 import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.game.service.GameFilter;
 import com.nickneim.jeopardy.game.service.GameService;
@@ -45,7 +46,7 @@ class ErrorResponseIntegrationTest {
 
     @Test
     void unexpectedError_returnsNoStackTraceOrExceptionMessage() {
-        when(gameService.getGameSummaries(anyInt(), anyInt(), any(GameFilter.class)))
+        when(gameService.getGameSummaries(anyInt(), anyInt(), any(GameFilter.class), any(GameSort.class)))
                 .thenThrow(new IllegalStateException(INTERNAL_DETAIL));
 
         String body = restTestClient.get()

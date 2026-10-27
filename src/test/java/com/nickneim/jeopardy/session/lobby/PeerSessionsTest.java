@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -334,6 +335,8 @@ class PeerSessionsTest {
                 SessionCode.random(),
                 735L,
                 "Show #735",
+                "6",
+                LocalDate.of(1990, 1, 1),
                 GameSessionState.WAITING_FOR_START,
                 GameRound.JEOPARDY,
                 1,

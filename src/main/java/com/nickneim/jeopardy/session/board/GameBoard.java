@@ -7,6 +7,7 @@ import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
 import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.answer.AnswerMatcher;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,6 +34,8 @@ public final class GameBoard {
     // isn't in the database (such as a custom game).
     private final Long gameId;
     private final String title;
+    private final String season;
+    private final LocalDate gameDate;
     private final List<BoardRound> rounds;
     private final Map<GameRound, BoardRound> roundsByType = new EnumMap<>(GameRound.class);
     private final Map<Long, BoardClue> cluesById = new HashMap<>();
@@ -47,10 +50,16 @@ public final class GameBoard {
         this(null, null, rounds);
     }
 
-    /** @throws InvalidBoardException if the rounds can't be played */
     public GameBoard(Long gameId, String title, List<BoardRound> rounds) {
+        this(gameId, title, null, null, rounds);
+    }
+
+    /** @throws InvalidBoardException if the rounds can't be played */
+    public GameBoard(Long gameId, String title, String season, LocalDate gameDate, List<BoardRound> rounds) {
         this.gameId = gameId;
         this.title = title;
+        this.season = season;
+        this.gameDate = gameDate;
         this.rounds = rounds.stream()
                 .sorted(Comparator.comparing(BoardRound::round))
                 .toList();
@@ -155,6 +164,8 @@ public final class GameBoard {
         return new GameBoard(
                 game.getId(),
                 game.getTitle(),
+                game.getSeason(),
+                game.getGameDate(),
                 categoriesByRound.entrySet()
                         .stream()
                         .map(entry -> new BoardRound(entry.getKey(), entry.getValue()))
@@ -170,6 +181,16 @@ public final class GameBoard {
     /** The game's title, or null if it has none. */
     public String getTitle() {
         return title;
+    }
+
+    /** The stored game's season, or null if the board isn't from the database. */
+    public String getSeason() {
+        return season;
+    }
+
+    /** The stored game's air date, or null if the board isn't from the database. */
+    public LocalDate getGameDate() {
+        return gameDate;
     }
 
     public List<BoardRound> getRounds() {

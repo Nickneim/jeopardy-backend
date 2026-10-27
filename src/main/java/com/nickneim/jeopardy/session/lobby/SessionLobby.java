@@ -2,7 +2,6 @@ package com.nickneim.jeopardy.session.lobby;
 
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionSummaryResponse;
-import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -11,7 +10,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +33,13 @@ public class SessionLobby {
     }
 
     /**
-     * The open sessions for a lobby page, newest first (ties by id), without
-     * finished ones unless {@code includeFinished}.
+     * The open sessions matching {@code filter} for a lobby page, in
+     * {@code sort} order. Filtering and sorting run on every instance's
+     * sessions together, before paging, so the totals count only matches.
      */
     public PageResponse<GameSessionSummaryResponse> listSessions(
-            boolean includeFinished,
+            SessionFilter filter,
+            SessionSort sort,
             int page,
             int size
     ) {
@@ -55,10 +55,8 @@ public class SessionLobby {
 
         List<GameSessionSummaryResponse> matching = byId.values()
                 .stream()
-                .filter(summary -> includeFinished || summary.state() != GameSessionState.FINISHED_GAME)
-                .sorted(Comparator.comparing(GameSessionSummaryResponse::createdAt)
-                        .reversed()
-                        .thenComparing(GameSessionSummaryResponse::id))
+                .filter(filter::matches)
+                .sorted(sort.comparator())
                 .toList();
 
         int from = (int) Math.min(pageable.getOffset(), matching.size());
