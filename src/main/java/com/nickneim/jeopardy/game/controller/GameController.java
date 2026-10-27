@@ -49,13 +49,14 @@ public class GameController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) Boolean playable,
+            @RequestParam(required = false) String finalCategory,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String direction
     ) {
         return PageResponse.from(gameService.getGameSummaries(
                 page,
                 size,
-                new GameFilter(season, title, from, to, playable),
+                new GameFilter(season, title, from, to, playable, finalCategory),
                 GameSort.parse(sort, direction)
         ));
     }

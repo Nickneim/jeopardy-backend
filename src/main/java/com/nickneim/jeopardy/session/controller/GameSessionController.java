@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.controller;
 
 import com.nickneim.jeopardy.dto.PageResponse;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.custom.CustomGameBoards;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionRequest;
 import com.nickneim.jeopardy.session.dto.CreateGameSessionResponse;
 import com.nickneim.jeopardy.session.dto.GameSessionResponse;
@@ -81,10 +82,13 @@ public class GameSessionController {
             @PathVariable SessionCode sessionId,
             @Valid @RequestBody CreateGameSessionRequest request
     ) {
-        // Checked first, so a taken code (which the client retries) doesn't
-        // load the whole game for nothing. createSession still guards a race.
+        request.requireOneSource();
+        // Checked before the board, so a taken code (which the client retries)
+        // doesn't load the whole game for nothing. createSession still guards a race.
         gameSessionService.requireUnusedId(sessionId);
-        GameBoard board = gameBoardService.loadBoard(request.gameId());
+        GameBoard board = request.gameId() != null
+                ? gameBoardService.loadBoard(request.gameId())
+                : CustomGameBoards.toBoard(request.customGame());
         GameSession session = gameSessionService.createSession(sessionId, board);
 
         return CreateGameSessionResponse.from(session);

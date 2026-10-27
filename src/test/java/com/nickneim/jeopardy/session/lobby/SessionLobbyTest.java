@@ -97,7 +97,7 @@ class SessionLobbyTest {
                 local.id(), local.gameId(), local.gameTitle(), local.gameSeason(), local.gameDate(),
                 local.state(), local.round(),
                 local.playerCount() + 1, local.hostName(), local.createdAt(),
-                local.joinable(), local.allowLateJoin(), local.joinScore()
+                local.joinable(), local.allowLateJoin(), local.joinScore(), local.custom(), local.clueCount()
         );
         when(gameSessionService.localSummaries()).thenReturn(List.of(local));
         when(peerSessions.fetch()).thenReturn(List.of(sameFromPeer));
@@ -271,7 +271,9 @@ class SessionLobbyTest {
                 Instant.parse("2026-10-09T" + time + ":00Z"),
                 state == GameSessionState.WAITING_FOR_START,
                 true,
-                0
+                0,
+                false,
+                61
         );
     }
 
@@ -279,24 +281,24 @@ class SessionLobbyTest {
             GameSessionSummaryResponse s, Long gameId, String title, String season, LocalDate date
     ) {
         return new GameSessionSummaryResponse(s.id(), gameId, title, season, date, s.state(), s.round(),
-                s.playerCount(), s.hostName(), s.createdAt(), s.joinable(), s.allowLateJoin(), s.joinScore());
+                s.playerCount(), s.hostName(), s.createdAt(), s.joinable(), s.allowLateJoin(), s.joinScore(), s.custom(), s.clueCount());
     }
 
     private static GameSessionSummaryResponse withHost(GameSessionSummaryResponse s, String hostName) {
         return new GameSessionSummaryResponse(s.id(), s.gameId(), s.gameTitle(), s.gameSeason(), s.gameDate(),
                 s.state(), s.round(), s.playerCount(), hostName, s.createdAt(), s.joinable(), s.allowLateJoin(),
-                s.joinScore());
+                s.joinScore(), s.custom(), s.clueCount());
     }
 
     private static GameSessionSummaryResponse withRound(GameSessionSummaryResponse s, GameRound round) {
         return new GameSessionSummaryResponse(s.id(), s.gameId(), s.gameTitle(), s.gameSeason(), s.gameDate(),
                 s.state(), round, s.playerCount(), s.hostName(), s.createdAt(), s.joinable(), s.allowLateJoin(),
-                s.joinScore());
+                s.joinScore(), s.custom(), s.clueCount());
     }
 
     private static GameSessionSummaryResponse withPlayerCount(GameSessionSummaryResponse s, int playerCount) {
         return new GameSessionSummaryResponse(s.id(), s.gameId(), s.gameTitle(), s.gameSeason(), s.gameDate(),
                 s.state(), s.round(), playerCount, s.hostName(), s.createdAt(), s.joinable(), s.allowLateJoin(),
-                s.joinScore());
+                s.joinScore(), s.custom(), s.clueCount());
     }
 }

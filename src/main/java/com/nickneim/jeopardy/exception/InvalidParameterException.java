@@ -4,7 +4,9 @@ import java.util.List;
 
 /**
  * A query parameter that isn't valid, such as {@code sort=color} or a
- * {@code from} after {@code to}. ApiExceptionHandler turns it into a 400
+ * {@code from} after {@code to}, or a request body whose fields don't fit
+ * together in a way bean validation can't express, such as two custom
+ * categories in one column. ApiExceptionHandler turns it into a 400
  * INVALID_REQUEST with this message.
  */
 public class InvalidParameterException extends RuntimeException {

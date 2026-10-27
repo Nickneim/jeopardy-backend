@@ -117,6 +117,53 @@ class GameSessionEndToEndIntegrationTest {
     }
 
     @Test
+    void customShow_isCreatedAndListed_withoutAStoredGame() {
+        SessionCode sessionId = SessionCode.random();
+
+        restTestClient.put()
+                .uri("/api/game-sessions/{id}?session={id}", sessionId, sessionId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {
+                            "customGame": {
+                                "name": "Family reunion night",
+                                "jeopardyRound": [{
+                                    "column": 1, "name": "COUSINS", "comments": null, "sourceCategoryId": null,
+                                    "clues": [{ "row": 1, "question": "Has <i>two</i> dogs", "answer": "Ana",
+                                                "clueType": "TEXT", "mediaUrl": null, "dailyDouble": false }]
+                                }],
+                                "doubleJeopardyRound": [],
+                                "finalJeopardy": { "name": "PETS", "comments": null,
+                                                   "question": "Purrs", "answer": "a cat" }
+                            }
+                        }
+                        """)
+                .exchange()
+                .expectStatus().isCreated();
+
+        restTestClient.get()
+                .uri("/api/game-sessions?search=reunion")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.content[0].id").isEqualTo(sessionId.toString())
+                .jsonPath("$.content[0].custom").isEqualTo(true)
+                .jsonPath("$.content[0].gameId").isEmpty()
+                .jsonPath("$.content[0].gameTitle").isEqualTo("Family reunion night")
+                .jsonPath("$.content[0].clueCount").isEqualTo(2);
+
+        restTestClient.get()
+                .uri("/api/game-sessions/{id}?session={id}", sessionId, sessionId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.board[0].name").isEqualTo("COUSINS")
+                .jsonPath("$.board[0].slots[0].clueId").isEqualTo(1)
+                .jsonPath("$.board[0].slots[0].value").isEqualTo(200);
+    }
+
+    @Test
     void joiningWithBlankName_returnsApiErrorNamingTheField() {
         Long gameId = jdbcTemplate.queryForObject(
                 "SELECT id FROM game WHERE title = ?",

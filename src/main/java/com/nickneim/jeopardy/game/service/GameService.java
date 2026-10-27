@@ -64,19 +64,25 @@ public class GameService {
     }
 
     /**
-     * A page of GET /api/games. The page and its clue counts are read in one
-     * transaction, so they come from the same state of the database.
+     * A page of GET /api/games. The page, its clue counts and its Final
+     * Jeopardy categories are read in one transaction, so they come from the
+     * same state of the database.
      */
     @Transactional(readOnly = true)
     public Page<GameSummaryResponse> getGameSummaries(int page, int size, GameFilter filter, GameSort sort) {
         Page<Game> games = getGames(page, size, filter, sort);
         Map<Long, Long> clueCounts = countClues(games.getContent());
+        Map<Long, String> finalCategories = findFinalCategories(games.getContent());
 
-        return games.map(game -> GameSummaryResponse.from(game, clueCounts.get(game.getId())));
+        return games.map(game -> GameSummaryResponse.from(
+                game,
+                clueCounts.get(game.getId()),
+                finalCategories.get(game.getId())
+        ));
     }
 
-    // Package-private: only getGameSummaries' transaction keeps the page and
-    // its counts consistent, so nothing else should call these two.
+    // Package-private: only getGameSummaries' transaction keeps the page,
+    // its counts and its categories consistent, so nothing else should call these.
     Page<Game> getGames(int page, int size, GameFilter filter, GameSort sort) {
         // Unsorted: the order is an expression (a clue count, the season's
         // number), so the specification sets it.
@@ -109,6 +115,23 @@ public class GameService {
                 .forEach(count -> counts.put(count.gameId(), count.clueCount()));
 
         return counts;
+    }
+
+    /**
+     * Each game's Final Jeopardy category name, by game id, with one query.
+     * Games without one aren't in the map.
+     */
+    Map<Long, String> findFinalCategories(Collection<Game> games) {
+        if (games.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> names = new HashMap<>();
+
+        gameRepository.findFinalCategoriesByGameIds(games.stream().map(Game::getId).toList())
+                .forEach(category -> names.putIfAbsent(category.gameId(), category.name()));
+
+        return names;
     }
 
     public List<SeasonGameCount> getSeasons() {

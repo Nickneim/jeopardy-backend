@@ -33,6 +33,8 @@ public final class GameBoard {
     // The stored game this board was copied from, or null for a board that
     // isn't in the database (such as a custom game).
     private final Long gameId;
+    // A show a host built in the browser (GameBoard.custom).
+    private final boolean custom;
     private final String title;
     private final String season;
     private final LocalDate gameDate;
@@ -56,7 +58,29 @@ public final class GameBoard {
 
     /** @throws InvalidBoardException if the rounds can't be played */
     public GameBoard(Long gameId, String title, String season, LocalDate gameDate, List<BoardRound> rounds) {
+        this(gameId, false, title, season, gameDate, rounds);
+    }
+
+    /**
+     * A custom show's board, titled with the show's name. It has no stored
+     * game, season or air date.
+     *
+     * @throws InvalidBoardException if the rounds can't be played
+     */
+    public static GameBoard custom(String name, List<BoardRound> rounds) {
+        return new GameBoard(null, true, name, null, null, rounds);
+    }
+
+    private GameBoard(
+            Long gameId,
+            boolean custom,
+            String title,
+            String season,
+            LocalDate gameDate,
+            List<BoardRound> rounds
+    ) {
         this.gameId = gameId;
+        this.custom = custom;
         this.title = title;
         this.season = season;
         this.gameDate = gameDate;
@@ -178,7 +202,17 @@ public final class GameBoard {
         return gameId;
     }
 
-    /** The game's title, or null if it has none. */
+    /** Whether this is a custom show's board ({@link #custom}). */
+    public boolean isCustom() {
+        return custom;
+    }
+
+    /** How many clues the board has, in every round, Final Jeopardy included. */
+    public int getClueCount() {
+        return cluesById.size();
+    }
+
+    /** The game's title (a custom show's name), or null if it has none. */
     public String getTitle() {
         return title;
     }

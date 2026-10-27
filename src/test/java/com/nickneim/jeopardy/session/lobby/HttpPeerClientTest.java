@@ -68,7 +68,9 @@ class HttpPeerClientTest {
                 Instant.parse("2026-10-09T12:00:00Z"),
                 true,
                 true,
-                0
+                0,
+                false,
+                61
         );
     }
 }

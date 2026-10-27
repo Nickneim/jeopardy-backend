@@ -27,6 +27,7 @@ import com.nickneim.jeopardy.session.service.GameSessionService;
 import com.nickneim.jeopardy.session.model.SessionCode;
 import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -426,21 +429,168 @@ class GameSessionControllerTest {
         verifyNoInteractions(sessionLobby);
     }
 
-    @Test
-    void createSession_rejectsMissingGameId() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{}",
+            "{ \"gameId\": null, \"customGame\": null }",
+            "{ \"gameId\": 123, \"customGame\": { \"name\": \"Show\", \"jeopardyRound\": [], \"doubleJeopardyRound\": [] } }"
+    })
+    void createSession_needsExactlyOneOfGameIdAndCustomGame(String body) throws Exception {
         mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().json("""
                         {
                             "status": 400,
                             "code": "INVALID_REQUEST",
-                            "message": "gameId must not be null"
+                            "message": "Exactly one of gameId and customGame must be set"
                         }
                         """, JsonCompareMode.STRICT));
 
         verifyNoInteractions(gameBoardService, gameSessionService);
+    }
+
+    @Test
+    void createSession_fromACustomShow_buildsItsBoard() throws Exception {
+        SessionCode sessionId = SessionCode.random();
+        when(gameSessionService.createSession(eq(sessionId), any()))
+                .thenAnswer(call -> new GameSession(sessionId, call.getArgument(1)));
+
+        mockMvc.perform(put("/api/game-sessions/{id}", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "customGame": {
+                                "name": " Family reunion night ",
+                                "jeopardyRound": [{
+                                    "column": 1,
+                                    "name": "Cousins",
+                                    "comments": null,
+                                    "sourceCategoryId": 42,
+                                    "clues": [{
+                                        "row": 2,
+                                        "question": "Has <i>two</i> dogs",
+                                        "answer": "Ana",
+                                        "clueType": "TEXT",
+                                        "mediaUrl": null,
+                                        "dailyDouble": true
+                                    }]
+                                }],
+                                "doubleJeopardyRound": [],
+                                "finalJeopardy": null
+                            }
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(sessionId.toString()));
+
+        ArgumentCaptor<GameBoard> board = ArgumentCaptor.forClass(GameBoard.class);
+        verify(gameSessionService).requireUnusedId(sessionId);
+        verify(gameSessionService).createSession(eq(sessionId), board.capture());
+        verifyNoInteractions(gameBoardService);
+
+        assertTrue(board.getValue().isCustom());
+        assertEquals("Family reunion night", board.getValue().getTitle());
+        assertEquals(
+                new BoardClue(1L, 2, "Has <i>two</i> dogs", "Ana", 400, true),
+                board.getValue().getClue(1L)
+        );
+    }
+
+    @Test
+    void createSession_fromAnUnplayableCustomShow_listsEveryProblem() throws Exception {
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                            "customGame": {
+                                "name": "Family reunion night",
+                                "jeopardyRound": [{
+                                    "column": 3,
+                                    "name": null,
+                                    "comments": null,
+                                    "sourceCategoryId": null,
+                                    "clues": [{
+                                        "row": 2,
+                                        "question": "Barks",
+                                        "answer": "a [dog | hound",
+                                        "clueType": "VIDEO",
+                                        "mediaUrl": null,
+                                        "dailyDouble": false
+                                    }]
+                                }],
+                                "doubleJeopardyRound": [],
+                                "finalJeopardy": { "name": "Pets", "comments": null, "question": null, "answer": null }
+                            }
+                        }
+                        """))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().json("""
+                        {
+                            "status": 422,
+                            "code": "INVALID_CUSTOM_GAME",
+                            "message": "This custom show can't be played: 4 problems",
+                            "problems": [
+                                { "code": "CATEGORY_NAME_MISSING", "round": "JEOPARDY", "column": 3, "row": null,
+                                  "message": "Category 3 has clues but no name" },
+                                { "code": "ANSWER_UNREADABLE", "round": "JEOPARDY", "column": 3, "row": 2,
+                                  "message": "The correct response can't be read: a [ is never closed" },
+                                { "code": "MEDIA_URL_MISSING", "round": "JEOPARDY", "column": 3, "row": 2,
+                                  "message": "This video clue has no media link" },
+                                { "code": "FINAL_CLUE_MISSING", "round": "FINAL_JEOPARDY", "column": null, "row": null,
+                                  "message": "Final Jeopardy has a category but no clue" }
+                            ]
+                        }
+                        """, JsonCompareMode.STRICT));
+
+        verify(gameSessionService, never()).createSession(any(), any());
+    }
+
+    // Shapes the editor never sends: a client bug, not something the host can fix.
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "\"jeopardyRound\": [{ \"column\": 7, \"name\": \"A\", \"clues\": [] }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": [{ \"column\": 1, \"name\": \"A\" }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": []",
+            "\"jeopardyRound\": [{ \"column\": 1, \"name\": \"A\", \"clues\": [{ \"row\": 6, \"question\": \"Q\", \"answer\": \"A\", \"clueType\": \"TEXT\" }] }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": [{ \"column\": 1, \"name\": \"A\", \"clues\": [{ \"row\": 1, \"question\": \"Q\", \"answer\": \"A\" }] }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": [{ \"column\": 1, \"name\": \"A\", \"clues\": [{ \"row\": 1, \"question\": \"Q\", \"answer\": \"A\", \"clueType\": \"GIF\" }] }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": [{ \"column\": 1, \"name\": \"A\", \"clues\": [] }, { \"column\": 1, \"name\": \"B\", \"clues\": [] }], \"doubleJeopardyRound\": []",
+            "\"jeopardyRound\": [], \"doubleJeopardyRound\": [{ \"column\": 1, \"name\": \"A\", \"clues\": [{ \"row\": 1, \"question\": \"Q\", \"answer\": \"A\", \"clueType\": \"TEXT\" }, { \"row\": 1, \"question\": \"Q\", \"answer\": \"A\", \"clueType\": \"TEXT\" }] }]"
+    })
+    void createSession_rejectsACustomShowThatIsntShapedRight(String rounds) throws Exception {
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"customGame\": { \"name\": \"Show\", " + rounds + " } }"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        verify(gameSessionService, never()).createSession(any(), any());
+    }
+
+    @Test
+    void createSession_namesTheFieldOfAMisshapenCustomShow() throws Exception {
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "customGame": { "name": "Show", "jeopardyRound": [], "doubleJeopardyRound": [
+                            { "column": 2, "name": "A", "clues": [] },
+                            { "column": 2, "name": "B", "clues": [] }
+                        ] } }
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("customGame.doubleJeopardyRound has two categories in column 2"));
+
+        mockMvc.perform(put("/api/game-sessions/{id}", SessionCode.random())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        { "customGame": { "name": "Show", "jeopardyRound": [
+                            { "column": 7, "name": "A", "clues": [] }
+                        ], "doubleJeopardyRound": [] } }
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("customGame.jeopardyRound[0].column must be between 1 and 6"));
     }
 
     @Test
@@ -645,7 +795,9 @@ class GameSessionControllerTest {
                                 "createdAt": "2026-10-09T12:30:00Z",
                                 "joinable": true,
                                 "allowLateJoin": true,
-                                "joinScore": 0
+                                "joinScore": 0,
+                                "custom": false,
+                                "clueCount": 1
                             }],
                             "page": 0,
                             "size": 20,

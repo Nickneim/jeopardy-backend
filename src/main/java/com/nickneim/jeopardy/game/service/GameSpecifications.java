@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Nulls;
 import jakarta.persistence.criteria.Order;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -48,6 +49,10 @@ final class GameSpecifications {
 
         if (filter.playable() != null) {
             specifications.add(hasClues(filter.playable()));
+        }
+
+        if (filter.finalCategory() != null) {
+            specifications.add(finalCategoryContains(filter.finalCategory()));
         }
 
         return Specification.allOf(specifications);
@@ -123,6 +128,32 @@ final class GameSpecifications {
 
             Predicate exists = builder.exists(clues);
             return hasClues ? exists : builder.not(exists);
+        };
+    }
+
+    // Matched like the title, against the Final Jeopardy category (column
+    // 13), counting only one with a clue, as GameRepository's
+    // findFinalCategoriesByGameIds does. An EXISTS subquery, like hasClues.
+    private static Specification<Game> finalCategoryContains(String text) {
+        String pattern = "%" + escapeLike(text) + "%";
+
+        return (game, query, builder) -> {
+            Subquery<Long> clues = query.subquery(Long.class);
+            Root<Clue> clue = clues.from(Clue.class);
+            Path<Object> category = clue.get("category");
+
+            clues.select(builder.literal(1L))
+                    .where(
+                            builder.equal(category.get("game").get("id"), game.get("id")),
+                            builder.equal(category.get("columnNumber"), (short) 13),
+                            builder.like(
+                                    builder.lower(category.get("name")),
+                                    builder.lower(builder.literal(pattern)),
+                                    LIKE_ESCAPE
+                            )
+                    );
+
+            return builder.exists(clues);
         };
     }
 

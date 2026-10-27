@@ -551,6 +551,42 @@ class GameIntegrationTest {
     }
 
     @Test
+    void getGames_includesEachGamesFinalJeopardyCategory() {
+        PageResponse<GameSummaryResponse> body = pageOf("/api/games?size=100");
+
+        assertThat(body.content())
+                .filteredOn(game -> game.title().equals("Game Integration Test Game"))
+                .extracting(GameSummaryResponse::finalCategory)
+                .containsExactly("FINAL HISTORY");
+        assertThat(body.content())
+                .filteredOn(game -> !game.title().equals("Game Integration Test Game"))
+                .extracting(GameSummaryResponse::finalCategory)
+                .hasSize(24)
+                .containsOnlyNulls();
+    }
+
+    @Test
+    void getGames_filtersByFinalJeopardyCategory_trimmedAndCaseInsensitively() {
+        PageResponse<GameSummaryResponse> body = pageOf("/api/games?finalCategory= final hist ");
+
+        assertThat(body.totalElements()).isEqualTo(1);
+        assertThat(body.content())
+                .extracting(GameSummaryResponse::title)
+                .containsExactly("Game Integration Test Game");
+        // Only the Final Jeopardy category, not the game's others.
+        assertThat(pageOf("/api/games?finalCategory=LITERATURE").totalElements()).isZero();
+    }
+
+    @Test
+    void getGames_finalCategoryTreatsLikeWildcardsLiterally_andIgnoresBlank() {
+        // As wildcards, both would match "FINAL HISTORY".
+        assertThat(titlesOf("/api/games?finalCategory={c}", "FINAL%STORY")).isEmpty();
+        assertThat(titlesOf("/api/games?finalCategory={c}", "FINAL_HISTORY")).isEmpty();
+        assertThat(pageOf("/api/games?finalCategory=").totalElements()).isEqualTo(25);
+        assertThat(titlesOf("/api/games?finalCategory={c}&size=100", "   ")).hasSize(25);
+    }
+
+    @Test
     void getGames_playableTrue_onlyReturnsGamesWithClues() {
         PageResponse<GameSummaryResponse> body = pageOf("/api/games?playable=true");
 

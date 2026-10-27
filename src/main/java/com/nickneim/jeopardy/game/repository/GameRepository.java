@@ -38,4 +38,20 @@ public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificat
             GROUP BY category.game.id
             """)
     List<GameClueCount> countCluesByGameIds(Collection<Long> gameIds);
+
+    /**
+     * The Final Jeopardy category (column 13) of each of the given games,
+     * counting only one that has a clue, as a session's board does. Games
+     * without one are left out of the result.
+     */
+    @Query("""
+            SELECT DISTINCT new com.nickneim.jeopardy.game.repository.GameFinalCategory(
+                category.game.id, category.name
+            )
+            FROM Clue clue
+            JOIN clue.category category
+            WHERE category.game.id IN :gameIds
+            AND category.columnNumber = 13
+            """)
+    List<GameFinalCategory> findFinalCategoriesByGameIds(Collection<Long> gameIds);
 }

@@ -226,7 +226,7 @@ class GameControllerTest {
         ReflectionTestUtils.setField(game2, "id", 122L);
 
         Page<GameSummaryResponse> gamePage = new PageImpl<>(
-                List.of(GameSummaryResponse.from(game1, 0), GameSummaryResponse.from(game2, 0)),
+                List.of(GameSummaryResponse.from(game1, 0, null), GameSummaryResponse.from(game2, 0, null)),
                 PageRequest.of(1, 20),
                 42
         );
@@ -359,7 +359,7 @@ class GameControllerTest {
         ReflectionTestUtils.setField(game2, "id", 122L);
 
         Page<GameSummaryResponse> gamePage = new PageImpl<>(
-                List.of(GameSummaryResponse.from(game1, 0), GameSummaryResponse.from(game2, 0)),
+                List.of(GameSummaryResponse.from(game1, 0, null), GameSummaryResponse.from(game2, 0, null)),
                 PageRequest.of(1, 20),
                 42
         );
@@ -405,7 +405,8 @@ class GameControllerTest {
                 "show",
                 LocalDate.of(2025, 1, 1),
                 LocalDate.of(2025, 1, 31),
-                true
+                true,
+                "capitals"
         );
 
         when(gameService.getGameSummaries(0, 20, filter, GameSort.DEFAULT))
@@ -416,7 +417,8 @@ class GameControllerTest {
                         .param("title", "show")
                         .param("from", "2025-01-01")
                         .param("to", "2025-01-31")
-                        .param("playable", "true"))
+                        .param("playable", "true")
+                        .param("finalCategory", " capitals "))
                 .andExpect(status().isOk());
 
         verify(gameService).getGameSummaries(0, 20, filter, GameSort.DEFAULT);
@@ -458,8 +460,8 @@ class GameControllerTest {
         ReflectionTestUtils.setField(withoutClues, "id", 725L);
 
         List<GameSummaryResponse> summaries = List.of(
-                GameSummaryResponse.from(withClues, 61),
-                GameSummaryResponse.from(withoutClues, 0)
+                GameSummaryResponse.from(withClues, 61, "WORLD CAPITALS"),
+                GameSummaryResponse.from(withoutClues, 0, null)
         );
 
         when(gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT))
@@ -470,8 +472,10 @@ class GameControllerTest {
                 .andExpect(content().json("""
                 {
                     "content": [
-                        { "id": 123, "title": "Show #123", "gameDate": "2025-01-02", "season": "40", "clueCount": 61 },
-                        { "id": 725, "title": "Masters #71", "gameDate": "2025-01-01", "season": "jm", "clueCount": 0 }
+                        { "id": 123, "title": "Show #123", "gameDate": "2025-01-02", "season": "40", "clueCount": 61,
+                          "finalCategory": "WORLD CAPITALS" },
+                        { "id": 725, "title": "Masters #71", "gameDate": "2025-01-01", "season": "jm", "clueCount": 0,
+                          "finalCategory": null }
                     ],
                     "page": 0,
                     "size": 20,

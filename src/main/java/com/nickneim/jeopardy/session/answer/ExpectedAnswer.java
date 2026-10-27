@@ -27,7 +27,8 @@ import java.util.regex.Pattern;
  */
 record ExpectedAnswer(int required, List<Option> options) {
 
-    private static final Pattern LIST = Pattern.compile("^\\s*\\((\\d+) of\\)\\s*(.*)$", Pattern.DOTALL);
+    // "(N of) ...": the count and the options. AnswerFormat reads it too.
+    static final Pattern LIST =Pattern.compile("^\\s*\\((\\d+) of\\)\\s*(.*)$", Pattern.DOTALL);
     // Longer responses are never right, and the cost of matching grows with length.
     private static final int MAX_RESPONSE_TOKENS = 60;
     // Sets of options match() keeps per position in the response.

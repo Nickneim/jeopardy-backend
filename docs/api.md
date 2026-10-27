@@ -58,6 +58,7 @@ All bodies are JSON. Errors use `ApiErrorResponse` (`{ "status": 404, "code": "G
 | `SESSION_ALREADY_EXISTS` | `409` | Creating a session under a code in use: pick another code |
 | `SESSION_NOT_JOINABLE` | `409` | Joining a session that doesn't take new players right now |
 | `UNPLAYABLE_GAME` | `422` | Creating a session from a game that can't be played |
+| `INVALID_CUSTOM_GAME` | `422` | Creating a session from a custom show that can't be played. The body also has `problems` (§3.2). |
 
 `SESSION_NOT_FOUND` is a `GameErrorCode` (§7): a game error that reaches REST keeps its STOMP code, so `code` is typed `ApiErrorCode | GameErrorCode` (§8). No other `GameErrorCode` is sent over REST today.
 
@@ -80,6 +81,7 @@ A paged list of games, sortable and filterable. By default newest first (by `gam
 | `from` | (none) | Optional earliest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `to` | (none) | Optional latest `gameDate`, inclusive, `YYYY-MM-DD` |
 | `playable` | (none) | Optional. `true`: only games with at least one clue (a session can only be created from one of these, §3.2; it can still be rejected with `UNPLAYABLE_GAME` for another reason, such as an answer no response could match). `false`: only games without clues. Omit it to list both. |
+| `finalCategory` | (none) | Optional case-insensitive substring of the game's Final Jeopardy category name (`finalCategory` below), matched like `title`: `%` and `_` are plain characters, leading and trailing spaces are ignored, and empty or blank means no filter. Games without a Final Jeopardy clue never match. |
 | `sort` | `gameDate` | One of `title`, `season`, `gameDate`, `clueCount` (see below) |
 | `direction` | `desc` for `gameDate`, `asc` for any other `sort` | `asc` or `desc` |
 
@@ -92,7 +94,7 @@ All filters are optional and combine with AND. `totalElements` / `totalPages` co
 - `gameDate`: the air date.
 - `clueCount`: the number of clues (so games without clues come first with `asc`).
 
-Response: `PageResponse<GameSummaryResponse>`. Each game's `clueCount` is how many clues it has. Some imported games, such as the newest ones, have none: they can be browsed but not played, so show them differently or hide them with `playable=true`.
+Response: `PageResponse<GameSummaryResponse>`. Each game's `clueCount` is how many clues it has. Some imported games, such as the newest ones, have none: they can be browsed but not played, so show them differently or hide them with `playable=true`. `finalCategory` is the name of the game's Final Jeopardy category, or `null` if it has no Final Jeopardy clue (a category without its clue doesn't count, as in a session), for example to list games by their Final Jeopardy when importing one into a custom show (§3.2).
 
 Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
 
@@ -170,10 +172,12 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | Field | Meaning |
 |---|---|
 | `id` | Session id |
-| `gameId` | The stored game it was created from (`null` for a board that isn't in the database; there are none yet) |
-| `gameTitle` | That game's title (`null` if it has none) |
+| `gameId` | The stored game it was created from (`null` for a custom show) |
+| `gameTitle` | That game's title (`null` if it has none), or a custom show's name |
 | `gameSeason` | That game's season, as in `GameSummaryResponse.season` (`null` when `gameId` is) |
 | `gameDate` | That game's air date, `YYYY-MM-DD` (`null` when `gameId` is) |
+| `custom` | `true` for a custom show (§3.2, create), `false` for a stored game |
+| `clueCount` | How many clues the board has, in every round and Final Jeopardy |
 | `state` | The session's `GameSessionState` (§6). Use it to show "waiting for players" vs "in progress". |
 | `round` | The round being played, or about to be |
 | `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
@@ -182,6 +186,8 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `joinable` | Whether a join would be accepted right now: always `true` in the lobby, and during the game only if `allowLateJoin`, except never in `FINAL_JEOPARDY_ANSWERING`, `FINAL_JEOPARDY_REVEALING` or `FINISHED_GAME` (§6.6) |
 | `allowLateJoin` | Whether the host allows joining after the start (§6.6) |
 | `joinScore` | The score a player who joins now starts with (§6.6) |
+
+Custom shows are listed like any other session: `search` finds them by name (their `gameTitle`), and sorting by `gameSeason` or `gameDate` puts them last in both directions, since theirs are `null`.
 
 The list is a snapshot: a session can start, fill up or close right after. Use `joinable` to decide whether to offer "Join" or only "Watch"; anyone can watch any listed session.
 
@@ -197,17 +203,119 @@ Errors (all `400` with an `ApiErrorResponse` whose `code` is `INVALID_REQUEST`):
 
 #### `PUT /api/game-sessions/{sessionId}?session={sessionId}`
 
-Creates a live session from a stored game, **under a code the client chooses**. Nobody is in it yet: the creator should join next, which makes them the host. The client picks the code so that this request can already be routed by it (see "Routing" above).
+Creates a live session from a stored game or a custom show, **under a code the client chooses**. Nobody is in it yet: the creator should join next, which makes them the host. The client picks the code so that this request can already be routed by it (see "Routing" above).
 
 - `sessionId`: a new **session code**, 5 random characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (Crockford's base32: digits and uppercase letters without I, L, O and U), for example `7KQ2M`. Pick each character with `crypto.getRandomValues()`. Codes are short so that people can read them out and type them; they aren't secret (the lobby lists every session, and only a player's token proves who they are).
-- Request: `{ "gameId": 123 }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
+- Request: **either** `{ "gameId": 123 }` for a stored game **or** `{ "customGame": CustomGameRequest }` for a custom show (see "Custom shows" below). Exactly one of the two must be set: both or neither is `400 { "status": 400, "code": "INVALID_REQUEST", "message": "Exactly one of gameId and customGame must be set" }`. The session starts with the default timers and settings; the host changes them in the lobby (`update-timers`, `update-settings`, §4.3). Any other field in the body (such as an old `timers` object) is ignored.
 - `201 { "id": "7KQ2M" }`: the same code.
-- Code already in use: `409 { "status": 409, "code": "SESSION_ALREADY_EXISTS", "message": "Game session already exists: <code>" }`, checked before the game (so a code in use gets a 409 even with an unknown game). The code of a closed session counts as in use while anyone (a player or a spectator) is still subscribed to its topic, who would otherwise receive the new session's broadcasts as the closed one's (§6.5). A closed session's players who are still connected can't act in a new session under its code, even though player ids start at 1 again: their actions get `PLAYER_NOT_IN_SESSION`. Only a code that had a session is held this way, so unsubscribe from a closed session's topic once you're done with it; a subscription to a code that never had one doesn't reserve it. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
+- Code already in use: `409 { "status": 409, "code": "SESSION_ALREADY_EXISTS", "message": "Game session already exists: <code>" }`, checked before the game or custom show (so a code in use gets a 409 even with an unknown game or a custom show that can't be played). The code of a closed session counts as in use while anyone (a player or a spectator) is still subscribed to its topic, who would otherwise receive the new session's broadcasts as the closed one's (§6.5). A closed session's players who are still connected can't act in a new session under its code, even though player ids start at 1 again: their actions get `PLAYER_NOT_IN_SESSION`. Only a code that had a session is held this way, so unsubscribe from a closed session's topic once you're done with it; a subscription to a code that never had one doesn't reserve it. There are about 33.5 million codes, so another session can occasionally have it: **pick a new code and send the create again** (with its new code in the path and in `session`). A retry after a lost response may also get a 409; it then creates a second, empty session under the new code, which is removed after 30 minutes like any lobby nobody joins.
 - A code that isn't valid (see below): `400 { "status": 400, "code": "INVALID_REQUEST", "message": "Invalid session code: expected 5 letters and digits" }`.
 - Unknown game: 404.
 - Game that can't be played: `422 { "status": 422, "code": "UNPLAYABLE_GAME", "message": "Game 725 can't be played: the board has no clues" }`. Usually a game without clues (some imported games, such as the newest ones, have none); the message gives any other reason, such as a clue whose stored answer no response could match. The game itself is valid and can still be browsed.
-- Missing `gameId`: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "gameId must not be null" }`
+- Custom show that can't be played: `422 INVALID_CUSTOM_GAME`, with every problem (below).
 - A session nobody joins is removed after 30 minutes (§6.5).
+
+##### Custom shows
+
+A custom show is a board the host built in the browser: categories imported from stored games (`GET /api/games/{id}` has everything an import needs) and clues of their own. Nothing is stored: the board lives in the session's memory and goes away with it. Everything about building it (the draft, undo, exporting to a file, checking that media links load) happens in the frontend; the backend only sees it when it's hosted.
+
+`CustomGameRequest`:
+
+| Field | Rules |
+|---|---|
+| `name` | The show's name. Listed as the session's `gameTitle`. |
+| `jeopardyRound` | Up to 6 `CustomCategoryRequest` (required, may be empty) |
+| `doubleJeopardyRound` | Up to 6 `CustomCategoryRequest` (required, may be empty) |
+| `finalJeopardy` | A `CustomFinalJeopardyRequest`, or `null` for a show without Final Jeopardy |
+
+`CustomCategoryRequest`:
+
+| Field | Rules |
+|---|---|
+| `column` | 1–6, unique within its round. Categories are shown in column order. |
+| `name` | The category's name, or `null` / blank for one the host never named. Send `null` for a default name ("Category #4"), so the backend never has to recognize one. An unnamed category without clues is left off the board. |
+| `comments` | The imported category's comments (`"(Alex: …)"`), or `null`. Shown as `BoardCategoryResponse.comments`. |
+| `sourceCategoryId` | The stored category it was imported from, or `null`. Information only: the backend never reads it. |
+| `clues` | Up to 5 `CustomClueRequest`, required (may be empty), rows unique. A row without a clue is simply left out, and becomes an `EMPTY` slot. |
+
+`CustomClueRequest`:
+
+| Field | Rules |
+|---|---|
+| `row` | 1–5. The value follows the row, as for stored games: Jeopardy $200–$1000, Double Jeopardy $400–$2000. |
+| `question` | The clue, 1–1000 characters, stored and sent **exactly as written**. It may contain the same HTML tags as stored clues (`<i>`, `<br>`); the backend doesn't strip, escape or check them. |
+| `answer` | The correct response, 1–500 characters, in the §6.7 format |
+| `clueType` | `TEXT`, `IMAGE`, `SOUND` or `VIDEO` (required) |
+| `mediaUrl` | `null` for `TEXT`; for the others an `http` or `https` URL, at most 2000 characters, on any host |
+| `dailyDouble` | `true` to make it a Daily Double (`false` if left out) |
+
+`CustomFinalJeopardyRequest`: `{ name, comments, question, answer }`, with `name`, `question` and `answer` as above. No media and no Daily Double; the clue is worth 2000 like a stored one (only the board shows it).
+
+"Characters" are code points, as for player names (`[...text].length`). Names are trimmed; questions and answers are kept as they are, but one that is blank counts as missing.
+
+**A request that isn't shaped right is a plain `400 INVALID_REQUEST`**, like any other invalid body: a missing round or `clues` list, a `column` or `row` out of range, more than 6 categories or 5 clues, a missing or unknown `clueType`, a field of the wrong type. The message names the field, for example `"customGame.jeopardyRound[0].column must be between 1 and 6"`, `"customGame.doubleJeopardyRound has two categories in column 2"` or `"customGame.jeopardyRound[1].clues has two clues on row 4"`, except for a field of the wrong type or an unknown `clueType`, which get the unreadable-body message of §3. These are frontend bugs, not something the host can fix.
+
+**What makes a custom show playable.** The backend decides; the frontend doesn't need to check anything before hosting. A show is accepted when:
+
+1. **It has at least one clue**, in any round (Final Jeopardy counts). Rounds without clues are skipped as for stored games (§6.2), and a show without Final Jeopardy ends after its last round.
+2. **The show has a name**: not blank after trimming, at most 100 characters.
+3. **Every category with at least one clue has a name**, at most 100 characters. A named category without clues is fine: its column is all `EMPTY`. A category name over 100 is a problem even without clues.
+4. **Final Jeopardy is all or nothing**: `null`, one whose name, question and answer are all blank (the same as `null`), or one with a name, a question and an answer.
+5. **Every clue has a question and an answer**, within the lengths above.
+6. **Every answer can be read**: it follows the §6.7 format, and some response could match it (the check that makes a stored game `UNPLAYABLE_GAME`). Stored answers are read leniently (an unclosed `[` is just text), but a custom answer must have its brackets and parentheses paired, no `[` inside another, no empty wording in `[ ]` or empty option in a list, `|` outside `[ ]` only in a `(N of)` list, and an N between 1 and the number of options. How a correct answer then matches is the same as for stored games.
+7. **Media matches the type**: an `IMAGE`, `SOUND` or `VIDEO` clue has a `mediaUrl` that is an `http(s)` URL with a host; a `TEXT` clue has none (a blank one counts as none).
+8. **At most 1 Daily Double in Jeopardy and 2 in Double Jeopardy.** Fewer is fine, including none: there are exactly as many Daily Doubles as are pinned, and none are added at random.
+
+When a show breaks any of these, the create fails with **every** problem found, so the host can fix them all at once:
+
+```json
+{
+  "status": 422,
+  "code": "INVALID_CUSTOM_GAME",
+  "message": "This custom show can't be played: 4 problems",
+  "problems": [
+    { "code": "CATEGORY_NAME_MISSING", "round": "JEOPARDY", "column": 3, "row": null,
+      "message": "Category 3 has clues but no name" },
+    { "code": "ANSWER_UNREADABLE", "round": "JEOPARDY", "column": 3, "row": 2,
+      "message": "The correct response can't be read: a [ is never closed" },
+    { "code": "MEDIA_URL_MISSING", "round": "JEOPARDY", "column": 3, "row": 2,
+      "message": "This video clue has no media link" },
+    { "code": "FINAL_CLUE_MISSING", "round": "FINAL_JEOPARDY", "column": null, "row": null,
+      "message": "Final Jeopardy has a category but no clue" }
+  ]
+}
+```
+
+Problems come in board order: the show's own first, then each round (its Daily Double count, then each category by column, followed by its clues by row), then Final Jeopardy. Each one says where it is, using the request's columns and rows:
+
+| `round` | `column` | `row` | Where |
+|---|---|---|---|
+| `null` | `null` | `null` | The whole show (its name, or no clues at all) |
+| A round | `null` | `null` | The whole round (too many Daily Doubles), or Final Jeopardy |
+| A round | 1–6 | `null` | A category |
+| A round | 1–6 | 1–5 | A clue |
+
+| `code` | Where | When |
+|---|---|---|
+| `NO_CLUES` | show | Rule 1 |
+| `SHOW_NAME_MISSING` | show | Rule 2: no name, or only spaces |
+| `SHOW_NAME_TOO_LONG` | show | Rule 2: over 100 characters |
+| `CATEGORY_NAME_MISSING` | category, or Final | Rule 3, or a Final Jeopardy question or answer without a name (rule 4) |
+| `CATEGORY_NAME_TOO_LONG` | category, or Final | Over 100 characters |
+| `FINAL_CLUE_MISSING` | Final | Rule 4: a name, but neither a question nor an answer |
+| `QUESTION_MISSING` | clue, or Final | Rule 5 |
+| `QUESTION_TOO_LONG` | clue, or Final | Over 1000 characters |
+| `ANSWER_MISSING` | clue, or Final | Rule 5 |
+| `ANSWER_TOO_LONG` | clue, or Final | Over 500 characters (its format isn't checked then) |
+| `ANSWER_UNREADABLE` | clue, or Final | Rule 6. The message says why, for example `"a [ is never closed"`. |
+| `MEDIA_URL_MISSING` | clue | Rule 7: a non-`TEXT` clue without a link |
+| `MEDIA_URL_INVALID` | clue | Rule 7: not an `http(s)` URL with a host, or over 2000 characters |
+| `MEDIA_URL_NOT_ALLOWED` | clue | Rule 7: a `TEXT` clue with a link |
+| `TOO_MANY_DAILY_DOUBLES` | round | Rule 8 |
+
+Mark each problem on the board by its position. Every `message` is in English and can be shown as it is. A stored clue that breaks a limit can still be imported; hosting then reports it (`QUESTION_TOO_LONG`, say) so the host can fix it, and the same goes for an imported answer that can't be read.
+
+**Playing a custom show** is exactly like playing a stored game, and `GameSessionResponse` doesn't change. The backend numbers the clues 1, 2, 3… in board order (Jeopardy by column and row, then Double Jeopardy, then Final Jeopardy); those ids are only used in `choose-clue` and `currentClue.clueId`, like any other. `currentClue.question` and `finalJeopardy.question` contain exactly what the board had, tags included, the same as a stored game's: render them the same way.
 
 #### `GET /api/game-sessions/{sessionId}?session={sessionId}`
 
@@ -672,6 +780,7 @@ type ApiErrorCode =
   | "GAME_NOT_FOUND"
   | "CLUE_NOT_FOUND"
   | "UNPLAYABLE_GAME"
+  | "INVALID_CUSTOM_GAME"
   | "SESSION_ALREADY_EXISTS"
   | "SESSION_NOT_JOINABLE";
 
@@ -680,6 +789,37 @@ interface ApiErrorResponse {
   code: ApiErrorCode | GameErrorCode;   // only SESSION_NOT_FOUND of GameErrorCode today (§3)
   message: string;
 }
+
+// 422 INVALID_CUSTOM_GAME (§3.2)
+interface InvalidCustomGameResponse extends ApiErrorResponse {
+  code: "INVALID_CUSTOM_GAME";
+  problems: CustomGameProblem[];   // every problem, in board order
+}
+
+interface CustomGameProblem {
+  code: CustomGameProblemCode;
+  round: GameRound | null;   // null: the whole show
+  column: number | null;     // 1–6; null: the whole round, or Final Jeopardy
+  row: number | null;        // 1–5; null: the whole category
+  message: string;           // English, ready to show
+}
+
+type CustomGameProblemCode =
+  | "NO_CLUES"
+  | "SHOW_NAME_MISSING"
+  | "SHOW_NAME_TOO_LONG"
+  | "CATEGORY_NAME_MISSING"
+  | "CATEGORY_NAME_TOO_LONG"
+  | "FINAL_CLUE_MISSING"
+  | "QUESTION_MISSING"
+  | "QUESTION_TOO_LONG"
+  | "ANSWER_MISSING"
+  | "ANSWER_TOO_LONG"
+  | "ANSWER_UNREADABLE"
+  | "MEDIA_URL_MISSING"
+  | "MEDIA_URL_INVALID"
+  | "MEDIA_URL_NOT_ALLOWED"
+  | "TOO_MANY_DAILY_DOUBLES";
 
 // Query params of GET /api/games (all optional)
 interface GameListParams {
@@ -690,6 +830,7 @@ interface GameListParams {
   from?: string;         // "YYYY-MM-DD", inclusive
   to?: string;           // "YYYY-MM-DD", inclusive
   playable?: boolean;    // true: only games with clues (one can still be UNPLAYABLE_GAME); false: only games without
+  finalCategory?: string; // case-insensitive substring of the Final Jeopardy category name
   sort?: GameSort;       // default "gameDate"
   direction?: SortDirection;  // default "desc" for "gameDate", otherwise "asc"
 }
@@ -712,6 +853,7 @@ interface GameSummaryResponse {
   gameDate: string;      // "YYYY-MM-DD"
   season: string;
   clueCount: number;     // 0: no clues, can't be played
+  finalCategory: string | null;  // the Final Jeopardy category's name; null without a Final Jeopardy clue
 }
 
 interface SeasonResponse {
@@ -779,9 +921,44 @@ interface SessionTimers {
 type SessionCode = string;
 
 // PUT /api/game-sessions/{code}?session={code}, with a code the client picked at random;
-// on 409, pick another and try again (§3.2)
-interface CreateGameSessionRequest { gameId: number; }  // timers and settings are set in the lobby
+// on 409, pick another and try again (§3.2). Exactly one of the two; timers and settings
+// are set in the lobby.
+type CreateGameSessionRequest =
+  | { gameId: number; customGame?: never }
+  | { customGame: CustomGameRequest; gameId?: never };
 interface CreateGameSessionResponse { id: SessionCode; }
+
+// A custom show (§3.2). Lengths are code points ([...text].length).
+interface CustomGameRequest {
+  name: string;                                 // 1–100 characters after trimming
+  jeopardyRound: CustomCategoryRequest[];       // up to 6
+  doubleJeopardyRound: CustomCategoryRequest[]; // up to 6
+  finalJeopardy: CustomFinalJeopardyRequest | null;
+}
+
+interface CustomCategoryRequest {
+  column: number;                   // 1–6, unique in the round
+  name: string | null;              // null for a category that was never named; 1–100 characters
+  comments: string | null;          // kept from an imported category
+  sourceCategoryId: number | null;  // the stored category it was imported from (information only)
+  clues: CustomClueRequest[];       // up to 5; empty rows are left out
+}
+
+interface CustomClueRequest {
+  row: number;                      // 1–5; the value follows the row
+  question: string;                 // as written, tags included; 1–1000 characters
+  answer: string;                   // §6.7 format, 1–500 characters
+  clueType: ClueType;
+  mediaUrl: string | null;          // null for TEXT; otherwise http(s), any host, at most 2000 characters
+  dailyDouble: boolean;             // at most 1 in Jeopardy, 2 in Double Jeopardy
+}
+
+interface CustomFinalJeopardyRequest {  // all blank is the same as null
+  name: string | null;
+  comments: string | null;
+  question: string | null;
+  answer: string | null;
+}
 
 // Query params of GET /api/game-sessions (all optional)
 interface GameSessionListParams {
@@ -812,10 +989,12 @@ type GameSessionSort =
 // GET /api/game-sessions returns PageResponse<GameSessionSummaryResponse>
 interface GameSessionSummaryResponse {
   id: SessionCode;
-  gameId: number | null;
-  gameTitle: string | null;
+  gameId: number | null;      // null for a custom show
+  gameTitle: string | null;   // a custom show's name
   gameSeason: string | null;  // null when gameId is
   gameDate: string | null;    // "YYYY-MM-DD", null when gameId is
+  custom: boolean;            // a custom show: gameId, gameSeason and gameDate are null
+  clueCount: number;          // clues on the board, all rounds and Final Jeopardy
   state: GameSessionState;
   round: GameRound;
   playerCount: number;        // players who haven't left
@@ -956,6 +1135,7 @@ These are tracked on the backend roadmap. Work around them in the UI only where 
 - **No winner or tie field.** At `FINISHED_GAME`, work out the winner from the final `players[].score`.
 - **Answer checking doesn't know synonyms** (§6.7): abbreviations aren't expanded ("Avenue" isn't `Ave.`), and number words aren't numbers.
 - **Sessions are lost when the backend restarts**, along with every token. Clients see this the same way as a removed session (§6.5), but without the `CLOSED` broadcast. With several instances, only the sessions on the instance that stopped are lost.
+- **Custom shows aren't saved** (§3.2). The board lives only in its session, so it's gone once the session is removed or the backend restarts; keep the draft or an exported file to host it again.
 - **Changing the number of instances moves some sessions' routing.** When an instance is added or removed, the load balancer sends some session ids to a different instance than before. Open connections stay where they are and keep working, but new requests for those sessions (a refresh, a join, a reconnect) reach an instance without them and get a 404. Keep the number of instances fixed while games are running.
 - **Disconnected players never time out.** Only `leave` and `kick` remove a player (§6.4). An `away` player stays in the game, and an `away` chooser keeps control, with the timers choosing for them; the session only closes once everyone is `away` (§6.5).
 - **No limits** on the number of players or duplicate names. Names are capped at 30 characters (§3.2) and answers at 200 (§4.3).

@@ -1,9 +1,11 @@
 package com.nickneim.jeopardy.exception;
 
 import com.nickneim.jeopardy.dto.ApiErrorResponse;
+import com.nickneim.jeopardy.dto.InvalidCustomGameResponse;
 import com.nickneim.jeopardy.game.exception.ClueNotFoundException;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.session.exception.GameSessionAlreadyExistsException;
+import com.nickneim.jeopardy.session.exception.InvalidCustomGameException;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
 import com.nickneim.jeopardy.session.exception.UnplayableGameException;
@@ -67,6 +69,20 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNPROCESSABLE_CONTENT, ApiErrorCode.UNPLAYABLE_GAME, exception.getMessage());
     }
 
+    // 422 like an unplayable stored game, with every problem, so the host
+    // can fix them all at once.
+    @ExceptionHandler(InvalidCustomGameException.class)
+    public ResponseEntity<InvalidCustomGameResponse> handleInvalidCustomGame(InvalidCustomGameException exception) {
+        HttpStatus status = HttpStatus.UNPROCESSABLE_CONTENT;
+
+        return ResponseEntity.status(status).body(new InvalidCustomGameResponse(
+                status.value(),
+                ApiErrorCode.INVALID_CUSTOM_GAME.name(),
+                exception.getMessage(),
+                exception.getProblems()
+        ));
+    }
+
     // 409: the request is fine, but the session doesn't take new players
     // right now (GameSession.isJoinable).
     @ExceptionHandler(SessionNotJoinableException.class)
@@ -120,7 +136,9 @@ public class ApiExceptionHandler {
         return invalidRequest("Invalid request: the body isn't valid JSON for this request");
     }
 
-    // An unknown sort, direction or stage, or a 'from' after 'to'.
+    // An unknown sort, direction or stage, a 'from' after 'to', or a create
+    // body whose parts don't fit together (both gameId and customGame, two
+    // custom categories in one column).
     @ExceptionHandler(InvalidParameterException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidParameter(InvalidParameterException exception) {
         return invalidRequest(exception.getMessage());

@@ -477,6 +477,33 @@ class GameSessionResponseTest {
         assertFalse(json.contains(player.getToken()), "leaked a player token: " + json);
     }
 
+    @Test
+    void summary_countsEveryClue_andMarksStoredGamesAsNotCustom() {
+        GameSessionSummaryResponse summary = GameSessionSummaryResponse.from(session);
+
+        assertFalse(summary.custom());
+        assertEquals(5, summary.clueCount());
+    }
+
+    @Test
+    void summary_ofACustomShow_hasItsNameAndNoStoredGame() {
+        GameBoard board = GameBoard.custom("Family reunion night", List.of(
+                new BoardRound(GameRound.JEOPARDY, List.of(new BoardCategory("COUSINS", List.of(historyRow1)))),
+                new BoardRound(GameRound.FINAL_JEOPARDY, List.of(new BoardCategory("PETS", List.of(
+                        new BoardClue(2L, 1, "Final question", "a cat", 2000, false)
+                ))))
+        ));
+
+        GameSessionSummaryResponse summary = GameSessionSummaryResponse.from(new GameSession(SessionCode.random(), board));
+
+        assertTrue(summary.custom());
+        assertEquals("Family reunion night", summary.gameTitle());
+        assertNull(summary.gameId());
+        assertNull(summary.gameSeason());
+        assertNull(summary.gameDate());
+        assertEquals(2, summary.clueCount());
+    }
+
     private String toJson(GameSessionResponse response) {
         return JsonMapper.builder().build().writeValueAsString(response);
     }

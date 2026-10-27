@@ -29,7 +29,12 @@ public record GameSessionSummaryResponse(
         // Whether a join would be accepted right now.
         boolean joinable,
         boolean allowLateJoin,
-        int joinScore
+        int joinScore,
+        // A custom show: gameId, gameSeason and gameDate are null, and
+        // gameTitle is the show's name.
+        boolean custom,
+        // Clues on the board, in every round and Final Jeopardy.
+        int clueCount
 ) {
 
     public static GameSessionSummaryResponse from(GameSession session) {
@@ -55,7 +60,9 @@ public record GameSessionSummaryResponse(
                 session.getCreatedAt(),
                 session.isJoinable(),
                 session.isLateJoinAllowed(),
-                session.getJoinScore()
+                session.getJoinScore(),
+                session.getBoard().isCustom(),
+                session.getBoard().getClueCount()
         );
     }
 }

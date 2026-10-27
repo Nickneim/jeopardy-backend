@@ -10,6 +10,7 @@ import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameDailyDouble;
 import com.nickneim.jeopardy.game.exception.GameNotFoundException;
 import com.nickneim.jeopardy.game.repository.GameClueCount;
+import com.nickneim.jeopardy.game.repository.GameFinalCategory;
 import com.nickneim.jeopardy.game.repository.GameRepository;
 import com.nickneim.jeopardy.game.repository.SeasonGameCount;
 import org.junit.jupiter.api.Test;
@@ -317,7 +318,7 @@ class GameServiceTest {
     }
 
     @Test
-    void getGameSummaries_addsEachGamesClueCount() {
+    void getGameSummaries_addsEachGamesClueCountAndFinalCategory() {
         Game withClues = new Game("Show #1", LocalDate.of(2025, 1, 2), "40");
         Game withoutClues = new Game("Show #2", LocalDate.of(2025, 1, 1), "40");
         ReflectionTestUtils.setField(withClues, "id", 1L);
@@ -327,11 +328,13 @@ class GameServiceTest {
                 .thenReturn(new PageImpl<>(List.of(withClues, withoutClues), PageRequest.of(0, 20), 2));
         when(gameRepository.countCluesByGameIds(Set.of(1L, 2L)))
                 .thenReturn(List.of(new GameClueCount(1L, 61L)));
+        when(gameRepository.findFinalCategoriesByGameIds(List.of(1L, 2L)))
+                .thenReturn(List.of(new GameFinalCategory(1L, "WORLD CAPITALS")));
 
         assertEquals(
                 List.of(
-                        GameSummaryResponse.from(withClues, 61),
-                        GameSummaryResponse.from(withoutClues, 0)
+                        GameSummaryResponse.from(withClues, 61, "WORLD CAPITALS"),
+                        GameSummaryResponse.from(withoutClues, 0, null)
                 ),
                 gameService.getGameSummaries(0, 20, GameFilter.NONE, GameSort.DEFAULT).getContent()
         );
