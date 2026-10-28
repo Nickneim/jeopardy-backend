@@ -797,7 +797,8 @@ class GameSessionControllerTest {
                                 "allowLateJoin": true,
                                 "joinScore": 0,
                                 "custom": false,
-                                "clueCount": 1
+                                "clueCount": 1,
+                                "hostMode": "CONTESTANT"
                             }],
                             "page": 0,
                             "size": 20,

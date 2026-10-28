@@ -245,6 +245,17 @@ public final class GameBoard {
         return clue;
     }
 
+    /** The category the clue is in. */
+    public BoardCategory getCategory(Long clueId) {
+        BoardClue clue = getClue(clueId);
+
+        return rounds.stream()
+                .flatMap(round -> round.categories().stream())
+                .filter(category -> category.clues().contains(clue))
+                .findFirst()
+                .orElseThrow();
+    }
+
     public boolean isDailyDouble(Long clueId) {
         return getClue(clueId).dailyDouble();
     }

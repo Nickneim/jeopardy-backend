@@ -38,6 +38,7 @@ Key ideas:
 - **Anyone can watch.** A connection without a token can subscribe to a session's topic but can't act.
 - **Timers run on the server.** Phases such as revealing a clue or waiting for buzzes end automatically. The client just renders whatever state arrives. Every response says how long the current phase lasts and how much of it is left (`phaseDurationMs`, `phaseRemainingMs`), so countdowns are right even after a refresh. Each session has its own phase durations, which the host can set in the lobby (`timers`, §6.3).
 - **The host runs the lobby.** The first player to join is the host (`hostPlayerId`). Only the host can start the game, change the timers and kick players. If the host leaves, the next player takes over (§6.4).
+- **The host can run the show as Trebek** instead of playing (`hostMode: "TREBEK"`, §6.8): they show each clue when they're ready, open and close the buzzers, rule on every answer (the answer check only suggests), change any score and can pause the clock. Their secrets (the hidden clue, the answer waiting for a ruling, the Final Jeopardy wagers and answers) only reach Trebek's own connection, on `/user/queue/trebek`. A session in the default `CONTESTANT` mode plays exactly as described everywhere else.
 - **Anyone can join at any time**, unless the host blocked joining after the start (`allowLateJoin`). Everyone who joins, including someone who left and comes back, starts with the session's `joinScore`, which is never better than the lowest score of anyone who stayed (§6.6).
 - **Answers are checked leniently.** Spelling mistakes, word order and punctuation are forgiven, numbers aren't, and Double and Final Jeopardy answers must be phrased as a question ("What is ...?"). Correct responses use `(N of) A | B` for lists of different answers and `[A | B]` for one answer worded differently (§6.7).
 - **Leaving is explicit.** Closing the tab or losing the connection is *not* leaving: the player stays in the game, marked `away`, and can reconnect with their token. Only the `leave` action (or being kicked) removes a player, and it makes their token stop working (§6.4).
@@ -180,8 +181,9 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `clueCount` | How many clues the board has, in every round and Final Jeopardy |
 | `state` | The session's `GameSessionState` (§6). Use it to show "waiting for players" vs "in progress". |
 | `round` | The round being played, or about to be |
-| `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted. |
-| `hostName` | The host's name, or `null` before anyone has joined |
+| `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted, and neither is Trebek (§6.8). |
+| `hostName` | The host's name (Trebek's in a Trebek session), or `null` before anyone has joined |
+| `hostMode` | `CONTESTANT`, or `TREBEK` when the host runs the show (§6.8), so the list can mark a Trebek session before anyone joins it |
 | `createdAt` | When the session was created, an ISO-8601 UTC timestamp such as `"2026-10-09T12:30:00Z"` |
 | `joinable` | Whether a join would be accepted right now: always `true` in the lobby, and during the game only if `allowLateJoin`, except never in `FINAL_JEOPARDY_ANSWERING`, `FINAL_JEOPARDY_REVEALING` or `FINISHED_GAME` (§6.6) |
 | `allowLateJoin` | Whether the host allows joining after the start (§6.6) |
@@ -333,7 +335,7 @@ Joins a session.
   - **Everything else is kept, invisible or not**: zero-width spaces inside a name, soft hyphens, joiners, tag characters, Hangul fillers. Names are display text only, and since duplicate names are allowed (§9), a name that looks like another gains nothing. Treat a name as nothing but text to show.
   - "Characters" are Unicode code points, what JavaScript's `[...name].length` counts: 😀 is 1, 👩‍💻 is 3 (woman, joiner, laptop).
 - `201 { "playerId": 1, "token": "Xk3…43 chars" }`. Players are numbered 1, 2, 3… within each session, so ids are only unique inside a session. **Ids are never reused**: after player 3 leaves, the next player to join is 4, not 3.
-- The first player to join becomes the host (§6.4).
+- The first player to join becomes the host (§6.4). Nobody joins as Trebek: only the host switches to it, in the lobby (§6.8).
 - Unknown (or removed) session: `404 { "status": 404, "code": "SESSION_NOT_FOUND", "message": "Game session not found: <id>" }`
 - Missing or blank name: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "playerName must not be blank" }`
 - Name longer than 30 characters: `400 { "status": 400, "code": "INVALID_REQUEST", "message": "playerName must be at most 30 characters" }`
@@ -400,8 +402,9 @@ client.publish({
 |---|---|
 | `/topic/sessions/{sessionId}` | `GameSessionResponse` after every state change, to everyone in the session |
 | `/user/queue/errors` | `GameSessionErrorResponse`, only for errors caused by **your** messages |
+| `/user/queue/trebek` | `TrebekViewResponse`, Trebek's private view (§6.8). Only Trebek's connections receive anything here: once as soon as they subscribe (so a reconnect or refresh catches up), then with every broadcast of a Trebek session. Anyone else's subscription receives nothing. |
 
-Subscribe to both **before** sending actions, otherwise you can miss the response to your own action.
+Subscribe to the first two **before** sending actions, otherwise you can miss the response to your own action. Trebek also subscribes to the third.
 
 ### 4.3 Actions (client → server)
 
@@ -411,15 +414,17 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 |---|---|---|
 | `start` | none (an empty body or `{}` is fine) | `WAITING_FOR_START`; **host only** |
 | `update-timers` | `Partial<SessionTimers>`, for example `{ "buzzerMs": 8000 }` (send `{}` at least) | `WAITING_FOR_START`; **host only**. Durations left out keep their current value. Each must be 1000–300000 ms (§6.3). |
-| `update-settings` | `{ "allowLateJoin": boolean }` (required) | `WAITING_FOR_START`; **host only**. Blocks or allows joining after the start (§6.6). |
+| `update-settings` | `{ "allowLateJoin"?: boolean, "hostMode"?: HostMode, "timerModes"?: Partial<SessionTimerModes> }`, at least one of them | `WAITING_FOR_START`; **host only**. `allowLateJoin` blocks or allows joining after the start (§6.6); `hostMode` and `timerModes` choose whether the host plays or runs the show as Trebek, and which phases wait for Trebek (§6.8). A setting left out keeps its value; `{}` gets `INVALID_REQUEST`, `"At least one setting must be set"`. |
 | `kick` | `{ "playerId": number }` | Any state except `CLOSED`; **host only**; not yourself (use `leave`). The kicked player is treated exactly like a player who leaves. |
 | `leave` | none | Any state except `CLOSED` (§6.4) |
-| `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue` |
+| `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue`, or Trebek choosing for them (§6.8) |
 | `buzz` | none | `WAITING_FOR_BUZZER`, unless you're in `playersLockedOut` |
 | `answer` | `{ "answer": string }` (at most 200 characters, counted like names, §3.2) | `WAITING_FOR_ANSWER`, if you are `playerAnswering` |
-| `place-daily-double-wager` | `{ "wager": number }` | `WAITING_FOR_DAILY_DOUBLE_WAGER`, if you chose the clue |
+| `place-daily-double-wager` | `{ "wager": number }` | `WAITING_FOR_DAILY_DOUBLE_WAGER`, if you chose the clue, or Trebek wagering for the chooser (§6.8) |
 | `place-final-jeopardy-wager` | `{ "wager": number }` | `FINAL_JEOPARDY_WAGERING` (can be changed until the phase ends) |
 | `answer-final-jeopardy` | `{ "answer": string }` (at most 200 characters, counted like names) | `FINAL_JEOPARDY_ANSWERING` (can be changed until the phase ends) |
+
+Trebek's own actions (`advance`, `return-clue`, `rule`, `rule-final`, `adjust-score`, `pause`, `resume`) are in §6.8. Trebek doesn't play: a `buzz`, `answer`, `place-final-jeopardy-wager` or `answer-final-jeopardy` from Trebek gets `NOT_YOUR_TURN`, `"Trebek doesn't play!"`.
 
 Every action requires a player who hasn't left. A player who has left can't act at all, even while they still hold a role (§6.4).
 
@@ -441,23 +446,29 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `version` | Goes up by one with every change (0 for a new session). Keep the response with the highest version (§2). |
 | `round` | `JEOPARDY` \| `DOUBLE_JEOPARDY` \| `FINAL_JEOPARDY`, the round being played (or about to be, before the start) |
 | `state` | See §6 |
-| `closeReason` | Why the session was removed: `ABANDONED` \| `IDLE` \| `FINISHED` (§6.5). Only set when `state` is `CLOSED`; otherwise `null`. |
-| `phaseDurationMs` | Full length of the current phase in milliseconds, or `null` if the state has no timer (§6.3) |
-| `phaseRemainingMs` | Milliseconds left in the current phase when the server built this response (never negative), or `null` if the state has no timer |
+| `closeReason` | Why the session was removed: `ABANDONED` \| `IDLE` \| `FINISHED` \| `TREBEK_LEFT` (§6.5). Only set when `state` is `CLOSED`; otherwise `null`. |
+| `phaseDurationMs` | Full length of the current phase in milliseconds, or `null` if the state has no timer (§6.3), including a phase that waits for Trebek (§6.8) |
+| `phaseRemainingMs` | Milliseconds left in the current phase when the server built this response (never negative), or `null` if the state has no timer. While `paused`, the time left when the clock stopped. |
+| `paused` | `true` while Trebek has stopped the clock (§6.8): don't count down. Always `false` in a `CONTESTANT` session. |
 | `timers` | The session's configured phase durations in milliseconds (`SessionTimers`, §6.3). Always present, so the lobby can show them. |
+| `timerModes` | For each timer, `AUTOMATIC` or `TREBEK`: whether its phase runs on its timer or waits for Trebek (`SessionTimerModes`, §6.8). Always present; it only matters in a `TREBEK` session. |
+| `hostMode` | `CONTESTANT` (the host plays, the default) \| `TREBEK` (the host runs the show, §6.8) |
+| `trebek` | In a `TREBEK` session, the host running it: `{ id, name, away }`, with `id` equal to `hostPlayerId`. Trebek is never in `players`. `null` in a `CONTESTANT` session. |
 | `players` | `{ id, name, score, leaving, away }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed, and, from `FINAL_JEOPARDY_REVEALING` on, for everyone who left, since they stay in the results (§6.4); show them as leaving. Removed players aren't listed at all. `away` is `true` while a player has no open connection: from joining until they first connect, and whenever they lose it (a closed tab, a lost network); it turns `false` when they (re)connect (§6.4). |
-| `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`. |
+| `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`, or in a `TREBEK` session `trebek.id`. |
 | `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
 | `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
 | `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses, and once the game has finished. |
-| `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double); otherwise `null`. |
-| `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER` and `WAITING_FOR_ANSWER`; otherwise `[]`. |
+| `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double), and in `WAITING_FOR_RULING` for the player whose answer Trebek is ruling on; otherwise `null`. |
+| `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER` and `WAITING_FOR_RULING`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
 | `currentClue` | The clue in play (§5.2), or `null` |
 | `clueAnswers` | Every answer given to the clue in play, or to the last clue played (§5.4). Never `null`; `[]` when there are none. |
 | `finalJeopardy` | Final Jeopardy status (§5.3), or `null` |
 
-**Every player id in a response belongs to someone in `players`** (`hostPlayerId`, `playerChoosingClue`, `playerAnswering`, `playersLockedOut`, `clueAnswers[].playerId`, `finalJeopardy.players[].playerId`). When a player is removed, every trace of them goes with them (§6.4).
+**Every player id in a response belongs to someone in `players`, or is `trebek.id`** (`hostPlayerId`, `playerChoosingClue`, `playerAnswering`, `playersLockedOut`, `clueAnswers[].playerId`, `finalJeopardy.players[].playerId`, `finalJeopardy.revealOrder`). Only `hostPlayerId` can be `trebek.id`. When a player is removed, every trace of them goes with them (§6.4).
+
+**The snapshot never holds a secret**, in a Trebek session too: a clue Trebek hasn't shown, an answer waiting for Trebek's ruling and Final Jeopardy wagers and answers before their reveal step only go to Trebek, on `/user/queue/trebek` (§6.8).
 
 ### 5.1 `board`
 
@@ -479,10 +490,10 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | Field | Meaning |
 |---|---|
 | `clueId`, `value` | The chosen clue |
-| `dailyDouble` | `true` for a Daily Double. It's public at this point, since the wager phase reveals it. |
+| `dailyDouble` | `true` for a Daily Double. It's public at this point, since the wager phase reveals it. `null` in `CLUE_PICKED` (§6.8), so the board doesn't give a Daily Double away before Trebek shows it. |
 | `wager` | The Daily Double wager once it's placed; otherwise `null` |
 | `minWager`, `maxWager` | The lowest and highest wager the chooser can place (§6.2), only in `WAITING_FOR_DAILY_DOUBLE_WAGER`; otherwise `null` |
-| `question` | Hidden (`null`) while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on |
+| `question` | Hidden (`null`) in `CLUE_PICKED` and while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on (`WAITING_FOR_RULING` included) |
 | `clueType` | `TEXT` \| `IMAGE` \| `SOUND` \| `VIDEO`. Hidden exactly like `question`. |
 | `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
 | `numberExpected` | `true` when only an exact number is accepted (§6.7), so you can warn the player that typos won't be forgiven. Hidden exactly like `question`, since it says something about the answer. |
@@ -502,16 +513,19 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `answer` (the correct response, written as in §6.7) and `acceptedAnswers` (the same, ready to show, as in §5.2) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` (only `true` for a player who actually wagered or answered; a missing wager still counts as 0) | always |
 | `players[]` → `maxWager` (the most that player can wager: their score, or 0) | only in `FINAL_JEOPARDY_WAGERING`; `null` otherwise |
-| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. |
+| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. In a Trebek session, per player as their reveal steps are reached instead (below). |
+| `revealOrder` | Trebek sessions only: the player ids in the order they're revealed, from `FINAL_JEOPARDY_REVEALING` on (and in `FINISHED_GAME`). `null` in a `CONTESTANT` session. |
+| `players[]` → `revealStep` | Trebek sessions only, from `FINAL_JEOPARDY_REVEALING` on: `HIDDEN` \| `WAGER` \| `ANSWER` \| `AWARDED`, how far this player's reveal has got. From `WAGER` their `wager` is shown, from `ANSWER` also their `answer` and `phrasedAsQuestion`, and once `AWARDED` also `correct` (Trebek's ruling), `matchedAnswers` and `alsoAccepted`. `null` in a `CONTESTANT` session. |
 
 ### 5.4 `clueAnswers`
 
-What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct, phrasedAsQuestion, matchedAnswers, alsoAccepted }`:
+What players answered on the current ordinary clue or Daily Double, oldest first, so everyone can see each answer and its result. Each entry is `{ playerId, answer, correct, phrasedAsQuestion, matchedAnswers, alsoAccepted, ruledByTrebek }`:
 
-- `answer` is the text the player submitted, or `null` if they ran out of time (which counts as wrong).
-- `correct` is the result of the answer check (§6.2).
+- `answer` is the text the player submitted, or `null` if they ran out of time (which counts as wrong). In a Trebek session it's also `null` when Trebek ruled before an answer came.
+- `correct` is the result of the answer check (§6.2), or in a Trebek session Trebek's ruling.
+- `ruledByTrebek` is `true` when `correct` is Trebek's call (§6.8), `false` in a `CONTESTANT` session. In a Trebek session an entry only appears once Trebek has ruled, never while the answer waits for the ruling.
 - `phrasedAsQuestion` says whether the answer was phrased as a question (§6.7), in every round, also where that isn't required. It's `null` when the player ran out of time.
-- `matchedAnswers` (only for a correct answer, otherwise `null`): what the answer named, in the order the player named it, each in the wording they matched. For `a linen [closet | cupboard]`, "linen cupbord" gives `["a linen cupboard"]`; for `(2 of) gold | frankincense | myrrh`, "myrrh and gold" gives `["myrrh", "gold"]`. Optional parts stay in, said or not (`["(Abraham) Lincoln"]`).
+- `matchedAnswers` (only for a correct answer, otherwise `null`; in a Trebek session only when Trebek ruled it correct **and** the check matched it, so fall back to `acceptedAnswers`): what the answer named, in the order the player named it, each in the wording they matched. For `a linen [closet | cupboard]`, "linen cupbord" gives `["a linen cupboard"]`; for `(2 of) gold | frankincense | myrrh`, "myrrh and gold" gives `["myrrh", "gold"]`. Optional parts stay in, said or not (`["(Abraham) Lincoln"]`).
 - `alsoAccepted` (only for a correct answer, otherwise `null`): the options of a list the player didn't name, each in its first wording, for "We would also have accepted ...". It's empty for an answer that isn't a list, since other wordings of the same thing are never offered. A correct answer ends the clue, so neither field shows anything before the reveal.
 
 An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
@@ -554,9 +568,12 @@ FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
 Any state ──(session removed, §6.5)──► CLOSED   (only in the very last broadcast)
 ```
 
-The durations shown are the defaults; each session can change them (§6.3).
+The durations shown are the defaults; each session can change them (§6.3). A Trebek session adds two states, `CLUE_PICKED` and `WAITING_FOR_RULING`, and phases that wait for Trebek (§6.8).
 
 ### 6.2 Rules
+
+These are a `CONTESTANT` session's rules. A Trebek session keeps them except where §6.8 says otherwise: nobody is scored by the answer check, the question form is Trebek's call, and Final Jeopardy scores change at each player's award.
+
 
 - **Start:** only the host can start, and the host picks the first clue.
 - **Choosing a clue:** the player in control has 30 s (by default) to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser is `away`. A chooser who has *left* loses control instead (§6.4).
@@ -587,7 +604,7 @@ Each session has its own phase durations, sent in every response as `timers`. Th
 | Final Jeopardy answering | `finalJeopardyAnswerMs` | 30 s |
 | Final Jeopardy reveal | `finalJeopardyRevealMs` | 10 s |
 
-`WAITING_FOR_START`, `FINISHED_GAME` and `CLOSED` have no timer.
+`WAITING_FOR_START`, `FINISHED_GAME` and `CLOSED` have no timer, and neither do a Trebek session's `CLUE_PICKED`, `WAITING_FOR_RULING` and phases whose timer mode is `TREBEK` (§6.8).
 
 **Changing them:**
 
@@ -598,7 +615,7 @@ Each session has its own phase durations, sent in every response as `timers`. Th
 Every response (broadcast and `GET /api/game-sessions/{id}`) carries the current phase's timing:
 
 - `phaseDurationMs`: the full length of the phase, for example `10000` in `WAITING_FOR_BUZZER`.
-- `phaseRemainingMs`: how much of it was left when the server built the response, from `0` up to `phaseDurationMs`.
+- `phaseRemainingMs`: how much of it was left when the server built the response, from `0` up to `phaseDurationMs`. While `paused` (§6.8) it's the time left when the clock stopped, and doesn't go down.
 - Both are `null` in a state without a timer.
 
 They're durations, not timestamps, so the client's clock doesn't need to match the server's. To show a countdown, note your own time when the response arrives (`performance.now()`) and count down from `phaseRemainingMs`. It will end late by the network delay of that response, which is usually small. Final Jeopardy wagers and answers don't restart their phase: their broadcasts show the same deadline with less time left. The phase can end a few milliseconds after the countdown reaches 0, when the next broadcast arrives.
@@ -610,6 +627,7 @@ They're durations, not timestamps, so the client's clock doesn't need to match t
 - The first player to join is the host (`hostPlayerId`). Only the host can `start`, `update-timers`, `update-settings` and `kick`; anyone else gets `NOT_HOST`.
 - When the host leaves or is kicked, the remaining player with the **lowest id** who hasn't left becomes host at once, in the same broadcast, skipping `away` players unless everyone is `away`, so the players who are there can still start and kick. A host who goes `away` stays host.
 - When nobody is left, the session closes (§6.5).
+- In a Trebek session the host is Trebek, who isn't in `players`. Trebek leaving works differently (§6.8): during the game it ends the game.
 
 **Kicking.** The host sends `kick` with another player's id. The kicked player is treated **exactly** like a player who leaves (below). Kicking yourself is rejected with `INVALID_REQUEST` (use `leave`). Kicking an id that isn't an active player in the session, including one who has already left, is rejected with `PLAYER_NOT_FOUND`.
 
@@ -649,12 +667,13 @@ Sessions live in memory and are removed automatically:
 
 | Session | Removed | `closeReason` |
 |---|---|---|
-| Every player has left, or every remaining player is marked `leaving`, except in `FINISHED_GAME` (see its row) | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
-| Every player who hasn't left is `away` (§6.4), during a game (not in `WAITING_FOR_START` or `FINISHED_GAME`, which have their own timeouts below) | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting, or a new player connecting, stops it) | `ABANDONED` |
+| Every player has left, or every remaining player is marked `leaving`, except in `FINISHED_GAME` (see its row). In a Trebek session's lobby, Trebek counts too: Trebek alone can wait there for players. During its game Trebek doesn't: with no player left, nobody can play. | At once, by the `leave` or `kick` that caused it | `ABANDONED` |
+| Trebek leaves during the game (between `start` and `FINISHED_GAME`, §6.8) | At once | `TREBEK_LEFT` |
+| Every player who hasn't left is `away` (§6.4), and so is Trebek in a Trebek session, during a game (not in `WAITING_FOR_START` or `FINISHED_GAME`, which have their own timeouts below) | After **2 minutes** with everyone away (counted from when the last one went away; anyone reconnecting, or a new player connecting, stops it). Pausing (§6.8) doesn't stop it. | `ABANDONED` |
 | `WAITING_FOR_START` with no change for **30 minutes** (a change is anything that's broadcast: a join, a leave, a kick, new timers). A session nobody joins counts from its creation. | After 30 minutes without a change | `IDLE` |
 | `FINISHED_GAME` with no change for **10 minutes** (counted from the end of the game, or from the last player leaving after it) | After 10 minutes without a change | `FINISHED` |
 
-A game in progress is only removed by a timer when everyone is `away`: otherwise every phase is timed and it moves on by itself. All sessions are also lost when the backend restarts.
+A game in progress is only removed by a timer when everyone is `away`: otherwise every phase is timed and it moves on by itself. A Trebek session's phases that wait for Trebek, or a paused clock, can wait as long as anyone is connected, like a lobby. All sessions are also lost when the backend restarts.
 
 **What clients see:**
 
@@ -710,6 +729,173 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 - **Lists:** items can come in any order, separated by commas, "and", "&", "or", or nothing at all. Naming more options than needed is fine; naming anything that isn't one is wrong. Two wordings of one option (`[A | B]`) count as one. For `(2 of) gold | frankincense | myrrh`, "gold and myrrh" and "gold, frankincense, myrrh" are right; "gold" and "gold and silver" are wrong.
 - **The question form** is optional in the Jeopardy round and required in Double Jeopardy and Final Jeopardy. It's any of what, who, where, when, which, why or how, followed by is, are, was, were, 's or 're ("What is", "Who's", "whats", "Where were"), whatever kind of answer it is. A few typos of the question word count too ("waht is", "hwo is"). A response without it is wrong there, unless it starts with a wording of the correct response that is itself a question ("Who's the Boss?"), which can then be said as it is; the other options of a list still need the question form. Every answer reports `phrasedAsQuestion` (in `clueAnswers` and, from the reveal, in `finalJeopardy.players`), in every round: `true` when it has the question form, or is a correct response that is itself a question said as it is. In the Jeopardy round, use it to warn a player who left it out that this would be wrong from Double Jeopardy on; in Double and Final Jeopardy, `false` explains a wrong answer. It doesn't say the rest was right: an answer can be wrong both ways.
 
+### 6.8 Hosting as Trebek
+
+In the lobby the host can choose to run the show as **Trebek** instead of playing. Trebek isn't a player: they show each picked clue when they're ready, open and close the buzzers, rule on every answer (the answer check only suggests), change any score at any time, choose which timers run by themselves, and can pause the clock. Everything here applies only when `hostMode` is `TREBEK`; a `CONTESTANT` session (the default) plays exactly as the rest of this document says.
+
+Three principles:
+
+1. **The checker suggests, Trebek decides.** No answer is scored by the answer check (§6.7). Its result goes to Trebek as a suggestion.
+2. **A clock never rules.** An automatic timer moves the game on only where no ruling is needed (choosing for the chooser, opening the buzzers, closing typing, locking wagers). Where a ruling is needed, the game waits for Trebek.
+3. **Trebek isn't a player.** They have no score, can't buzz, answer or play Final Jeopardy (`NOT_YOUR_TURN`, `"Trebek doesn't play!"`), and aren't counted for "everyone has buzzed", control of the board, the join score, `playerCount` or the final standings.
+
+#### Choosing the mode (lobby)
+
+`update-settings` (§4.3) with `hostMode` and `timerModes`, in `WAITING_FOR_START`, host only:
+
+```json
+{ "hostMode": "TREBEK", "timerModes": { "clueRevealMs": "AUTOMATIC" } }
+```
+
+- `hostMode: "TREBEK"` **moves the host out of `players`** into `trebek` (`{ id, name, away }`). They keep their player id and token, and `hostPlayerId` stays their id. `hostMode: "CONTESTANT"` puts them back in `players`, in join order.
+- `timerModes` is a `Partial<SessionTimerModes>`: for each timer (keyed like `timers`), `AUTOMATIC` (the phase ends when its timer runs out, or sooner with Trebek's `advance`) or `TREBEK` (the phase has no timer and waits for `advance`). Modes left out keep their value. They can be set in either mode but only matter in a Trebek session. Durations (`timers`) are kept whatever the mode.
+
+Defaults:
+
+| Timer | Mode |
+|---|---|
+| `clueChoiceMs`, `buzzerMs`, `answerMs`, `finalJeopardyWagerMs`, `finalJeopardyAnswerMs` | `AUTOMATIC` |
+| `clueRevealMs`, `dailyDoubleWagerMs`, `answerRevealMs`, `finalJeopardyRevealMs` | `TREBEK` |
+
+**Starting** needs at least one player besides Trebek: otherwise `INVALID_STATE`, `"Nobody is playing yet!"`. The first chooser is the player with the lowest id in `players` (the first to join after Trebek).
+
+#### Trebek's actions
+
+All destinations are prefixed with `/app/sessions/{sessionId}/`. They're **Trebek only**: in a `CONTESTANT` session they get `INVALID_STATE` (`"Only a Trebek host can do that!"`), and from anyone else `NOT_HOST`. Each one that changes something produces a broadcast, like any action.
+
+| Destination | Body | Allowed when | Effect |
+|---|---|---|---|
+| `advance` | none | See the table below | Ends the current phase now, exactly as if its timer had run out, whether its mode is `AUTOMATIC` or `TREBEK`. It's how Trebek shows a clue, opens and closes the buzzers, locks wagers and answers, goes back to the board and steps through the Final Jeopardy reveal. |
+| `return-clue` | none | `CLUE_PICKED` (otherwise `INVALID_STATE`) | Puts the picked clue back: it's `AVAILABLE` again, the same player keeps control, and `CHOOSING_CLUE` starts again with a fresh timer. |
+| `rule` | `{ "correct": boolean }` | `WAITING_FOR_ANSWER`, `WAITING_FOR_RULING` (otherwise `INVALID_STATE`) | Rules on the answering player's answer (below). |
+| `rule-final` | `{ "playerId": number, "correct": boolean }` | `FINAL_JEOPARDY_REVEALING`, until that player is `AWARDED` | Rules on one player's Final Jeopardy answer (below). It can be changed until their points are awarded; after that `INVALID_STATE`, `"<name>'s points were already awarded!"`. An id that isn't in the reveal gets `PLAYER_NOT_FOUND`. Earlier, `INVALID_STATE`: answers are only ruled on once answering is over. |
+| `adjust-score` | `{ "playerId": number, "amount": number }` | Any state from `start` on (`FINISHED_GAME` included); `INVALID_STATE` in the lobby | Adds `amount` to that player's score (negative takes away). `amount` must be between −100000 and 100000 (`INVALID_REQUEST`, `"amount must be between -100000 and 100000"`) and not 0 (`INVALID_REQUEST`). A player marked `leaving` can be adjusted; an id that isn't in `players` (Trebek's included) gets `PLAYER_NOT_FOUND`. It counts as a score change for `joinScore` (§6.6). |
+| `pause` / `resume` | none | Between `start` and `FINISHED_GAME` (otherwise `INVALID_STATE`) | Stops or restarts the clock (below). Pausing when paused, or resuming when not, does nothing: no error and no broadcast. |
+| `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE` | Trebek chooses **for** `playerChoosingClue` (a clue they named out loud); they keep control, as when the timer chooses. If the chooser's own choice arrives after it, it gets `TOO_LATE`, `"Trebek chose a clue for you!"`. |
+| `place-daily-double-wager` | `{ "wager": number }` | `WAITING_FOR_DAILY_DOUBLE_WAGER` | Trebek places the chooser's wager (one said out loud), with the chooser's range and `INVALID_WAGER`. |
+
+Trebek's `kick` and `leave` work as for any host (leaving: below).
+
+#### The state machine
+
+Two more states: **`CLUE_PICKED`** (a clue was chosen, and Trebek hasn't shown it) and **`WAITING_FOR_RULING`** (the answer is in, or typing closed, and Trebek hasn't ruled). Neither ever has a timer.
+
+```
+CHOOSING_CLUE ◄──────────────────────────────────────────────────────┐
+   │ choose-clue (the chooser, or Trebek for them), advance or timer │
+   ▼                                                                 │
+CLUE_PICKED (waits for Trebek) ── return-clue ──► CHOOSING_CLUE      │
+   │ advance                                                         │
+   ├── Daily Double ─► WAITING_FOR_DAILY_DOUBLE_WAGER                │
+   │                     │ wager (the chooser or Trebek), advance or timer (minimum wager)
+   ▼                     ▼                                           │
+REVEALING_CLUE                                                       │
+   ├── Daily Double ─► WAITING_FOR_ANSWER (chooser only)             │
+   │ advance or timer                                                │
+   ▼                                                                 │
+WAITING_FOR_BUZZER ── buzz ──► WAITING_FOR_ANSWER                    │
+   │ advance or timer:            │ answer, advance or timer (typing closes)
+   │ nobody buzzed                ▼                                  │
+   │                         WAITING_FOR_RULING (waits for Trebek)   │
+   │                              │ rule (also allowed in WAITING_FOR_ANSWER)
+   ▼                              ▼                                  │
+REVEALING_ANSWER ◄──── correct, wrong with nobody left, Daily Double │
+   │ advance or timer     (wrong with players left → WAITING_FOR_BUZZER)
+   └─► CHOOSING_CLUE, next round, Final Jeopardy or FINISHED_GAME ───┘
+```
+
+A phase whose timer mode is `TREBEK` waits for `advance`, and its `phaseDurationMs` and `phaseRemainingMs` are `null`. One whose mode is `AUTOMATIC` runs on its timer as in §6.3.
+
+`advance` in each state:
+
+| State | `advance` does |
+|---|---|
+| `CHOOSING_CLUE` | Chooses for the chooser, as the timer does (§6.2) |
+| `CLUE_PICKED` | Shows the clue (`REVEALING_CLUE`), or for a Daily Double starts the wager |
+| `WAITING_FOR_DAILY_DOUBLE_WAGER` | Locks the minimum wager, as the timer does |
+| `REVEALING_CLUE` | Opens the buzzers (on a Daily Double, the chooser answers) |
+| `WAITING_FOR_BUZZER` | Closes them: nobody else buzzed, the answer is revealed |
+| `WAITING_FOR_ANSWER` | Closes typing: `WAITING_FOR_RULING` with no answer |
+| `WAITING_FOR_RULING` | Nothing: `INVALID_STATE`, `"Rule on the answer first!"` |
+| `REVEALING_ANSWER` | Back to the board, or on to the next round, Final Jeopardy or the end |
+| `FINAL_JEOPARDY_WAGERING`, `FINAL_JEOPARDY_ANSWERING` | Locks the wagers / the answers |
+| `FINAL_JEOPARDY_REVEALING` | The next reveal step (below); before the award of a player Trebek hasn't ruled on, `INVALID_STATE`, `"Rule on <name>'s answer first!"` |
+| `WAITING_FOR_START`, `FINISHED_GAME`, `CLOSED` | Nothing: `INVALID_STATE` |
+
+#### A picked clue
+
+In `CLUE_PICKED` everyone sees which clue was picked (`currentClue.clueId` and `value`, and its slot is `PLAYED`), but nothing else: `question`, `clueType`, `mediaUrl` and `numberExpected` are hidden as while a Daily Double wager is placed, and `currentClue.dailyDouble` is `null`, so the board doesn't give a Daily Double away. Trebek sees the whole clue on `/user/queue/trebek`.
+
+#### Answers and rulings
+
+- **Buzzing doesn't change**: a buzz goes straight to `WAITING_FOR_ANSWER`.
+- **An answer waits for the ruling, unscored and private.** The player's `answer` moves the game to `WAITING_FOR_RULING` (`playerAnswering` stays set) and goes only to Trebek, so Trebek sees it once it's submitted, never while it's typed. The same happens with no answer when the answer time runs out (`AUTOMATIC`) or Trebek closes typing with `advance`; an `answer` sent after that gets `TOO_LATE`.
+- **Trebek can rule early**, in `WAITING_FOR_ANSWER`, before anything is submitted (an answer given out loud). The player's typing then closes: an `answer` sent after it gets `TOO_LATE`, `"Trebek already ruled on your answer!"`.
+- **A ruling scores like the check does in a `CONTESTANT` session** (§6.2): correct adds the value (or the Daily Double wager) and gives control; wrong subtracts it and lets the others buzz, or reveals the answer when nobody is left (or on a Daily Double).
+- **`clueAnswers` gets the entry when Trebek rules** (§5.4): `correct` is the ruling and `ruledByTrebek` is `true`; `answer` is what was submitted, or `null` when there was none; `phrasedAsQuestion` is the check's, or `null` without an answer; `matchedAnswers` and `alsoAccepted` are set only when the ruling is correct **and** the check matched the answer (without the question form, which is Trebek's call), otherwise `null`: show `acceptedAnswers` then.
+- **Phrasing is up to Trebek too.** Double Jeopardy's question form isn't applied. The suggestion Trebek sees (`suggestedCorrect`) does apply it, so it's what a `CONTESTANT` session would have scored.
+- A ruling can't be taken back: Trebek fixes a mistake with `adjust-score`.
+
+#### Final Jeopardy
+
+**Wagering and answering** work as in §6.2, each on its own timer mode; a `TREBEK` phase stays open until Trebek's `advance`. Trebek sees every wager and answer as they come in. When wagering closes, a wager above its player's maximum (only possible after `adjust-score` lowered their score) is lowered to it.
+
+**Rulings.** Once answering is over (`FINAL_JEOPARDY_REVEALING`), Trebek rules on each player with `rule-final`, and can change a ruling until that player's points are awarded. Nothing is decided automatically: a missing answer is only a suggestion of wrong.
+
+**The reveal goes one player at a time**, in `finalJeopardy.revealOrder`: lowest score first when answering closed (the lowest id on a tie). Each player has three steps, shown in `players[].revealStep`:
+
+1. `WAGER`: everyone sees their wager.
+2. `ANSWER`: everyone sees their answer and `phrasedAsQuestion`.
+3. `AWARDED`: their ruling is applied to their score (the wager added or subtracted), and `correct`, `matchedAnswers` and `alsoAccepted` are shown. It needs a ruling.
+
+Each `advance` takes one step; after the last player's award, the next `advance` ends the game (`FINISHED_GAME`). **Scores change at each award**, not all at once after the reveal. With `finalJeopardyRevealMs` set to `AUTOMATIC`, the clock takes the steps instead: the duration is split evenly over every step (3 per player, plus the end of the game), each step is a phase with its own `phaseDurationMs`, and **at an award step it waits** (`phaseDurationMs` `null`) until Trebek rules on that player; the award then happens at once and the clock goes on.
+
+#### Pausing the clock
+
+- `pause` stops the clock of the current phase; `resume` restarts it with the time that was left.
+- **A pause holds across phases**: a phase that starts while paused starts with its full time and doesn't count down until `resume`.
+- **Actions still work while paused**: players can choose, buzz, answer and wager, and Trebek can `advance` and rule. Only the clock stops.
+- `paused` is `true` meanwhile, and `phaseRemainingMs` is the frozen time left, so a countdown shows where it stopped. Don't count down while `paused`.
+- The "everyone is away for 2 minutes" cleanup (§6.5) isn't paused. When the game finishes, `paused` goes back to `false`.
+
+#### Trebek away or leaving
+
+- **Away.** The game goes on: automatic phases run on their clocks, and Trebek's phases wait. `trebek.away` shows it. Trebek counts in "every player is `away`" (§6.5): a session where Trebek and every player are away is closed after 2 minutes.
+- **Leaving in the lobby.** The host passes on as in §6.4, and the session goes back to `CONTESTANT` mode (`trebek` `null`): the new host is a contestant, and can choose Trebek again. If nobody is left, the session closes.
+- **Leaving during the game** (from `start` until `FINISHED_GAME`) **ends the game**: the session closes at once with `closeReason: "TREBEK_LEFT"` (§6.5). The last broadcast still shows Trebek and the scores.
+- **Leaving after the game** (`FINISHED_GAME`): the results stay; the host passes to a player as in §6.4 and the session is a `CONTESTANT` one again.
+- **The last player leaving** while Trebek stays: in the lobby the session stays open for Trebek to wait for players; during the game it closes (`ABANDONED`), since nobody can play.
+
+#### Trebek's private view: `/user/queue/trebek`
+
+The snapshot is public and never holds Trebek's secrets. They go to `/user/queue/trebek`, only to Trebek's connections: once as soon as Trebek subscribes (so a reconnect or refresh catches up), and then with every broadcast of the session. Match it to the snapshot by `version`. Anyone else who subscribes receives nothing, and `GET /api/game-sessions/{id}` never includes it.
+
+```json
+{
+  "version": 412,
+  "clue": {
+    "clueId": 1088, "value": 800, "dailyDouble": false,
+    "categoryName": "World capitals",
+    "question": "This capital sits on the Danube between Vienna and Budapest",
+    "clueType": "TEXT", "mediaUrl": null, "numberExpected": false,
+    "answer": "[Bratislava | Pressburg | Pozsony]",
+    "acceptedAnswers": { "required": 1, "options": ["Bratislava"] }
+  },
+  "pendingAnswer": {
+    "playerId": 2, "answer": "What is Bratislava?",
+    "suggestedCorrect": true, "phrasedAsQuestion": true, "matchedAnswers": ["Bratislava"]
+  },
+  "finalJeopardy": null
+}
+```
+
+| Field | Set |
+|---|---|
+| `version` | The snapshot version this view goes with |
+| `clue` | From `CLUE_PICKED` until the clue's answer reveal ends; `null` otherwise. The whole clue, including the correct response (written as in §6.7, and ready to show as `acceptedAnswers`). |
+| `pendingAnswer` | In `WAITING_FOR_RULING`: what the answering player submitted (`answer` `null` if nothing), with the check's result: `suggestedCorrect` is what a `CONTESTANT` session would have scored (Double Jeopardy's question form included), `phrasedAsQuestion` (`null` without an answer) and `matchedAnswers` (only when `suggestedCorrect`). `null` in every other state, also while the player is still typing. |
+| `finalJeopardy` | From `FINAL_JEOPARDY_WAGERING` until the reveal ends (`null` otherwise): `{ question, answer, acceptedAnswers, numberExpected, players }`. Each player has `playerId`; `wager` (`null` while wagering until they wager; once wagering closes a missing wager is `0`); `answer` (`null` if none); `suggestedCorrect` (`null` until they answer or answering closes; no answer suggests wrong); `phrasedAsQuestion`; `matchedAnswers`; and `ruling` (`true`, `false`, or `null` before Trebek rules). |
+
 ---
 
 ## 7. Errors (`/user/queue/errors`)
@@ -721,15 +907,15 @@ With two players tied at the bottom, `joinScore` only rises once both have moved
 | `UNAUTHENTICATED` | Acting on a connection without a player token |
 | `PLAYER_NOT_IN_SESSION` | Your token belongs to a different session (also an earlier, closed session that had the same code), or you have left the session (or were kicked) and are acting from a connection that hasn't been closed yet |
 | `SESSION_NOT_FOUND` | The session no longer exists (§6.5) |
-| `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed, or changing timers after the start) |
-| `TOO_LATE` | You were a moment too late: someone else buzzed first (`"Someone else buzzed first!"`), your answer had already timed out (`"Time's up!"`), or the clue-choice timer had already chosen a clue for you (`"Time's up: a clue was chosen for you!"`). Nothing went wrong; the next broadcast shows what happened |
-| `NOT_YOUR_TURN` | Another player is choosing or answering, or you already buzzed on this clue |
-| `NOT_HOST` | Only the host can do that: `start`, `update-timers`, `update-settings` or `kick` (§6.4) |
-| `PLAYER_NOT_FOUND` | The player you tried to kick isn't in the session or has already left |
+| `INVALID_STATE` | The action isn't allowed in the current state (for example, buzzing before the clue is revealed, or changing timers after the start), or a Trebek action in a `CONTESTANT` session (§6.8) |
+| `TOO_LATE` | You were a moment too late: someone else buzzed first (`"Someone else buzzed first!"`), your answer had already timed out (`"Time's up!"`), the clue-choice timer had already chosen a clue for you (`"Time's up: a clue was chosen for you!"`), or in a Trebek session Trebek had already chosen for you (`"Trebek chose a clue for you!"`) or ruled on your answer (`"Trebek already ruled on your answer!"`). Nothing went wrong; the next broadcast shows what happened |
+| `NOT_YOUR_TURN` | Another player is choosing or answering, or you already buzzed on this clue; also Trebek trying to play (§6.8) |
+| `NOT_HOST` | Only the host can do that: `start`, `update-timers`, `update-settings` or `kick` (§6.4); in a Trebek session also Trebek's actions: `advance`, `return-clue`, `rule`, `rule-final`, `adjust-score`, `pause` and `resume` (§6.8) |
+| `PLAYER_NOT_FOUND` | The player you tried to kick isn't in the session or has already left; the player of an `adjust-score` or `rule-final` isn't in the session (§6.8) |
 | `CLUE_NOT_FOUND` | That clue isn't on this round's board |
 | `CLUE_ALREADY_PLAYED` | That clue was already chosen |
 | `INVALID_WAGER` | The wager is outside the allowed range (§6.2) |
-| `INVALID_REQUEST` | The payload is missing a field, has a field of the wrong type, isn't JSON, or has a too-long answer (§4.3), or a timer is out of bounds (§6.3); also kicking yourself, and a destination whose session code isn't valid (§3.2) |
+| `INVALID_REQUEST` | The payload is missing a field, has a field of the wrong type, isn't JSON, or has a too-long answer (§4.3), or a timer is out of bounds (§6.3); also kicking yourself, an `update-settings` without any setting, an `adjust-score` amount of 0 or out of range (§6.8), and a destination whose session code isn't valid (§3.2) |
 | `INTERNAL_ERROR` | A bug on the server. The message is always `"Something went wrong on the server. Please try again."`, and the action may or may not have taken effect: rely on the next broadcast or a `GET` of the state |
 
 Timing races are normal: two players buzzing at the same moment means one wins and the other gets `TOO_LATE`, and so does an answer or a clue choice sent just after its timer ran out. Show `TOO_LATE` gently (or not at all); it's never a client bug. Other late actions, and `INVALID_STATE` in general, are non-fatal too.
@@ -746,10 +932,12 @@ type ClueType = "TEXT" | "IMAGE" | "SOUND" | "VIDEO";
 type GameSessionState =
   | "WAITING_FOR_START"
   | "CHOOSING_CLUE"
+  | "CLUE_PICKED"          // Trebek sessions: a clue was chosen, Trebek hasn't shown it (§6.8)
   | "WAITING_FOR_DAILY_DOUBLE_WAGER"
   | "REVEALING_CLUE"
   | "WAITING_FOR_BUZZER"
   | "WAITING_FOR_ANSWER"
+  | "WAITING_FOR_RULING"   // Trebek sessions: the answer is in, Trebek hasn't ruled (§6.8)
   | "REVEALING_ANSWER"
   | "FINAL_JEOPARDY_WAGERING"
   | "FINAL_JEOPARDY_ANSWERING"
@@ -757,7 +945,10 @@ type GameSessionState =
   | "FINISHED_GAME"
   | "CLOSED";              // only in a removed session's last broadcast (§6.5)
 
-type SessionCloseReason = "ABANDONED" | "IDLE" | "FINISHED";
+type SessionCloseReason = "ABANDONED" | "IDLE" | "FINISHED" | "TREBEK_LEFT";
+
+type HostMode = "CONTESTANT" | "TREBEK";  // TREBEK: the host runs the show (§6.8)
+type TimerMode = "AUTOMATIC" | "TREBEK";  // TREBEK: the phase waits for Trebek's advance
 
 type GameErrorCode =
   | "SESSION_NOT_FOUND"
@@ -917,6 +1108,9 @@ interface SessionTimers {
   finalJeopardyRevealMs: number;
 }
 
+// Which phases wait for Trebek, keyed like SessionTimers (§6.8)
+type SessionTimerModes = { [K in keyof SessionTimers]: TimerMode };
+
 // A session's id: 5 characters of "0123456789ABCDEFGHJKMNPQRSTVWXYZ", e.g. "7KQ2M" (§3.2)
 type SessionCode = string;
 
@@ -997,8 +1191,9 @@ interface GameSessionSummaryResponse {
   clueCount: number;          // clues on the board, all rounds and Final Jeopardy
   state: GameSessionState;
   round: GameRound;
-  playerCount: number;        // players who haven't left
-  hostName: string | null;    // null before anyone joins
+  playerCount: number;        // players who haven't left; never Trebek
+  hostName: string | null;    // null before anyone joins; Trebek's name in a Trebek session
+  hostMode: HostMode;         // TREBEK: mark it as a Trebek game
   createdAt: string;          // ISO-8601 UTC, e.g. "2026-10-09T12:30:00Z"
   joinable: boolean;          // a join would be accepted right now
   allowLateJoin: boolean;
@@ -1019,8 +1214,17 @@ interface PlaceFinalJeopardyWagerRequest { wager: number; }
 interface AnswerFinalJeopardyRequest { answer: string; }  // at most 200 characters ([...answer].length)
 type UpdateTimersRequest = Partial<SessionTimers>;  // host only, WAITING_FOR_START
 interface KickPlayerRequest { playerId: number; }  // host only
-interface UpdateSettingsRequest { allowLateJoin: boolean; }  // host only, WAITING_FOR_START
+interface UpdateSettingsRequest {  // host only, WAITING_FOR_START; at least one field
+  allowLateJoin?: boolean;
+  hostMode?: HostMode;
+  timerModes?: Partial<SessionTimerModes>;
+}
 // start, buzz and leave have no body
+
+// Trebek only (§6.8); advance, return-clue, pause and resume have no body
+interface RuleRequest { correct: boolean; }
+interface RuleFinalRequest { playerId: number; correct: boolean; }
+interface AdjustScoreRequest { playerId: number; amount: number; }  // non-zero, -100000 to 100000
 
 // ---------- WebSocket: state ----------
 interface PlayerResponse {
@@ -1029,6 +1233,13 @@ interface PlayerResponse {
   score: number;
   leaving: boolean;      // left but still holds a role, or left once the results are shown (§6.4)
   away: boolean;         // no open connection now, including before the first (§6.4)
+}
+
+// The host running a Trebek session (§6.8); never in players
+interface TrebekResponse {
+  id: number;            // also hostPlayerId
+  name: string;
+  away: boolean;
 }
 
 type ClueSlotStatus = "AVAILABLE" | "PLAYED" | "EMPTY";
@@ -1049,7 +1260,7 @@ interface BoardCategoryResponse {
 interface CurrentClueResponse {
   clueId: number;
   value: number;
-  dailyDouble: boolean;
+  dailyDouble: boolean | null;   // null in CLUE_PICKED (§6.8)
   wager: number | null;
   minWager: number | null;     // the chooser's allowed range, only while wagering (§6.2)
   maxWager: number | null;
@@ -1068,12 +1279,15 @@ interface AcceptedAnswersResponse {
 
 interface ClueAnswerResponse {
   playerId: number;
-  answer: string | null;    // null: ran out of time
-  correct: boolean;
+  answer: string | null;    // null: ran out of time (or Trebek ruled before an answer came)
+  correct: boolean;         // the check's result, or Trebek's ruling
   phrasedAsQuestion: boolean | null;  // set in every round; null: ran out of time
   matchedAnswers: string[] | null;    // correct only: what it named, in the wording matched
   alsoAccepted: string[] | null;      // correct only: a list's other options; [] if not a list
+  ruledByTrebek: boolean;   // correct is Trebek's call (§6.8); false in a CONTESTANT session
 }
+
+type FinalRevealStep = "HIDDEN" | "WAGER" | "ANSWER" | "AWARDED";
 
 interface FinalJeopardyPlayerResponse {
   playerId: number;
@@ -1086,6 +1300,7 @@ interface FinalJeopardyPlayerResponse {
   phrasedAsQuestion: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING; null without an answer
   matchedAnswers: string[] | null;    // revealed, correct only (as in ClueAnswerResponse)
   alsoAccepted: string[] | null;      // revealed, correct only (as in ClueAnswerResponse)
+  revealStep: FinalRevealStep | null; // Trebek sessions, from FINAL_JEOPARDY_REVEALING (§6.8)
 }
 
 interface FinalJeopardyResponse {
@@ -1096,6 +1311,7 @@ interface FinalJeopardyResponse {
   answer: string | null;           // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
   acceptedAnswers: AcceptedAnswersResponse | null;  // with answer: ready to show (§6.7)
   players: FinalJeopardyPlayerResponse[];
+  revealOrder: number[] | null;    // Trebek sessions, from FINAL_JEOPARDY_REVEALING (§6.8)
 }
 
 interface GameSessionResponse {
@@ -1105,10 +1321,14 @@ interface GameSessionResponse {
   state: GameSessionState;
   closeReason: SessionCloseReason | null;  // set only when state is "CLOSED"
   phaseDurationMs: number | null;   // null: no timer in this state
-  phaseRemainingMs: number | null;  // measured when the server built the response
+  phaseRemainingMs: number | null;  // measured when the server built the response; frozen while paused
+  paused: boolean;                  // Trebek stopped the clock: don't count down; false in CONTESTANT mode
   timers: SessionTimers;            // this session's configured durations
-  players: PlayerResponse[];
-  hostPlayerId: number | null;      // null only before anyone joins
+  timerModes: SessionTimerModes;    // which phases wait for Trebek (§6.8)
+  players: PlayerResponse[];        // never Trebek
+  hostPlayerId: number | null;      // null only before anyone joins; trebek.id in TREBEK mode
+  hostMode: HostMode;
+  trebek: TrebekResponse | null;    // null in CONTESTANT mode
   allowLateJoin: boolean;           // joining after the start is allowed
   joinScore: number;                // a new player's starting score, never above 0
   playerChoosingClue: number | null;
@@ -1123,6 +1343,53 @@ interface GameSessionResponse {
 interface GameSessionErrorResponse {
   code: GameErrorCode;
   message: string;
+}
+
+// ---------- WebSocket: Trebek's private view (/user/queue/trebek, §6.8) ----------
+interface TrebekViewResponse {
+  version: number;                 // the snapshot version it goes with
+  clue: TrebekClueResponse | null;
+  pendingAnswer: TrebekPendingAnswerResponse | null;
+  finalJeopardy: TrebekFinalJeopardyResponse | null;
+}
+
+interface TrebekClueResponse {
+  clueId: number;
+  value: number;
+  dailyDouble: boolean;
+  categoryName: string;
+  question: string;
+  clueType: ClueType;
+  mediaUrl: string | null;
+  numberExpected: boolean;
+  answer: string;                  // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
+  acceptedAnswers: AcceptedAnswersResponse;
+}
+
+interface TrebekPendingAnswerResponse {
+  playerId: number;
+  answer: string | null;           // null: nothing was submitted
+  suggestedCorrect: boolean;       // what a CONTESTANT session would have scored
+  phrasedAsQuestion: boolean | null;
+  matchedAnswers: string[] | null; // only when suggestedCorrect
+}
+
+interface TrebekFinalJeopardyResponse {
+  question: string;
+  answer: string;
+  acceptedAnswers: AcceptedAnswersResponse;
+  numberExpected: boolean;
+  players: TrebekFinalPlayerResponse[];
+}
+
+interface TrebekFinalPlayerResponse {
+  playerId: number;
+  wager: number | null;               // null while wagering until they wager; then 0 if they didn't
+  answer: string | null;
+  suggestedCorrect: boolean | null;   // null until there's an answer or answering closes
+  phrasedAsQuestion: boolean | null;
+  matchedAnswers: string[] | null;
+  ruling: boolean | null;             // null: not ruled yet
 }
 ```
 

@@ -18,6 +18,13 @@ public class GameSession {
     // The lowest Daily Double wager, unless the round's values are lower still.
     private static final int MINIMUM_DAILY_DOUBLE_WAGER = 5;
 
+    /** The most Trebek can add to or take from a score at once. */
+    public static final int MAX_SCORE_ADJUSTMENT = 100_000;
+
+    // Final Jeopardy reveal steps per player in a Trebek session: wager,
+    // answer, award (see FinalRevealStep).
+    private static final int REVEAL_STEPS_PER_PLAYER = 3;
+
     private static final AtomicLong INSTANCE_IDS = new AtomicLong();
 
     private final SessionCode id;
@@ -28,6 +35,7 @@ public class GameSession {
     private final Instant createdAt;
     // Every player still in the session, in join order. A player who left
     // while holding a role stays here, marked as leaving, until the role ends.
+    // Trebek is never here.
     private final List<GameSessionPlayer> players = new ArrayList<>();
     private GameSessionTimeouts timeouts;
 
@@ -37,6 +45,13 @@ public class GameSession {
     private Long hostPlayerId;
     private boolean allowLateJoin = true;
     private int joinScore = 0;
+
+    // In TREBEK mode the host runs the show instead of playing: they're
+    // kept here, out of players, so nothing about players (scores, control,
+    // buzzing, the join score) ever counts them. Null in CONTESTANT mode.
+    private HostMode hostMode = HostMode.CONTESTANT;
+    private GameSessionPlayer trebek;
+    private GameSessionTimerModes timerModes = GameSessionTimerModes.defaults();
 
     private GameRound round;
     private GameSessionState state;
@@ -55,12 +70,16 @@ public class GameSession {
     // passes to someone else while choosing. The service re-arms the phase
     // timer exactly when it moved.
     private long phaseNumber;
+    // Trebek stopped the clock. A phase timer then keeps what it has left
+    // here instead of a deadline, and nothing is armed until it's resumed.
+    private boolean paused;
+    private Duration pausedRemaining;
 
     private Long playerChoosingClue;
     private Long chosenClueId;
-    // Whether the clue in play was chosen by the clue-choice timeout, so a
-    // choice that arrives just after it can be told it was too late.
-    private boolean chosenByTimer;
+    // Who chose the clue in play, so a choice that arrives just after the
+    // timer or Trebek chose for the chooser can be told it was too late.
+    private ChosenBy chosenBy;
     // The wager on the clue in play, once placed if it's a Daily Double;
     // null otherwise. Reset whenever a clue is chosen.
     private Integer dailyDoubleWager;
@@ -73,8 +92,20 @@ public class GameSession {
     // Answers to the clue in play, in order. Cleared when the next clue is
     // chosen and when Final Jeopardy starts, so it never holds stale entries.
     private final List<ClueAnswer> clueAnswers = new ArrayList<>();
+    // In WAITING_FOR_RULING, what the answering player submitted (a
+    // timed-out answer if nothing), until Trebek rules on it. Secret.
+    private ClueAnswer pendingAnswer;
 
     private FinalJeopardy finalJeopardy = new FinalJeopardy();
+    // A Trebek session's Final Jeopardy reveal: the players in the order
+    // they're revealed, set when it starts, and how many steps were taken.
+    private List<Long> revealOrder;
+    private int revealSteps;
+    // The reveal's clock reached a player's award before Trebek ruled on
+    // them, so it waits for the ruling.
+    private boolean revealWaitingForRuling;
+
+    private enum ChosenBy { CHOOSER, TIMER, TREBEK }
 
     public GameSession(SessionCode id, GameBoard board) {
         this(id, board, GameSessionTimeouts.defaults(), Instant.now());
@@ -106,21 +137,43 @@ public class GameSession {
         return createdAt;
     }
 
-    /** Every player in the session, including those waiting to be removed. */
+    /** Every player in the session, including those waiting to be removed. Never Trebek. */
     public List<GameSessionPlayer> getPlayers() {
         return List.copyOf(players);
     }
 
-    /** Players who haven't left. */
+    /** Every player and Trebek: everyone who holds a token in this session. */
+    public List<GameSessionPlayer> getMembers() {
+        List<GameSessionPlayer> members = new ArrayList<>(players);
+        if (trebek != null) {
+            members.add(trebek);
+        }
+        return members;
+    }
+
+    /** Players who haven't left. Never Trebek. */
     public List<GameSessionPlayer> getActivePlayers() {
         return players.stream()
                 .filter(player -> !player.isLeaving())
                 .toList();
     }
 
-    /** The host, or null while nobody has joined. */
+    /** The host, or null while nobody has joined. In TREBEK mode, Trebek. */
     public Long getHostPlayerId() {
         return hostPlayerId;
+    }
+
+    public HostMode getHostMode() {
+        return hostMode;
+    }
+
+    /** The host running the show in TREBEK mode; null in CONTESTANT mode. */
+    public GameSessionPlayer getTrebek() {
+        return trebek;
+    }
+
+    public GameSessionTimerModes getTimerModes() {
+        return timerModes;
     }
 
     public GameSessionTimeouts getTimeouts() { return timeouts; }
@@ -157,9 +210,14 @@ public class GameSession {
         return Set.copyOf(playedClues);
     }
 
-    /** The player who must answer right now, or null if nobody is answering. */
+    /**
+     * The player who must answer right now, or whose answer Trebek is ruling
+     * on; null if nobody is answering.
+     */
     public Long getPlayerAnswering() {
-        return state == GameSessionState.WAITING_FOR_ANSWER ? playerWhoBuzzed : null;
+        return state == GameSessionState.WAITING_FOR_ANSWER || state == GameSessionState.WAITING_FOR_RULING
+                ? playerWhoBuzzed
+                : null;
     }
 
     /**
@@ -168,27 +226,34 @@ public class GameSession {
      * set is only reset when the next clue's reveal finishes.
      */
     public Set<Long> getPlayersLockedOut() {
-        if (state == GameSessionState.WAITING_FOR_BUZZER
-                || state == GameSessionState.WAITING_FOR_ANSWER) {
-            return Set.copyOf(playersAlreadyBuzzed);
-        }
-
-        return Set.of();
+        return switch (state) {
+            case WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, WAITING_FOR_RULING -> Set.copyOf(playersAlreadyBuzzed);
+            default -> Set.of();
+        };
     }
 
     /**
      * Every answer given to the current clue (or, until the next clue is
      * chosen, the last one played), oldest first. Empty during Final
-     * Jeopardy, which has its own reveal.
+     * Jeopardy, which has its own reveal. In a Trebek session an answer is
+     * only added once Trebek rules on it.
      */
     public List<ClueAnswer> getClueAnswers() {
         return List.copyOf(clueAnswers);
     }
 
+    /**
+     * What the answering player submitted, while Trebek hasn't ruled on it
+     * (WAITING_FOR_RULING); otherwise null. Only for Trebek's eyes.
+     */
+    public ClueAnswer getPendingAnswer() {
+        return state == GameSessionState.WAITING_FOR_RULING ? pendingAnswer : null;
+    }
+
     /** The wager on the Daily Double in play once it is placed, otherwise null. */
     public Integer getDailyDoubleWager() {
         return switch (state) {
-            case REVEALING_CLUE, WAITING_FOR_ANSWER, REVEALING_ANSWER -> dailyDoubleWager;
+            case REVEALING_CLUE, WAITING_FOR_ANSWER, WAITING_FOR_RULING, REVEALING_ANSWER -> dailyDoubleWager;
             default -> null;
         };
     }
@@ -274,16 +339,25 @@ public class GameSession {
         version++;
     }
 
-    /** Records that the current phase ends {@code duration} after {@code nowNanos}. */
+    /**
+     * Records that the current phase ends {@code duration} after
+     * {@code nowNanos}; while paused, it starts with its full time and
+     * doesn't count down until resumed.
+     */
     public void startPhaseTimer(Duration duration, long nowNanos) {
         phaseDuration = duration;
-        phaseDeadlineNanos = nowNanos + duration.toNanos();
+        if (paused) {
+            pausedRemaining = duration;
+        } else {
+            phaseDeadlineNanos = nowNanos + duration.toNanos();
+        }
         phaseTimerId++;
     }
 
     /** Records that the current phase has no timer. */
     public void clearPhaseTimer() {
         phaseDuration = null;
+        pausedRemaining = null;
         phaseTimerId++;
     }
 
@@ -304,14 +378,23 @@ public class GameSession {
 
     /**
      * How long the current phase has left at {@code nowNanos} (never
-     * negative), or null if it has no timer.
+     * negative), or null if it has no timer. While paused, what it had left
+     * when the clock stopped.
      */
     public Duration getPhaseRemaining(long nowNanos) {
         if (phaseDuration == null) {
             return null;
         }
+        if (paused) {
+            return pausedRemaining;
+        }
 
         return Duration.ofNanos(Math.max(0, phaseDeadlineNanos - nowNanos));
+    }
+
+    /** Whether Trebek stopped the clock. Always false in CONTESTANT mode. */
+    public boolean isPaused() {
+        return paused;
     }
 
     // -------------------------------------------------------------------------
@@ -320,7 +403,7 @@ public class GameSession {
 
     /** Only the host can change the timers, and only before the game starts. */
     public void updateTimeouts(Long playerId, GameSessionTimeouts newTimeouts) {
-        requireActivePlayer(playerId);
+        requireActiveMember(playerId);
         requireHost(playerId, "Only the host can change the timers!");
 
         requireState(GameSessionState.WAITING_FOR_START, "Timers can only be changed before the game starts!");
@@ -333,23 +416,61 @@ public class GameSession {
      * before the game starts. Joining the lobby is always allowed.
      */
     public void updateLateJoin(Long playerId, boolean allowed) {
-        requireActivePlayer(playerId);
-        requireHost(playerId, "Only the host can change the settings!");
-
-        requireState(GameSessionState.WAITING_FOR_START, "Settings can only be changed before the game starts!");
+        requireSettingsChange(playerId);
 
         allowLateJoin = allowed;
     }
 
     /**
-     * The player leaves the session. They can't act any more, but see
-     * {@link #removeDepartedPlayers()} for when they disappear.
+     * The host chooses whether they play or run the show as Trebek, before
+     * the game starts. As Trebek they leave players (keeping their id and
+     * token); back as a contestant they return to their place in join order.
+     */
+    public void updateHostMode(Long playerId, HostMode mode) {
+        requireSettingsChange(playerId);
+
+        if (mode == hostMode) {
+            return;
+        }
+
+        GameSessionPlayer host = getMember(hostPlayerId);
+
+        if (mode == HostMode.TREBEK) {
+            players.remove(host);
+            trebek = host;
+        } else {
+            trebek = null;
+            // Scores can't change in the lobby, so theirs is still the join score.
+            int position = (int) players.stream().filter(player -> player.getId() < host.getId()).count();
+            players.add(position, host);
+        }
+
+        hostMode = mode;
+    }
+
+    /** Which phases wait for Trebek; it only matters in TREBEK mode. */
+    public void updateTimerModes(Long playerId, GameSessionTimerModes modes) {
+        requireSettingsChange(playerId);
+
+        timerModes = modes;
+    }
+
+    private void requireSettingsChange(Long playerId) {
+        requireActiveMember(playerId);
+        requireHost(playerId, "Only the host can change the settings!");
+
+        requireState(GameSessionState.WAITING_FOR_START, "Settings can only be changed before the game starts!");
+    }
+
+    /**
+     * The player (or Trebek) leaves the session. They can't act any more,
+     * but see {@link #removeDepartedPlayers()} for when they disappear.
      *
      * @return the player who left, so the caller can revoke their token
      */
     public GameSessionPlayer leave(Long playerId) {
         requireOpen();
-        GameSessionPlayer player = requireActivePlayer(playerId);
+        GameSessionPlayer player = requireActiveMember(playerId);
 
         depart(player);
 
@@ -364,7 +485,7 @@ public class GameSession {
      */
     public GameSessionPlayer kick(Long hostId, Long playerId) {
         requireOpen();
-        requireActivePlayer(hostId);
+        requireActiveMember(hostId);
         requireHost(hostId, "Only the host can kick players!");
 
         if (hostId.equals(playerId)) {
@@ -384,16 +505,16 @@ public class GameSession {
     private void depart(GameSessionPlayer player) {
         player.markLeaving();
 
+        if (player == trebek) {
+            departTrebek();
+            return;
+        }
+
         // The host passes to the active player with the lowest id. Players
         // who are away come last, so nobody present is left without one
         // who can start the game or kick.
         if (player.getId().equals(hostPlayerId)) {
-            hostPlayerId = getActivePlayers()
-                    .stream()
-                    .min(Comparator.comparing(GameSessionPlayer::isAway)
-                            .thenComparing(GameSessionPlayer::getId))
-                    .map(GameSessionPlayer::getId)
-                    .orElse(null);
+            passHost();
         }
 
         // If everyone still playing has already buzzed, nobody can buzz any
@@ -410,6 +531,47 @@ public class GameSession {
         // Leaving usually doesn't change the state, so setState may not
         // have run: a player who holds no role goes now.
         removeDepartedPlayers();
+    }
+
+    /**
+     * Without Trebek a game in progress can't go on, so it's over: the
+     * session closes (the service finishes closing it), and Trebek stays in
+     * its last broadcast. In the lobby or after the game, the host passes to
+     * a player and the session is a contestant one again.
+     */
+    private void departTrebek() {
+        if (isGameInProgress()) {
+            close(SessionCloseReason.TREBEK_LEFT);
+            return;
+        }
+
+        trebek = null;
+        hostMode = HostMode.CONTESTANT;
+        paused = false;
+        passHost();
+    }
+
+    private void passHost() {
+        hostPlayerId = getActivePlayers()
+                .stream()
+                .min(Comparator.comparing(GameSessionPlayer::isAway)
+                        .thenComparing(GameSessionPlayer::getId))
+                .map(GameSessionPlayer::getId)
+                .orElse(null);
+    }
+
+    /**
+     * Whether a departure left nobody to play: nobody at all in the lobby
+     * (Trebek alone can wait there for players), and no player during the
+     * game. A finished game is never abandoned: leaving is how players get
+     * back to the lobby, so its results stay up.
+     */
+    public boolean isAbandoned() {
+        return switch (state) {
+            case WAITING_FOR_START -> getActivePlayers().isEmpty() && getActiveTrebek() == null;
+            case FINISHED_GAME, CLOSED -> false;
+            default -> getActivePlayers().isEmpty();
+        };
     }
 
     /** Ends the session for good. Nothing can happen in it afterwards. */
@@ -430,6 +592,10 @@ public class GameSession {
     private void setState(GameSessionState newState) {
         state = newState;
         phaseNumber++;
+        if (newState == GameSessionState.FINISHED_GAME) {
+            // There's no clock to stop any more.
+            paused = false;
+        }
         removeDepartedPlayers();
     }
 
@@ -495,8 +661,8 @@ public class GameSession {
     // Choosing and answering are the only roles, and only in the clue rounds.
     private boolean holdsRole(Long playerId) {
         return switch (state) {
-            case CHOOSING_CLUE, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE,
-                 WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, REVEALING_ANSWER ->
+            case CHOOSING_CLUE, CLUE_PICKED, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE,
+                 WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, WAITING_FOR_RULING, REVEALING_ANSWER ->
                     playerId.equals(playerChoosingClue) || playerId.equals(getPlayerAnswering());
             default -> false;
         };
@@ -508,11 +674,20 @@ public class GameSession {
 
     public void startGame(Long playerId) {
         requireState(GameSessionState.WAITING_FOR_START, "Game has already started!");
-        requireActivePlayer(playerId);
+        requireActiveMember(playerId);
         requireHost(playerId, "Only the host can start the game!");
 
-        // The host, who is starting the game, chooses first.
-        playerChoosingClue = hostPlayerId;
+        if (hostMode == HostMode.TREBEK) {
+            // The first player to join after Trebek chooses first.
+            playerChoosingClue = getActivePlayers()
+                    .stream()
+                    .map(GameSessionPlayer::getId)
+                    .min(Comparator.naturalOrder())
+                    .orElseThrow(() -> new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Nobody is playing yet!"));
+        } else {
+            // The host, who is starting the game, chooses first.
+            playerChoosingClue = hostPlayerId;
+        }
         enterRound(board.getFirstRound());
     }
 
@@ -526,15 +701,27 @@ public class GameSession {
         }
     }
 
+    /**
+     * The chooser picks a clue. In a Trebek session Trebek may pick it for
+     * them (one they named out loud); the chooser keeps control either way.
+     */
     public void chooseClue(Long playerId, Long clueId) {
-        if (chosenByTimer && playerId.equals(playerChoosingClue)
-                && (state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER || state == GameSessionState.REVEALING_CLUE)) {
-            throw tooLate("Time's up: a clue was chosen for you!");
+        boolean byTrebek = isTrebek(playerId);
+
+        if (!byTrebek && chosenBy != null && chosenBy != ChosenBy.CHOOSER && playerId.equals(playerChoosingClue)
+                && (state == GameSessionState.CLUE_PICKED
+                    || state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER
+                    || state == GameSessionState.REVEALING_CLUE)) {
+            throw tooLate(chosenBy == ChosenBy.TIMER
+                    ? "Time's up: a clue was chosen for you!"
+                    : "Trebek chose a clue for you!");
         }
         requireState(GameSessionState.CHOOSING_CLUE, "You can't choose a clue right now!");
-        requireActivePlayer(playerId);
-        if (!playerChoosingClue.equals(playerId)) {
-            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't choose a clue right now!");
+        if (!byTrebek) {
+            requireActivePlayer(playerId);
+            if (!playerChoosingClue.equals(playerId)) {
+                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't choose a clue right now!");
+            }
         }
         if (!board.getClueIds(round).contains(clueId)) {
             throw new InvalidGameActionException(GameErrorCode.CLUE_NOT_FOUND, "That's not one of the available clues!");
@@ -543,16 +730,25 @@ public class GameSession {
             throw new InvalidGameActionException(GameErrorCode.CLUE_ALREADY_PLAYED, "That clue was already chosen!");
         }
 
-        playClue(clueId, false);
+        playClue(clueId, byTrebek ? ChosenBy.TREBEK : ChosenBy.CHOOSER);
     }
 
-    private void playClue(Long clueId, boolean byTimer) {
+    // In a Trebek session the clue waits for Trebek to show it.
+    private void playClue(Long clueId, ChosenBy by) {
         chosenClueId = clueId;
-        chosenByTimer = byTimer;
+        chosenBy = by;
         dailyDoubleWager = null;
         playedClues.add(clueId);
         clueAnswers.clear();
-        if (board.isDailyDouble(clueId)) {
+        if (hostMode == HostMode.TREBEK) {
+            setState(GameSessionState.CLUE_PICKED);
+        } else {
+            showClue();
+        }
+    }
+
+    private void showClue() {
+        if (board.isDailyDouble(chosenClueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerChoosingClue;
             setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
@@ -570,6 +766,10 @@ public class GameSession {
     public void timeoutChoosingClue() {
         requireState(GameSessionState.CHOOSING_CLUE);
 
+        chooseTopClue(ChosenBy.TIMER);
+    }
+
+    private void chooseTopClue(ChosenBy by) {
         BoardClue clue = board.getRound(round)
                 .orElseThrow()
                 .clues()
@@ -579,18 +779,35 @@ public class GameSession {
                 .findFirst()
                 .orElseThrow();
 
-        playClue(clue.id(), true);
+        playClue(clue.id(), by);
     }
 
+    /**
+     * Trebek puts the picked clue back before showing it: it's available
+     * again, and the same chooser picks again with a fresh timer.
+     */
+    public void returnClue(Long trebekId) {
+        requireTrebek(trebekId);
+        requireState(GameSessionState.CLUE_PICKED, "There's no picked clue to put back!");
+
+        playedClues.remove(chosenClueId);
+        handOverControlIfDeparted();
+        setState(GameSessionState.CHOOSING_CLUE);
+    }
+
+    /** The chooser wagers on their Daily Double; in a Trebek session Trebek may place it for them. */
     public void placeDailyDoubleWager(Long playerId, int wager) {
         requireState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, "You can't wager a bet right now!");
-        GameSessionPlayer player = requireActivePlayer(playerId);
-        if (!playerChoosingClue.equals(playerId)) {
-            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
+        if (!isTrebek(playerId)) {
+            requireActivePlayer(playerId);
+            if (!playerChoosingClue.equals(playerId)) {
+                throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't wager a bet right now!");
+            }
         }
+        GameSessionPlayer chooser = getPlayer(playerChoosingClue);
 
-        int minimum = minimumDailyDoubleWager(player);
-        int maximum = maximumDailyDoubleWager(player);
+        int minimum = minimumDailyDoubleWager(chooser);
+        int maximum = maximumDailyDoubleWager(chooser);
         if (wager < minimum || wager > maximum) {
             throw new InvalidGameActionException(
                     GameErrorCode.INVALID_WAGER,
@@ -648,6 +865,7 @@ public class GameSession {
     }
 
     public void buzz(Long playerId) {
+        rejectTrebek(playerId);
         // Pressed a moment after someone else (the usual buzzer race).
         if (state == GameSessionState.WAITING_FOR_ANSWER
                 && !board.isDailyDouble(chosenClueId)
@@ -670,28 +888,89 @@ public class GameSession {
         setState(GameSessionState.REVEALING_ANSWER);
     }
 
+    /**
+     * The answering player submits their answer. In a Trebek session it
+     * waits, unscored, for Trebek's ruling.
+     */
     public void answerClue(Long playerId, String answer) {
-        // Sent just after the answer timed out (they can't buzz again on
-        // this clue, so any timed-out answer of theirs is this one).
-        if (state != GameSessionState.WAITING_FOR_ANSWER
-                && clueAnswers.stream().anyMatch(given -> given.playerId().equals(playerId) && given.ranOutOfTime())) {
-            throw tooLate("Time's up!");
+        rejectTrebek(playerId);
+        if (state != GameSessionState.WAITING_FOR_ANSWER) {
+            rejectLateAnswer(playerId);
         }
         requireState(GameSessionState.WAITING_FOR_ANSWER, "You can't answer right now!");
         requireActivePlayer(playerId);
-        // On a Daily Double the chooser counts as the buzzer (see playClue).
+        // On a Daily Double the chooser counts as the buzzer (see showClue).
         if (!playerWhoBuzzed.equals(playerId)) {
             throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "You can't answer right now!");
         }
 
         AnswerCheck check = checkAnswer(answer);
-        resolveAnswer(new ClueAnswer(playerId, answer, check));
+        ClueAnswer given = new ClueAnswer(playerId, answer, check);
+
+        if (hostMode == HostMode.TREBEK) {
+            pendingAnswer = given;
+            setState(GameSessionState.WAITING_FOR_RULING);
+        } else {
+            resolveAnswer(given);
+        }
+    }
+
+    // An answer sent just after its time ran out, or after Trebek ruled
+    // without it (they can't buzz again on this clue, so any such answer of
+    // theirs is this one).
+    private void rejectLateAnswer(Long playerId) {
+        if (state == GameSessionState.WAITING_FOR_RULING
+                && pendingAnswer.playerId().equals(playerId) && pendingAnswer.ranOutOfTime()) {
+            throw tooLate("Time's up!");
+        }
+
+        for (ClueAnswer given : clueAnswers) {
+            if (given.playerId().equals(playerId) && given.ranOutOfTime()) {
+                throw tooLate(given.ruledByTrebek() ? "Trebek already ruled on your answer!" : "Time's up!");
+            }
+        }
     }
 
     public void timeoutAnswer() {
         requireState(GameSessionState.WAITING_FOR_ANSWER);
 
-        resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
+        if (hostMode == HostMode.TREBEK) {
+            pendingAnswer = ClueAnswer.timedOut(playerWhoBuzzed);
+            setState(GameSessionState.WAITING_FOR_RULING);
+        } else {
+            resolveAnswer(ClueAnswer.timedOut(playerWhoBuzzed));
+        }
+    }
+
+    /**
+     * Trebek rules on the answering player's answer: the one they submitted,
+     * or, while they're still answering, one given out loud (typing closes).
+     * It scores exactly like a checked answer.
+     */
+    public void rule(Long trebekId, boolean correct) {
+        requireTrebek(trebekId);
+
+        ClueAnswer submitted = switch (state) {
+            case WAITING_FOR_ANSWER -> ClueAnswer.timedOut(playerWhoBuzzed);
+            case WAITING_FOR_RULING -> pendingAnswer;
+            default -> throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "There's no answer to rule on right now!");
+        };
+
+        pendingAnswer = null;
+        resolveAnswer(ruled(submitted, correct));
+    }
+
+    /**
+     * The answer as Trebek ruled it. It's checked again without the question
+     * form, which is Trebek's call, so a response ruled correct can say what
+     * it matched.
+     */
+    private ClueAnswer ruled(ClueAnswer submitted, boolean correct) {
+        AnswerCheck check = submitted.ranOutOfTime()
+                ? null
+                : board.checkAnswer(chosenClueId, submitted.answer(), false);
+
+        return new ClueAnswer(submitted.playerId(), submitted.answer(), check, correct);
     }
 
     /**
@@ -763,6 +1042,106 @@ public class GameSession {
     }
 
     // -------------------------------------------------------------------------
+    // Trebek
+    // -------------------------------------------------------------------------
+
+    /**
+     * Trebek ends the current phase now, exactly as its timer would: shows
+     * the picked clue, opens and closes the buzzers, locks wagers and
+     * answers, goes back to the board, or takes the next Final Jeopardy
+     * reveal step. Never past a ruling only Trebek can make.
+     */
+    public void advance(Long trebekId) {
+        requireTrebek(trebekId);
+
+        switch (state) {
+            case CHOOSING_CLUE -> chooseTopClue(ChosenBy.TREBEK);
+            case CLUE_PICKED -> showClue();
+            case WAITING_FOR_DAILY_DOUBLE_WAGER -> timeoutDailyDoubleWager();
+            case REVEALING_CLUE -> finishRevealingClue();
+            case WAITING_FOR_BUZZER -> timeoutBuzzer();
+            case WAITING_FOR_ANSWER -> timeoutAnswer();
+            case WAITING_FOR_RULING ->
+                    throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Rule on the answer first!");
+            case REVEALING_ANSWER -> finishRevealingAnswer();
+            case FINAL_JEOPARDY_WAGERING -> timeoutFinalJeopardyWagering();
+            case FINAL_JEOPARDY_ANSWERING -> timeoutFinalJeopardyAnswering();
+            case FINAL_JEOPARDY_REVEALING -> takeRevealStep();
+            case WAITING_FOR_START, FINISHED_GAME, CLOSED ->
+                    throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "There's nothing to move on from right now!");
+        }
+    }
+
+    /**
+     * Trebek adds to or takes from a player's score, at any time during or
+     * after the game, also for a player who left but is still listed. It
+     * counts for the join score like any other change.
+     */
+    public void adjustScore(Long trebekId, Long playerId, int amount) {
+        requireOpen();
+        requireTrebek(trebekId);
+        if (state == GameSessionState.WAITING_FOR_START) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Scores can only be changed once the game has started!");
+        }
+        if (amount == 0 || Math.abs(amount) > MAX_SCORE_ADJUSTMENT) {
+            throw new InvalidGameActionException(
+                    GameErrorCode.INVALID_REQUEST,
+                    "amount must be between -" + MAX_SCORE_ADJUSTMENT + " and " + MAX_SCORE_ADJUSTMENT + " and not 0"
+            );
+        }
+
+        GameSessionPlayer player = getPlayer(playerId);
+        if (player == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_FOUND, "That player isn't in this session!");
+        }
+
+        changeScore(player, amount);
+    }
+
+    /**
+     * Trebek stops the clock: the phase keeps the time it has left, and a
+     * phase that starts while paused doesn't count down either. Actions
+     * still work.
+     *
+     * @return false if it was already paused (nothing changed)
+     */
+    public boolean pause(Long trebekId, long nowNanos) {
+        requireTrebek(trebekId);
+        requireGameInProgress("The clock only runs during the game!");
+
+        if (paused) {
+            return false;
+        }
+
+        pausedRemaining = getPhaseRemaining(nowNanos);
+        paused = true;
+        phaseTimerId++;
+        return true;
+    }
+
+    /**
+     * Trebek restarts the clock with the time the phase had left.
+     *
+     * @return false if it wasn't paused (nothing changed)
+     */
+    public boolean resume(Long trebekId, long nowNanos) {
+        requireTrebek(trebekId);
+        requireGameInProgress("The clock only runs during the game!");
+
+        if (!paused) {
+            return false;
+        }
+
+        paused = false;
+        if (phaseDuration != null) {
+            phaseDeadlineNanos = nowNanos + pausedRemaining.toNanos();
+        }
+        pausedRemaining = null;
+        phaseTimerId++;
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
     // Final Jeopardy
     // -------------------------------------------------------------------------
 
@@ -775,6 +1154,9 @@ public class GameSession {
         playedClues.add(clue.id());
         clueAnswers.clear();
         finalJeopardy = new FinalJeopardy();
+        revealOrder = null;
+        revealSteps = 0;
+        revealWaitingForRuling = false;
         setState(GameSessionState.FINAL_JEOPARDY_WAGERING);
     }
 
@@ -785,6 +1167,7 @@ public class GameSession {
 
     /** See {@link FinalJeopardy#placeWager} for the allowed wagers. */
     public void placeFinalJeopardyWager(Long playerId, int wager) {
+        rejectTrebek(playerId);
         requireState(GameSessionState.FINAL_JEOPARDY_WAGERING, "You can't wager on Final Jeopardy right now!");
 
         finalJeopardy.placeWager(requireActivePlayer(playerId), wager);
@@ -794,11 +1177,13 @@ public class GameSession {
     public void timeoutFinalJeopardyWagering() {
         requireState(GameSessionState.FINAL_JEOPARDY_WAGERING);
 
+        finalJeopardy.capWagers(players);
         setState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
     }
 
     /** A player may change their answer until the answering phase ends. */
     public void answerFinalJeopardy(Long playerId, String answer) {
+        rejectTrebek(playerId);
         requireState(GameSessionState.FINAL_JEOPARDY_ANSWERING, "You can't answer Final Jeopardy right now!");
         requireActivePlayer(playerId);
 
@@ -806,9 +1191,22 @@ public class GameSession {
         finalJeopardy.answer(new ClueAnswer(playerId, answer, check));
     }
 
+    /**
+     * Answering ends. In a Trebek session the players are then revealed one
+     * at a time, lowest score first (the lowest id on a tie).
+     */
     public void timeoutFinalJeopardyAnswering() {
         requireState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
 
+        if (hostMode == HostMode.TREBEK) {
+            revealOrder = players.stream()
+                    .sorted(Comparator.comparingInt(GameSessionPlayer::getScore)
+                            .thenComparing(GameSessionPlayer::getId))
+                    .map(GameSessionPlayer::getId)
+                    .toList();
+            revealSteps = 0;
+            revealWaitingForRuling = false;
+        }
         setState(GameSessionState.FINAL_JEOPARDY_REVEALING);
     }
 
@@ -819,6 +1217,140 @@ public class GameSession {
         // Applied together, so the join score sees the final scores at once.
         changeScores(finalJeopardy.scoreChanges(players));
         setState(GameSessionState.FINISHED_GAME);
+    }
+
+    /**
+     * The reveal's timer ran out. In a contestant session that ends the
+     * reveal; in a Trebek session it takes the next step, except a player's
+     * award before Trebek has ruled on them, where the clock waits.
+     */
+    public void timeoutFinalJeopardyReveal() {
+        requireState(GameSessionState.FINAL_JEOPARDY_REVEALING);
+
+        if (hostMode == HostMode.CONTESTANT) {
+            finishFinalJeopardyReveal();
+        } else if (nextRevealAwardWaitsForRuling()) {
+            revealWaitingForRuling = true;
+            // A new phase without a timer, until the ruling.
+            phaseNumber++;
+        } else {
+            takeRevealStep();
+        }
+    }
+
+    /**
+     * Trebek rules on one player's Final Jeopardy answer, once answering is
+     * over. It can be changed until that player's points are awarded. If the
+     * reveal's clock is waiting for this ruling, the award follows at once.
+     */
+    public void ruleFinal(Long trebekId, Long playerId, boolean correct) {
+        requireTrebek(trebekId);
+        requireState(GameSessionState.FINAL_JEOPARDY_REVEALING, "Final Jeopardy answers are ruled on once answering is over!");
+
+        GameSessionPlayer player = getPlayer(playerId);
+        if (player == null || !revealOrder.contains(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_FOUND, "That player isn't in Final Jeopardy!");
+        }
+        if (getRevealStep(playerId) == FinalRevealStep.AWARDED) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, player.getName() + "'s points were already awarded!");
+        }
+
+        finalJeopardy.rule(ruled(finalJeopardy.answerOf(playerId), correct));
+
+        if (revealWaitingForRuling && playerId.equals(nextRevealPlayer())) {
+            takeRevealStep();
+        }
+    }
+
+    /**
+     * The next step of a Trebek session's reveal: a player's wager, their
+     * answer, then their award (their ruling applied to their score); after
+     * the last player's award, the end of the game.
+     */
+    private void takeRevealStep() {
+        if (revealSteps == REVEAL_STEPS_PER_PLAYER * revealOrder.size()) {
+            setState(GameSessionState.FINISHED_GAME);
+            return;
+        }
+
+        if (isNextRevealStepAnAward()) {
+            Long playerId = nextRevealPlayer();
+            GameSessionPlayer player = getPlayer(playerId);
+            Boolean ruling = finalJeopardy.rulingOf(playerId);
+
+            if (ruling == null) {
+                throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Rule on " + player.getName() + "'s answer first!");
+            }
+
+            int wager = finalJeopardy.getWager(playerId);
+            changeScore(player, ruling ? wager : -wager);
+        }
+
+        revealSteps++;
+        revealWaitingForRuling = false;
+        // Each step is a phase of its own on the reveal's clock.
+        phaseNumber++;
+    }
+
+    private boolean isNextRevealStepAnAward() {
+        return revealSteps % REVEAL_STEPS_PER_PLAYER == REVEAL_STEPS_PER_PLAYER - 1;
+    }
+
+    // The player the next step reveals, or null after the last one.
+    private Long nextRevealPlayer() {
+        int index = revealSteps / REVEAL_STEPS_PER_PLAYER;
+
+        return index < revealOrder.size() ? revealOrder.get(index) : null;
+    }
+
+    private boolean nextRevealAwardWaitsForRuling() {
+        Long playerId = nextRevealPlayer();
+
+        return playerId != null && isNextRevealStepAnAward() && finalJeopardy.rulingOf(playerId) == null;
+    }
+
+    /**
+     * In a Trebek session, the players in the order they're revealed, from
+     * the Final Jeopardy reveal on; otherwise null.
+     */
+    public List<Long> getRevealOrder() {
+        return hostMode == HostMode.TREBEK && revealOrder != null && isFinalJeopardyRevealedState()
+                ? revealOrder
+                : null;
+    }
+
+    /** In a Trebek session, how far a player's reveal has got, from the reveal on; otherwise null. */
+    public FinalRevealStep getRevealStep(Long playerId) {
+        List<Long> order = getRevealOrder();
+        int index = order == null ? -1 : order.indexOf(playerId);
+
+        if (index < 0) {
+            return null;
+        }
+
+        int taken = Math.clamp(revealSteps - (long) REVEAL_STEPS_PER_PLAYER * index, 0, REVEAL_STEPS_PER_PLAYER);
+        return FinalRevealStep.values()[taken];
+    }
+
+    /**
+     * How many steps a Trebek session's reveal has in all, each player's and
+     * the end of the game; null in a contestant session. Its clock splits
+     * the reveal's duration evenly over them.
+     */
+    public Integer getRevealStepCount() {
+        return hostMode == HostMode.TREBEK && revealOrder != null
+                ? REVEAL_STEPS_PER_PLAYER * revealOrder.size() + 1
+                : null;
+    }
+
+    /** Whether the reveal's clock stopped at an award, waiting for Trebek's ruling. */
+    public boolean isRevealWaitingForRuling() {
+        return revealWaitingForRuling;
+    }
+
+    private boolean isFinalJeopardyRevealedState() {
+        return state == GameSessionState.FINAL_JEOPARDY_REVEALING
+                || (state == GameSessionState.FINISHED_GAME && round == GameRound.FINAL_JEOPARDY);
     }
 
     // -------------------------------------------------------------------------
@@ -871,15 +1403,16 @@ public class GameSession {
     // -------------------------------------------------------------------------
 
     /**
-     * Records whether a player is away: they have no open connection (a new
-     * player is away until they first connect, see {@link #addPlayer(String,
-     * String)}). It never changes the state, so a page reload can't cut
-     * a phase short; it only matters from the next answer on.
+     * Records whether a player (or Trebek) is away: they have no open
+     * connection (a new player is away until they first connect, see
+     * {@link #addPlayer(String, String)}). It never changes the state, so a
+     * page reload can't cut a phase short; it only matters from the next
+     * answer on.
      *
      * @return whether anything changed
      */
     public boolean setAway(Long playerId, boolean away) {
-        GameSessionPlayer player = getActivePlayer(playerId);
+        GameSessionPlayer player = getActiveMember(playerId);
 
         if (player == null || player.isAway() == away) {
             return false;
@@ -889,9 +1422,12 @@ public class GameSession {
         return true;
     }
 
-    /** Whether there is someone in the session and every active player is away. */
+    /** Whether there is someone in the session and every active player, and Trebek, is away. */
     public boolean isEveryoneAway() {
-        List<GameSessionPlayer> active = getActivePlayers();
+        List<GameSessionPlayer> active = new ArrayList<>(getActivePlayers());
+        if (getActiveTrebek() != null) {
+            active.add(trebek);
+        }
 
         return !active.isEmpty() && active.stream().allMatch(GameSessionPlayer::isAway);
     }
@@ -910,8 +1446,33 @@ public class GameSession {
         return player == null || player.isLeaving() ? null : player;
     }
 
-    /** A player who left (or never joined) can't act, even if they still hold a role. */
+    // A player or Trebek.
+    private GameSessionPlayer getMember(Long playerId) {
+        return isTrebekId(playerId) ? trebek : getPlayer(playerId);
+    }
+
+    private GameSessionPlayer getActiveMember(Long playerId) {
+        GameSessionPlayer member = getMember(playerId);
+
+        return member == null || member.isLeaving() ? null : member;
+    }
+
+    private GameSessionPlayer getActiveTrebek() {
+        return trebek == null || trebek.isLeaving() ? null : trebek;
+    }
+
+    private boolean isTrebekId(Long playerId) {
+        return trebek != null && trebek.getId().equals(playerId);
+    }
+
+    // Trebek acting, who hasn't left.
+    private boolean isTrebek(Long playerId) {
+        return getActiveTrebek() != null && trebek.getId().equals(playerId);
+    }
+
+    /** A player who left (or never joined) can't act, even if they still hold a role. Trebek doesn't play. */
     private GameSessionPlayer requireActivePlayer(Long playerId) {
+        rejectTrebek(playerId);
         GameSessionPlayer player = getActivePlayer(playerId);
 
         if (player == null) {
@@ -919,6 +1480,34 @@ public class GameSession {
         }
 
         return player;
+    }
+
+    // A player or Trebek, for what both can do: the host's actions, leaving.
+    private GameSessionPlayer requireActiveMember(Long playerId) {
+        GameSessionPlayer member = getActiveMember(playerId);
+
+        if (member == null) {
+            throw new InvalidGameActionException(GameErrorCode.PLAYER_NOT_IN_SESSION, "You're not in this session!");
+        }
+
+        return member;
+    }
+
+    private void rejectTrebek(Long playerId) {
+        if (isTrebek(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_YOUR_TURN, "Trebek doesn't play!");
+        }
+    }
+
+    // Trebek's own actions: only in a Trebek session, only by Trebek.
+    private void requireTrebek(Long playerId) {
+        if (hostMode != HostMode.TREBEK) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Only a Trebek host can do that!");
+        }
+        requireActiveMember(playerId);
+        if (!isTrebek(playerId)) {
+            throw new InvalidGameActionException(GameErrorCode.NOT_HOST, "Only Trebek can do that!");
+        }
     }
 
     private void requireHost(Long playerId, String message) {
@@ -934,6 +1523,20 @@ public class GameSession {
 
     private void requireState(GameSessionState expected, String message) {
         if (state != expected) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, message);
+        }
+    }
+
+    // Between the start and the end of the game.
+    private boolean isGameInProgress() {
+        return switch (state) {
+            case WAITING_FOR_START, FINISHED_GAME, CLOSED -> false;
+            default -> true;
+        };
+    }
+
+    private void requireGameInProgress(String message) {
+        if (!isGameInProgress()) {
             throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, message);
         }
     }

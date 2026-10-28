@@ -407,7 +407,7 @@ class GameSessionResponseTest {
 
         String json = toJson(response);
         assertTrue(
-                json.contains("{\"playerId\":1,\"answer\":\"Silver\",\"correct\":false,\"phrasedAsQuestion\":false,\"matchedAnswers\":null,\"alsoAccepted\":null}"),
+                json.contains("{\"playerId\":1,\"answer\":\"Silver\",\"correct\":false,\"phrasedAsQuestion\":false,\"matchedAnswers\":null,\"alsoAccepted\":null,\"ruledByTrebek\":false}"),
                 json
         );
         assertFalse(json.contains("\"" + scienceRow1.answer() + "\""), "leaked the correct response: " + json);

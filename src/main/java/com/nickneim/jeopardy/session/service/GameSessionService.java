@@ -15,6 +15,9 @@ import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
 import com.nickneim.jeopardy.session.model.GameSessionTimeouts;
+import com.nickneim.jeopardy.session.model.HostMode;
+import com.nickneim.jeopardy.session.model.TimerMode;
+import com.nickneim.jeopardy.session.controller.TrebekSubscriptions;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
 import com.nickneim.jeopardy.session.security.PlayerConnectionsChanged;
@@ -214,7 +217,7 @@ public class GameSessionService {
 
         if (session != null) {
             // Tokens first, as in closeSession.
-            session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
+            session.getMembers().forEach(player -> playerTokens.unregister(player.getToken()));
             sessions.remove(sessionId, session);
         }
     }
@@ -256,9 +259,26 @@ public class GameSessionService {
                 session.updateTimeouts(host.playerId(), request.applyTo(session.getTimeouts())));
     }
 
-    /** The host's lobby settings. */
+    /**
+     * The host's lobby settings. Any setting the request leaves out keeps its
+     * value; each is checked the same way, so either all apply or none.
+     */
     public void updateSettings(PlayerPrincipal host, SessionSettingsRequest request) {
-        act(host, session -> session.updateLateJoin(host.playerId(), request.allowLateJoin()));
+        if (request.isEmpty()) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_REQUEST, "At least one setting must be set");
+        }
+
+        act(host, session -> {
+            if (request.allowLateJoin() != null) {
+                session.updateLateJoin(host.playerId(), request.allowLateJoin());
+            }
+            if (request.hostMode() != null) {
+                session.updateHostMode(host.playerId(), request.hostMode());
+            }
+            if (request.timerModes() != null) {
+                session.updateTimerModes(host.playerId(), request.timerModes().applyTo(session.getTimerModes()));
+            }
+        });
     }
 
     public void leave(PlayerPrincipal player) {
@@ -272,9 +292,9 @@ public class GameSessionService {
     /**
      * The departing player's token stops working at once and their open
      * connections are closed, so a client that reconnects is rejected like
-     * any unknown token. If nobody active is left, the session is closed,
-     * except a finished game: leaving is how players get back to the lobby,
-     * so its results stay up until the finished-session timeout.
+     * any unknown token. If nobody is left to play, the session is closed
+     * (see {@link GameSession#isAbandoned}), and so is a game Trebek left,
+     * which can't go on without them.
      */
     private void depart(
             PlayerPrincipal actor,
@@ -289,7 +309,10 @@ public class GameSessionService {
 
             playerTokens.unregister(departed.getToken());
 
-            if (session.getActivePlayers().isEmpty() && session.getState() != GameSessionState.FINISHED_GAME) {
+            if (session.getState() == GameSessionState.CLOSED) {
+                // Trebek left during the game.
+                closeSession(session, session.getCloseReason());
+            } else if (session.isAbandoned()) {
                 closeSession(session, SessionCloseReason.ABANDONED);
             } else {
                 // Usually the phase goes on: the last player who could still
@@ -355,6 +378,91 @@ public class GameSessionService {
 
     public void answerClue(PlayerPrincipal player, String answer) {
         act(player, session -> session.answerClue(player.playerId(), answer));
+    }
+
+    // -------------------------------------------------------------------------
+    // Trebek
+    // -------------------------------------------------------------------------
+
+    public void advance(PlayerPrincipal trebek) {
+        act(trebek, session -> session.advance(trebek.playerId()));
+    }
+
+    public void returnClue(PlayerPrincipal trebek) {
+        act(trebek, session -> session.returnClue(trebek.playerId()));
+    }
+
+    public void rule(PlayerPrincipal trebek, boolean correct) {
+        act(trebek, session -> session.rule(trebek.playerId(), correct));
+    }
+
+    public void ruleFinal(PlayerPrincipal trebek, Long playerId, boolean correct) {
+        act(trebek, session -> session.ruleFinal(trebek.playerId(), playerId, correct));
+    }
+
+    public void adjustScore(PlayerPrincipal trebek, Long playerId, int amount) {
+        act(trebek, session -> session.adjustScore(trebek.playerId(), playerId, amount));
+    }
+
+    /**
+     * Stops the clock: the phase timer is cancelled, and the phase keeps the
+     * time it has left. Pausing again changes nothing and isn't broadcast.
+     */
+    public void pause(PlayerPrincipal trebek) {
+        GameSession session = sessionOf(trebek);
+
+        synchronized (session) {
+            if (session.pause(trebek.playerId(), System.nanoTime())) {
+                timer.cancel(session.getId());
+                broadcast(session);
+            }
+        }
+    }
+
+    /**
+     * Restarts the clock: the phase timer is armed again with the time the
+     * phase had left. Resuming when not paused changes nothing and isn't
+     * broadcast.
+     */
+    public void resume(PlayerPrincipal trebek) {
+        GameSession session = sessionOf(trebek);
+
+        synchronized (session) {
+            long now = System.nanoTime();
+
+            if (!session.resume(trebek.playerId(), now)) {
+                return;
+            }
+
+            PhaseTimeout timeout = phaseTimeout(session);
+            Duration remaining = session.getPhaseRemaining(now);
+            if (timeout != null && remaining != null) {
+                armPhaseTimer(session, remaining, timeout.action());
+            }
+            broadcast(session);
+        }
+    }
+
+    /**
+     * Someone subscribed to Trebek's private view: if it's this session's
+     * Trebek, they get it now rather than at the next change.
+     */
+    @EventListener
+    public void onTrebekViewRequested(TrebekSubscriptions.TrebekViewRequested event) {
+        PlayerPrincipal player = event.player();
+        GameSession session = sessions.get(player.sessionId());
+
+        if (session == null || !player.isIn(session)) {
+            return;
+        }
+
+        synchronized (session) {
+            GameSessionPlayer trebek = session.getTrebek();
+
+            if (trebek != null && trebek.getId().equals(player.playerId())) {
+                broadcaster.sendTrebekView(session);
+            }
+        }
     }
 
     // For tests, through TestGameSessions: real reveals end on their timers.
@@ -533,7 +641,7 @@ public class GameSessionService {
         // finds it there. Removed only if it's still this session, like
         // everywhere else: one forgotten without a close (removeSession) can
         // be closed later, after a new session took its id.
-        session.getPlayers().forEach(player -> playerTokens.unregister(player.getToken()));
+        session.getMembers().forEach(player -> playerTokens.unregister(player.getToken()));
         closedIds.add(sessionId);
         sessions.remove(sessionId, session);
         forgetUnwatchedIds();
@@ -556,15 +664,54 @@ public class GameSessionService {
         }
     }
 
+    /**
+     * Arms the phase timer of the phase that just began, or clears it if the
+     * phase has none. While Trebek has paused the clock the phase is
+     * recorded with its full time, and nothing is armed until it's resumed.
+     */
     private void scheduleTimeout(GameSession session) {
-        SessionCode sessionId = session.getId();
-        GameSessionTimeouts timeouts = session.getTimeouts();
+        timer.cancel(session.getId());
 
-        timer.cancel(sessionId);
+        PhaseTimeout timeout = phaseTimeout(session);
 
+        if (timeout == null) {
+            session.clearPhaseTimer();
+            return;
+        }
+
+        // Recorded on the session so every response can say how long the
+        // phase has left.
+        session.startPhaseTimer(timeout.duration(), System.nanoTime());
+
+        if (!session.isPaused()) {
+            armPhaseTimer(session, timeout.duration(), timeout.action());
+        }
+    }
+
+    private void armPhaseTimer(GameSession session, Duration delay, Consumer<GameSession> action) {
         GameSessionState state = session.getState();
+        long timerId = session.getPhaseTimerId();
 
-        PhaseTimeout timeout = switch (state) {
+        timer.schedule(session.getId(), delay, () -> onPhaseTimeout(session, state, timerId, action));
+    }
+
+    /**
+     * The timer of the session's current phase, or null if it has none: in
+     * a Trebek session, also a phase whose timer mode is TREBEK (it waits
+     * for Trebek's advance), and the Final Jeopardy reveal while it waits for
+     * a ruling. There, each reveal step gets an even share of the reveal's
+     * duration.
+     */
+    private PhaseTimeout phaseTimeout(GameSession session) {
+        GameSessionTimeouts timeouts = session.getTimeouts();
+        GameSessionState state = session.getState();
+        boolean trebekSession = session.getHostMode() == HostMode.TREBEK;
+
+        if (trebekSession && session.getTimerModes().of(state) == TimerMode.TREBEK) {
+            return null;
+        }
+
+        return switch (state) {
             case CHOOSING_CLUE -> new PhaseTimeout(timeouts.clueChoice(), GameSession::timeoutChoosingClue);
             case REVEALING_CLUE -> new PhaseTimeout(timeouts.clueReveal(), GameSession::finishRevealingClue);
             case WAITING_FOR_BUZZER -> new PhaseTimeout(timeouts.buzzer(), GameSession::timeoutBuzzer);
@@ -576,22 +723,19 @@ public class GameSessionService {
                     new PhaseTimeout(timeouts.finalJeopardyWager(), GameSession::timeoutFinalJeopardyWagering);
             case FINAL_JEOPARDY_ANSWERING ->
                     new PhaseTimeout(timeouts.finalJeopardyAnswer(), GameSession::timeoutFinalJeopardyAnswering);
-            case FINAL_JEOPARDY_REVEALING ->
-                    new PhaseTimeout(timeouts.finalJeopardyReveal(), GameSession::finishFinalJeopardyReveal);
-            // No timeout for these states.
-            case WAITING_FOR_START, FINISHED_GAME, CLOSED -> null;
+            case FINAL_JEOPARDY_REVEALING -> {
+                if (!trebekSession) {
+                    yield new PhaseTimeout(timeouts.finalJeopardyReveal(), GameSession::timeoutFinalJeopardyReveal);
+                }
+                if (session.isRevealWaitingForRuling()) {
+                    yield null;
+                }
+                Duration step = timeouts.finalJeopardyReveal().dividedBy(session.getRevealStepCount());
+                yield new PhaseTimeout(step, GameSession::timeoutFinalJeopardyReveal);
+            }
+            // No timeout for these states: they wait for a player or Trebek.
+            case WAITING_FOR_START, CLUE_PICKED, WAITING_FOR_RULING, FINISHED_GAME, CLOSED -> null;
         };
-
-        if (timeout == null) {
-            session.clearPhaseTimer();
-            return;
-        }
-
-        // Recorded on the session so every response can say how long the
-        // phase has left.
-        session.startPhaseTimer(timeout.duration(), System.nanoTime());
-        long timerId = session.getPhaseTimerId();
-        timer.schedule(sessionId, timeout.duration(), () -> onPhaseTimeout(session, state, timerId, timeout.action()));
     }
 
     /**

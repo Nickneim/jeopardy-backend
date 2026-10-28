@@ -9,7 +9,9 @@ import com.nickneim.jeopardy.session.model.GameSession;
  * The clue being played, as every player sees it. What is revealed depends
  * on the state: a Daily Double's question, clue type and media URL stay
  * hidden until the wager is placed, and the answer stays hidden until the
- * answer is revealed.
+ * answer is revealed. A clue Trebek hasn't shown yet (CLUE_PICKED) only
+ * says which one it is: even {@code dailyDouble} is null, so the board
+ * doesn't give a Daily Double away before Trebek shows it.
  * {@code wager} is only set for a Daily Double once the wager is placed;
  * {@code minWager} and {@code maxWager}, the chooser's allowed range, only
  * while it is being placed.
@@ -20,7 +22,7 @@ import com.nickneim.jeopardy.session.model.GameSession;
 public record CurrentClueResponse(
         Long clueId,
         int value,
-        boolean dailyDouble,
+        Boolean dailyDouble,
         Integer wager,
         Integer minWager,
         Integer maxWager,
@@ -34,15 +36,21 @@ public record CurrentClueResponse(
 
     /** Returns null when no clue is being played. */
     public static CurrentClueResponse from(GameSession session) {
+        boolean showDailyDouble = true;
         boolean showQuestion;
         boolean showAnswer;
 
         switch (session.getState()) {
+            case CLUE_PICKED -> {
+                showDailyDouble = false;
+                showQuestion = false;
+                showAnswer = false;
+            }
             case WAITING_FOR_DAILY_DOUBLE_WAGER -> {
                 showQuestion = false;
                 showAnswer = false;
             }
-            case REVEALING_CLUE, WAITING_FOR_BUZZER, WAITING_FOR_ANSWER -> {
+            case REVEALING_CLUE, WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, WAITING_FOR_RULING -> {
                 showQuestion = true;
                 showAnswer = false;
             }
@@ -61,7 +69,7 @@ public record CurrentClueResponse(
         return new CurrentClueResponse(
                 clue.id(),
                 clue.value(),
-                clue.dailyDouble(),
+                showDailyDouble ? clue.dailyDouble() : null,
                 session.getDailyDoubleWager(),
                 session.getMinimumDailyDoubleWager(),
                 session.getMaximumDailyDoubleWager(),

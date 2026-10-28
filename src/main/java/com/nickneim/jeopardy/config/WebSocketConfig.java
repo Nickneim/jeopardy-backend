@@ -1,5 +1,6 @@
 package com.nickneim.jeopardy.config;
 
+import com.nickneim.jeopardy.session.controller.TrebekSubscriptions;
 import com.nickneim.jeopardy.session.security.PlayerAuthenticationInterceptor;
 import com.nickneim.jeopardy.session.security.PlayerConnections;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,6 +32,7 @@ public class WebSocketConfig
     private final PlayerAuthenticationInterceptor playerAuthenticationInterceptor;
     private final PlayerConnections playerConnections;
     private final SilentDisconnects silentDisconnects;
+    private final TrebekSubscriptions trebekSubscriptions;
     private final CorsProperties corsProperties;
     private final TaskScheduler messageBrokerTaskScheduler;
 
@@ -40,12 +42,14 @@ public class WebSocketConfig
             PlayerAuthenticationInterceptor playerAuthenticationInterceptor,
             PlayerConnections playerConnections,
             SilentDisconnects silentDisconnects,
+            TrebekSubscriptions trebekSubscriptions,
             CorsProperties corsProperties,
             @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler
     ) {
         this.playerAuthenticationInterceptor = playerAuthenticationInterceptor;
         this.playerConnections = playerConnections;
         this.silentDisconnects = silentDisconnects;
+        this.trebekSubscriptions = trebekSubscriptions;
         this.corsProperties = corsProperties;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
     }
@@ -79,6 +83,9 @@ public class WebSocketConfig
         registry.enableSimpleBroker("/topic", "/queue")
                 .setHeartbeatValue(new long[] {HEARTBEAT_MILLIS, HEARTBEAT_MILLIS})
                 .setTaskScheduler(messageBrokerTaskScheduler);
+        // Runs on the caller's thread (no executor), so this sees each
+        // subscription after the broker registered it.
+        registry.configureBrokerChannel().interceptors(trebekSubscriptions);
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
         // The outbound channel runs on a thread pool too, so without this the

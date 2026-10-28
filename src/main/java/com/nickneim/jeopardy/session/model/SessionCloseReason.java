@@ -7,5 +7,7 @@ public enum SessionCloseReason {
     /** Nothing happened in the lobby for too long, so the game never started. */
     IDLE,
     /** The game finished a while ago. */
-    FINISHED
+    FINISHED,
+    /** Trebek left during the game, which ends it. */
+    TREBEK_LEFT
 }

@@ -168,6 +168,88 @@ public class GameSessionWebSocketController {
         );
     }
 
+    // -------------------------------------------------------------------------
+    // Trebek's actions
+    // -------------------------------------------------------------------------
+
+    @MessageMapping("/sessions/{sessionId}/advance")
+    public void advance(
+            @DestinationVariable SessionCode sessionId,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.advance(
+                player(sessionId, headers)
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/return-clue")
+    public void returnClue(
+            @DestinationVariable SessionCode sessionId,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.returnClue(
+                player(sessionId, headers)
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/rule")
+    public void rule(
+            @DestinationVariable SessionCode sessionId,
+            @Valid RuleRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.rule(
+                player(sessionId, headers),
+                request.correct()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/rule-final")
+    public void ruleFinal(
+            @DestinationVariable SessionCode sessionId,
+            @Valid RuleFinalRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.ruleFinal(
+                player(sessionId, headers),
+                request.playerId(),
+                request.correct()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/adjust-score")
+    public void adjustScore(
+            @DestinationVariable SessionCode sessionId,
+            @Valid AdjustScoreRequest request,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.adjustScore(
+                player(sessionId, headers),
+                request.playerId(),
+                request.amount()
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/pause")
+    public void pause(
+            @DestinationVariable SessionCode sessionId,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.pause(
+                player(sessionId, headers)
+        );
+    }
+
+    @MessageMapping("/sessions/{sessionId}/resume")
+    public void resume(
+            @DestinationVariable SessionCode sessionId,
+            SimpMessageHeaderAccessor headers
+    ) {
+        gameSessionService.resume(
+                player(sessionId, headers)
+        );
+    }
+
     /**
      * The player on this connection, checked against the session the action
      * is for (the service checks it's that very session, not an earlier one

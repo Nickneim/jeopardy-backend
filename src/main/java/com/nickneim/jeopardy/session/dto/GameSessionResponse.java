@@ -3,6 +3,7 @@ package com.nickneim.jeopardy.session.dto;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionState;
+import com.nickneim.jeopardy.session.model.HostMode;
 import com.nickneim.jeopardy.session.model.SessionCloseReason;
 import com.nickneim.jeopardy.session.model.SessionCode;
 
@@ -18,11 +19,17 @@ public record GameSessionResponse(
         SessionCloseReason closeReason,
         Long phaseDurationMs,
         Long phaseRemainingMs,
+        // Trebek stopped the clock: phaseRemainingMs is frozen.
+        boolean paused,
         SessionTimersResponse timers,
+        SessionTimerModesResponse timerModes,
         boolean allowLateJoin,
         int joinScore,
         List<PlayerResponse> players,
         Long hostPlayerId,
+        HostMode hostMode,
+        // The host running the show in TREBEK mode, never in players; null otherwise.
+        TrebekResponse trebek,
         Long playerChoosingClue,
         Long playerAnswering,
         Set<Long> playersLockedOut,
@@ -52,13 +59,17 @@ public record GameSessionResponse(
                 session.getCloseReason(),
                 phaseDuration == null ? null : phaseDuration.toMillis(),
                 phaseRemaining == null ? null : phaseRemaining.toMillis(),
+                session.isPaused(),
                 SessionTimersResponse.from(session.getTimeouts()),
+                SessionTimerModesResponse.from(session.getTimerModes()),
                 session.isLateJoinAllowed(),
                 session.getJoinScore(),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)
                         .toList(),
                 session.getHostPlayerId(),
+                session.getHostMode(),
+                TrebekResponse.from(session.getTrebek()),
                 session.getPlayerChoosingClue(),
                 session.getPlayerAnswering(),
                 session.getPlayersLockedOut(),
