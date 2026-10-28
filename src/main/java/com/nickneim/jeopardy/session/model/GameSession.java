@@ -1,9 +1,11 @@
 package com.nickneim.jeopardy.session.model;
 
+import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AnswerCheck;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.board.InvalidBoardException;
 import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.exception.SessionNotJoinableException;
@@ -34,7 +36,11 @@ public class GameSession {
     // Tells this session apart from any other that has (or had) its id: a
     // closed session's id can be reused, and player ids restart at 1.
     private final long instanceId = INSTANCE_IDS.incrementAndGet();
-    private final GameBoard board;
+    // The board as it was loaded, and the one played: it without the clue
+    // types the host disabled in the lobby.
+    private final GameBoard fullBoard;
+    private GameBoard board;
+    private Set<ClueType> disabledClueTypes = EnumSet.noneOf(ClueType.class);
     private final Instant createdAt;
     // Every player still in the session, in join order. A player who left
     // while holding a role stays here, marked as leaving, until the role ends.
@@ -116,6 +122,7 @@ public class GameSession {
 
     public GameSession(SessionCode id, GameBoard board, GameSessionTimeouts timeouts, Instant createdAt) {
         this.id = id;
+        this.fullBoard = board;
         this.board = board;
         this.timeouts = timeouts;
         this.createdAt = createdAt;
@@ -132,8 +139,19 @@ public class GameSession {
         return instanceId;
     }
 
+    /** The board being played: without the clue types the host disabled. */
     public GameBoard getBoard() {
         return board;
+    }
+
+    /** The board as it was loaded, every clue type included. */
+    public GameBoard getFullBoard() {
+        return fullBoard;
+    }
+
+    /** The clue types the host left out of the game; never TEXT. */
+    public Set<ClueType> getDisabledClueTypes() {
+        return Collections.unmodifiableSet(disabledClueTypes);
     }
 
     public Instant getCreatedAt() {
@@ -456,6 +474,32 @@ public class GameSession {
         requireSettingsChange(playerId);
 
         timerModes = modes;
+    }
+
+    /**
+     * The host leaves clue types out of the game (media clues often don't
+     * load), before it starts. {@code types} replaces the disabled set; text
+     * clues can't be disabled, and neither can every clue the board has.
+     */
+    public void updateDisabledClueTypes(Long playerId, Set<ClueType> types) {
+        requireSettingsChange(playerId);
+
+        if (types.contains(ClueType.TEXT)) {
+            throw new InvalidGameActionException(GameErrorCode.INVALID_REQUEST, "Text clues can't be disabled!");
+        }
+
+        GameBoard filtered;
+        try {
+            filtered = types.isEmpty() ? fullBoard : fullBoard.withoutClueTypes(types);
+        } catch (InvalidBoardException e) {
+            throw new InvalidGameActionException(
+                    GameErrorCode.INVALID_REQUEST, "That would leave no clues to play!"
+            );
+        }
+
+        board = filtered;
+        round = board.getFirstRound();
+        disabledClueTypes = types.isEmpty() ? EnumSet.noneOf(ClueType.class) : EnumSet.copyOf(types);
     }
 
     private void requireSettingsChange(Long playerId) {

@@ -1,6 +1,7 @@
 package com.nickneim.jeopardy.session.board;
 
 import com.nickneim.jeopardy.game.entity.Category;
+import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.Game;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.answer.AcceptedAnswers;
@@ -46,6 +47,7 @@ public final class GameBoard {
     private final Map<GameRound, Integer> highestValueByRound = new EnumMap<>(GameRound.class);
     // What players are told about each answer.
     private final Map<Long, AnswerHints> answerHints = new HashMap<>();
+    private final Map<ClueType, Integer> clueTypeCounts;
     private final BoardCategory finalJeopardyCategory;
 
     public GameBoard(List<BoardRound> rounds) {
@@ -121,6 +123,10 @@ public final class GameBoard {
         if (cluesById.isEmpty()) {
             throw new InvalidBoardException("the board has no clues");
         }
+
+        Map<ClueType, Integer> typeCounts = new EnumMap<>(ClueType.class);
+        cluesById.values().forEach(clue -> typeCounts.merge(clue.clueType(), 1, Integer::sum));
+        this.clueTypeCounts = Collections.unmodifiableMap(typeCounts);
 
         this.finalJeopardyCategory = getRound(GameRound.FINAL_JEOPARDY)
                 .flatMap(finalRound -> finalRound.categories()
@@ -210,6 +216,39 @@ public final class GameBoard {
     /** How many clues the board has, in every round, Final Jeopardy included. */
     public int getClueCount() {
         return cluesById.size();
+    }
+
+    /** How many clues of each type the board has, for every type it has any of. */
+    public Map<ClueType, Integer> getClueTypeCounts() {
+        return clueTypeCounts;
+    }
+
+    /**
+     * This board without its clues of the given types: their slots are
+     * empty, a Daily Double among them is gone, and a round left without
+     * clues (Final Jeopardy included) is skipped. Clue ids don't change.
+     *
+     * @throws InvalidBoardException if no clues would be left
+     */
+    public GameBoard withoutClueTypes(Set<ClueType> types) {
+        List<BoardRound> filtered = rounds.stream()
+                .map(boardRound -> new BoardRound(
+                        boardRound.round(),
+                        boardRound.categories()
+                                .stream()
+                                .map(category -> new BoardCategory(
+                                        category.name(),
+                                        category.comments(),
+                                        category.clues()
+                                                .stream()
+                                                .filter(clue -> !types.contains(clue.clueType()))
+                                                .toList()
+                                ))
+                                .toList()
+                ))
+                .toList();
+
+        return new GameBoard(gameId, custom, title, season, gameDate, filtered);
     }
 
     /** The game's title (a custom show's name), or null if it has none. */

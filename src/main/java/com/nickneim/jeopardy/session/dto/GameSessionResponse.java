@@ -24,6 +24,8 @@ public record GameSessionResponse(
         SessionTimersResponse timers,
         SessionTimerModesResponse timerModes,
         boolean allowLateJoin,
+        // The clue types the game has, and which the host left out.
+        List<ClueTypeResponse> clueTypes,
         int joinScore,
         List<PlayerResponse> players,
         Long hostPlayerId,
@@ -63,6 +65,7 @@ public record GameSessionResponse(
                 SessionTimersResponse.from(session.getTimeouts()),
                 SessionTimerModesResponse.from(session.getTimerModes()),
                 session.isLateJoinAllowed(),
+                ClueTypeResponse.from(session),
                 session.getJoinScore(),
                 session.getPlayers().stream()
                         .map(PlayerResponse::from)

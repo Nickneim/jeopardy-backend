@@ -178,7 +178,7 @@ The sessions in memory, for a lobby page where players pick a game to join or wa
 | `gameSeason` | That game's season, as in `GameSummaryResponse.season` (`null` when `gameId` is) |
 | `gameDate` | That game's air date, `YYYY-MM-DD` (`null` when `gameId` is) |
 | `custom` | `true` for a custom show (§3.2, create), `false` for a stored game |
-| `clueCount` | How many clues the board has, in every round and Final Jeopardy |
+| `clueCount` | How many clues the board has, in every round and Final Jeopardy, leaving out the clue types the host disabled (§6.9) |
 | `state` | The session's `GameSessionState` (§6). Use it to show "waiting for players" vs "in progress". |
 | `round` | The round being played, or about to be |
 | `playerCount` | Players who haven't left. Players waiting to be removed (`leaving`, §6.4) aren't counted, and neither is Trebek (§6.8). |
@@ -414,7 +414,7 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. None of them in
 |---|---|---|
 | `start` | none (an empty body or `{}` is fine) | `WAITING_FOR_START`; **host only** |
 | `update-timers` | `Partial<SessionTimers>`, for example `{ "buzzerMs": 8000 }` (send `{}` at least) | `WAITING_FOR_START`; **host only**. Durations left out keep their current value. Each must be 1000–300000 ms (§6.3). |
-| `update-settings` | `{ "allowLateJoin"?: boolean, "hostMode"?: HostMode, "timerModes"?: Partial<SessionTimerModes> }`, at least one of them | `WAITING_FOR_START`; **host only**. `allowLateJoin` blocks or allows joining after the start (§6.6); `hostMode` and `timerModes` choose whether the host plays or runs the show as Trebek, and which phases wait for Trebek (§6.8). A setting left out keeps its value; `{}` gets `INVALID_REQUEST`, `"At least one setting must be set"`. |
+| `update-settings` | `{ "allowLateJoin"?: boolean, "hostMode"?: HostMode, "timerModes"?: Partial<SessionTimerModes>, "disabledClueTypes"?: ClueType[] }`, at least one of them | `WAITING_FOR_START`; **host only**. `allowLateJoin` blocks or allows joining after the start (§6.6); `hostMode` and `timerModes` choose whether the host plays or runs the show as Trebek, and which phases wait for Trebek (§6.8); `disabledClueTypes` leaves clue types out of the game, replacing the list sent before (§6.9). A refused `disabledClueTypes` applies none of the settings. A setting left out keeps its value; `{}` gets `INVALID_REQUEST`, `"At least one setting must be set"`. |
 | `kick` | `{ "playerId": number }` | Any state except `CLOSED`; **host only**; not yourself (use `leave`). The kicked player is treated exactly like a player who leaves. |
 | `leave` | none | Any state except `CLOSED` (§6.4) |
 | `choose-clue` | `{ "clueId": number }` | `CHOOSING_CLUE`, if you are `playerChoosingClue`, or Trebek choosing for them (§6.8) |
@@ -457,6 +457,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `players` | `{ id, name, score, leaving, away }` in join order. `leaving` is `true` for a player who left (or was kicked) but still holds a role and is waiting to be removed, and, from `FINAL_JEOPARDY_REVEALING` on, for everyone who left, since they stay in the results (§6.4); show them as leaving. Removed players aren't listed at all. `away` is `true` while a player has no open connection: from joining until they first connect, and whenever they lose it (a closed tab, a lost network); it turns `false` when they (re)connect (§6.4). |
 | `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`, or in a `TREBEK` session `trebek.id`. |
 | `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
+| `clueTypes` | In `WAITING_FOR_START`, every clue type the game has, in the order `TEXT`, `IMAGE`, `SOUND`, `VIDEO`: `{ type, clueCount, enabled }`, where `enabled` is `false` for a type the host disabled (§6.9). `TEXT` is always enabled. `[]` once the game has started. |
 | `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
 | `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts; already set during a clue round's `ROUND_INTRO`. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses, and once the game has finished. |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double), and in `WAITING_FOR_RULING` for the player whose answer Trebek is ruling on; otherwise `null`. |
@@ -907,6 +908,14 @@ The snapshot is public and never holds Trebek's secrets. They go to `/user/queue
 | `pendingAnswer` | In `WAITING_FOR_RULING`: what the answering player submitted (`answer` `null` if nothing), with the check's result: `suggestedCorrect` is what a `CONTESTANT` session would have scored (Double Jeopardy's question form included), `phrasedAsQuestion` (`null` without an answer) and `matchedAnswers` (only when `suggestedCorrect`). `null` in every other state, also while the player is still typing. |
 | `finalJeopardy` | From `FINAL_JEOPARDY_WAGERING` until the reveal ends (`null` otherwise): `{ question, answer, acceptedAnswers, numberExpected, players }`. Each player has `playerId`; `wager` (`null` while wagering until they wager; once wagering closes a missing wager is `0`); `answer` (`null` if none); `suggestedCorrect` (`null` until they answer or answering closes; no answer suggests wrong); `phrasedAsQuestion`; `matchedAnswers`; and `ruling` (`true`, `false`, or `null` before Trebek rules). |
 
+### 6.9 Leaving out clue types
+
+Many stored media clues (`IMAGE`, `SOUND`, `VIDEO`) point at media that no longer loads, so the host can leave whole clue types out of the game. In the lobby, `clueTypes` lists every type the game has, with how many clues of it and whether it's enabled; show the media types as switches (`TEXT` is always enabled and can't be switched off). `update-settings` `{ "disabledClueTypes": ["IMAGE", "VIDEO"] }` disables exactly those types, and `{ "disabledClueTypes": [] }` enables them all again. A type the game doesn't have can be listed, and changes nothing.
+
+A disabled clue is gone from the game: its slot is `EMPTY` on the board (§5.1), it can't be chosen (`CLUE_NOT_FOUND`), and if it was a Daily Double the round simply has one Daily Double fewer. A round left without clues is skipped, title card included, so the game can start in Double Jeopardy, and a disabled Final Jeopardy clue means the game ends after the last clue round, as for a board without Final Jeopardy. The grid still goes up to the round's highest row that has a clue left (§5.1), so if every clue on the bottom row is disabled, the board is a row shorter.
+
+Errors (`INVALID_REQUEST`, nothing is applied): `"Text clues can't be disabled!"` when the list has `TEXT`, and `"That would leave no clues to play!"` when the game has no clues of the types left. An unknown type or a `null` in the list is a body error, `"Invalid request: the body isn't valid JSON for this action"`. Like the other settings, only the host can change it (`NOT_HOST`), and only before the start (`INVALID_STATE`); once the game starts, `clueTypes` is `[]`, since knowing which types are left could hint at a hidden Daily Double's.
+
 ---
 
 ## 7. Errors (`/user/queue/errors`)
@@ -1203,7 +1212,7 @@ interface GameSessionSummaryResponse {
   gameSeason: string | null;  // null when gameId is
   gameDate: string | null;    // "YYYY-MM-DD", null when gameId is
   custom: boolean;            // a custom show: gameId, gameSeason and gameDate are null
-  clueCount: number;          // clues on the board, all rounds and Final Jeopardy
+  clueCount: number;          // clues on the board, all rounds and Final Jeopardy, without disabled types
   state: GameSessionState;
   round: GameRound;
   playerCount: number;        // players who haven't left; never Trebek
@@ -1233,6 +1242,7 @@ interface UpdateSettingsRequest {  // host only, WAITING_FOR_START; at least one
   allowLateJoin?: boolean;
   hostMode?: HostMode;
   timerModes?: Partial<SessionTimerModes>;
+  disabledClueTypes?: ClueType[];  // replaces the disabled list; never "TEXT" (§6.9)
 }
 // start, buzz and leave have no body
 
@@ -1251,6 +1261,12 @@ interface PlayerResponse {
 }
 
 // The host running a Trebek session (§6.8); never in players
+interface ClueTypeResponse {
+  type: ClueType;
+  clueCount: number;  // clues of this type the game has, disabled or not
+  enabled: boolean;   // false: left out of the game; TEXT is always true
+}
+
 interface TrebekResponse {
   id: number;            // also hostPlayerId
   name: string;
@@ -1345,6 +1361,7 @@ interface GameSessionResponse {
   hostMode: HostMode;
   trebek: TrebekResponse | null;    // null in CONTESTANT mode
   allowLateJoin: boolean;           // joining after the start is allowed
+  clueTypes: ClueTypeResponse[];    // the game's clue types, for the lobby setting; [] once started (§6.9)
   joinScore: number;                // a new player's starting score, never above 0
   playerChoosingClue: number | null;
   playerAnswering: number | null;

@@ -269,6 +269,11 @@ public class GameSessionService {
         }
 
         act(host, session -> {
+            // First: it's the only setting that can be refused for its value,
+            // and nothing may apply if it is.
+            if (request.disabledClueTypes() != null) {
+                session.updateDisabledClueTypes(host.playerId(), request.disabledClueTypes());
+            }
             if (request.allowLateJoin() != null) {
                 session.updateLateJoin(host.playerId(), request.allowLateJoin());
             }

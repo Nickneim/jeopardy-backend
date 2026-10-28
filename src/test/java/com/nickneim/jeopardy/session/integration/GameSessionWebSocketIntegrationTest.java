@@ -2,6 +2,7 @@ package com.nickneim.jeopardy.session.integration;
 
 import com.nickneim.jeopardy.TestcontainersConfiguration;
 import com.nickneim.jeopardy.config.WebSocketConfig;
+import com.nickneim.jeopardy.game.entity.ClueType;
 import com.nickneim.jeopardy.game.entity.GameRound;
 import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
@@ -56,6 +57,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1679,6 +1681,70 @@ class GameSessionWebSocketIntegrationTest {
                 SessionNotJoinableException.class,
                 () -> gameSessionService.joinSession(session.getId(), "Late")
         );
+    }
+
+    @Test
+    void hostDisablingAClueType_broadcastsIt()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionResponse> messages =
+                subscribeToSession(stompSession, session.getId());
+        subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-settings",
+                Map.of("disabledClueTypes", List.of("IMAGE"))
+        );
+
+        awaitMessage(messages);
+        assertEquals(Set.of(ClueType.IMAGE), session.getDisabledClueTypes());
+    }
+
+    @Test
+    void disablingTextClues_isRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-settings",
+                Map.of("disabledClueTypes", List.of("TEXT"), "allowLateJoin", false)
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
+        assertEquals("Text clues can't be disabled!", error.message());
+        // Nothing applied.
+        assertTrue(session.isLateJoinAllowed());
+    }
+
+    @Test
+    void aNullClueType_isRejected()
+            throws Exception {
+
+        GameSession session = createSessionWithPlayer();
+
+        StompSession stompSession = connect(tokenOf(session));
+        BlockingQueue<GameSessionErrorResponse> errors =
+                subscribeToErrors(stompSession);
+
+        stompSession.send(
+                "/app/sessions/" + session.getId() + "/update-settings",
+                Map.of("disabledClueTypes", Arrays.asList("IMAGE", null))
+        );
+
+        GameSessionErrorResponse error = awaitError(errors);
+
+        assertEquals(GameErrorCode.INVALID_REQUEST, error.code());
+        assertEquals("Invalid request: the body isn't valid JSON for this action", error.message());
     }
 
     @Test
