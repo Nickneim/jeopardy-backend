@@ -13,7 +13,9 @@ public record SessionTimerModesResponse(
         TimerMode answerRevealMs,
         TimerMode finalJeopardyWagerMs,
         TimerMode finalJeopardyAnswerMs,
-        TimerMode finalJeopardyRevealMs
+        TimerMode finalJeopardyRevealMs,
+        TimerMode roundIntroMs,
+        TimerMode dailyDoubleRevealMs
 ) {
 
     public static SessionTimerModesResponse from(GameSessionTimerModes modes) {
@@ -26,7 +28,9 @@ public record SessionTimerModesResponse(
                 modes.answerReveal(),
                 modes.finalJeopardyWager(),
                 modes.finalJeopardyAnswer(),
-                modes.finalJeopardyReveal()
+                modes.finalJeopardyReveal(),
+                modes.roundIntro(),
+                modes.dailyDoubleReveal()
         );
     }
 }

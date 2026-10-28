@@ -16,7 +16,9 @@ public record GameSessionTimerModes(
         TimerMode answerReveal,
         TimerMode finalJeopardyWager,
         TimerMode finalJeopardyAnswer,
-        TimerMode finalJeopardyReveal
+        TimerMode finalJeopardyReveal,
+        TimerMode roundIntro,
+        TimerMode dailyDoubleReveal
 ) {
 
     public GameSessionTimerModes {
@@ -29,9 +31,14 @@ public record GameSessionTimerModes(
         Objects.requireNonNull(finalJeopardyWager, "finalJeopardyWager");
         Objects.requireNonNull(finalJeopardyAnswer, "finalJeopardyAnswer");
         Objects.requireNonNull(finalJeopardyReveal, "finalJeopardyReveal");
+        Objects.requireNonNull(roundIntro, "roundIntro");
+        Objects.requireNonNull(dailyDoubleReveal, "dailyDoubleReveal");
     }
 
-    /** Trebek shows clues, wagers, answers and results; the players' own phases run on their timers. */
+    /**
+     * Trebek shows clues, wagers, answers and results; the players' own
+     * phases and the title cards run on their timers.
+     */
     public static GameSessionTimerModes defaults() {
         return new GameSessionTimerModes(
                 TimerMode.AUTOMATIC,
@@ -42,13 +49,17 @@ public record GameSessionTimerModes(
                 TimerMode.TREBEK,
                 TimerMode.AUTOMATIC,
                 TimerMode.AUTOMATIC,
-                TimerMode.TREBEK
+                TimerMode.TREBEK,
+                TimerMode.AUTOMATIC,
+                TimerMode.AUTOMATIC
         );
     }
 
     /** The mode of the state's timer, or null for a state that has none. */
     public TimerMode of(GameSessionState state) {
         return switch (state) {
+            case ROUND_INTRO -> roundIntro;
+            case REVEALING_DAILY_DOUBLE -> dailyDoubleReveal;
             case CHOOSING_CLUE -> clueChoice;
             case REVEALING_CLUE -> clueReveal;
             case WAITING_FOR_DAILY_DOUBLE_WAGER -> dailyDoubleWager;

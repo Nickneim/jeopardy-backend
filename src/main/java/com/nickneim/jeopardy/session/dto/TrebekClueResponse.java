@@ -22,7 +22,7 @@ public record TrebekClueResponse(
     /** From the moment a clue is picked until it ends; otherwise null. */
     static TrebekClueResponse from(GameSession session) {
         switch (session.getState()) {
-            case CLUE_PICKED, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE, WAITING_FOR_BUZZER,
+            case CLUE_PICKED, REVEALING_DAILY_DOUBLE, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE, WAITING_FOR_BUZZER,
                  WAITING_FOR_ANSWER, WAITING_FOR_RULING, REVEALING_ANSWER -> {
             }
             default -> {

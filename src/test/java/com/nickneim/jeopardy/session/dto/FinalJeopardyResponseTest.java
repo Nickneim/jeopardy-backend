@@ -5,6 +5,7 @@ import com.nickneim.jeopardy.session.board.BoardCategory;
 import com.nickneim.jeopardy.session.board.BoardClue;
 import com.nickneim.jeopardy.session.board.BoardRound;
 import com.nickneim.jeopardy.session.board.GameBoard;
+import com.nickneim.jeopardy.session.model.FinalRevealStep;
 import com.nickneim.jeopardy.session.model.GameSession;
 import com.nickneim.jeopardy.session.model.GameSessionPlayer;
 import com.nickneim.jeopardy.session.model.GameSessionState;
@@ -57,6 +58,7 @@ class FinalJeopardyResponseTest {
         session.addPlayer(player2);
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
     }
 
     @Test
@@ -73,6 +75,7 @@ class FinalJeopardyResponseTest {
         )));
         noFinal.addPlayer(player1);
         noFinal.startGame(player1.getId());
+        noFinal.finishRoundIntro();
         noFinal.chooseClue(player1.getId(), jeopardyClue.id());
         noFinal.finishRevealingClue();
         noFinal.timeoutBuzzer();
@@ -154,6 +157,7 @@ class FinalJeopardyResponseTest {
         // Right apart from the question form; player 2 doesn't answer.
         session.answerFinalJeopardy(player1.getId(), FINAL_ANSWER);
         session.timeoutFinalJeopardyAnswering();
+        revealEveryone();
 
         List<FinalJeopardyPlayerResponse> players = GameSessionResponse.from(session).finalJeopardy().players();
 
@@ -165,13 +169,10 @@ class FinalJeopardyResponseTest {
     }
 
     @Test
-    void revealing_showsEverythingButHasNotChangedScoresYet() {
+    void revealing_startsWithTheCorrectResponseAndEveryPlayerHidden() {
         playFinalJeopardyToReveal();
 
         GameSessionResponse response = GameSessionResponse.from(session);
-
-        // Pins the JSON shape the leak checks above rely on.
-        assertTrue(toJson(response).contains("\"wager\":" + SECRET_WAGER));
 
         assertEquals(
                 new FinalJeopardyResponse(
@@ -182,19 +183,55 @@ class FinalJeopardyResponseTest {
                         FINAL_ANSWER,
                         new AcceptedAnswersResponse(1, List.of(FINAL_ANSWER)),
                         List.of(
-                                new FinalJeopardyPlayerResponse(1L, true, true, null, SECRET_WAGER, FINAL_RESPONSE, true, true, List.of(FINAL_ANSWER), List.of()),
-                                new FinalJeopardyPlayerResponse(2L, true, true, null, 0, WRONG_ANSWER, false, true, null, null)
-                        )
+                                new FinalJeopardyPlayerResponse(1L, true, true, null, null, null, null, null, null, null, FinalRevealStep.HIDDEN),
+                                new FinalJeopardyPlayerResponse(2L, true, true, null, null, null, null, null, null, null, FinalRevealStep.HIDDEN)
+                        ),
+                        // Lowest score first.
+                        List.of(2L, 1L)
                 ),
                 response.finalJeopardy()
         );
+
+        String json = toJson(response);
+        assertFalse(json.contains("\"wager\":" + SECRET_WAGER), "leaked a wager: " + json);
+        assertFalse(json.contains(WRONG_ANSWER), "leaked a player's answer: " + json);
+    }
+
+    @Test
+    void revealing_showsOnePlayerAtATime_andScoresEachAtTheirAward() {
+        playFinalJeopardyToReveal();
+
+        // Player 2: wager, answer, award; then player 1's wager.
+        for (int step = 0; step < 4; step++) {
+            session.timeoutFinalJeopardyReveal();
+        }
+
+        GameSessionResponse response = GameSessionResponse.from(session);
+        List<FinalJeopardyPlayerResponse> players = response.finalJeopardy().players();
+
+        assertEquals(new FinalJeopardyPlayerResponse(2L, true, true, null, 0, WRONG_ANSWER, false, true, null, null, FinalRevealStep.AWARDED), players.get(1));
+        assertEquals(new FinalJeopardyPlayerResponse(1L, true, true, null, SECRET_WAGER, null, null, null, null, null, FinalRevealStep.WAGER), players.get(0));
         assertEquals(1000, response.players().get(0).score());
+
+        session.timeoutFinalJeopardyReveal();
+        session.timeoutFinalJeopardyReveal();
+        response = GameSessionResponse.from(session);
+
+        // Pins the JSON shape the leak checks above rely on.
+        assertTrue(toJson(response).contains("\"wager\":" + SECRET_WAGER));
+        assertEquals(
+                new FinalJeopardyPlayerResponse(1L, true, true, null, SECRET_WAGER, FINAL_RESPONSE, true, true, List.of(FINAL_ANSWER), List.of(), FinalRevealStep.AWARDED),
+                response.finalJeopardy().players().get(0)
+        );
+        assertEquals(1000 + SECRET_WAGER, response.players().get(0).score());
+        assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, response.state());
     }
 
     @Test
     void finishedGame_keepsShowingResultsWithUpdatedScores() {
         playFinalJeopardyToReveal();
-        session.finishFinalJeopardyReveal();
+        revealEveryone();
+        session.timeoutFinalJeopardyReveal();
 
         GameSessionResponse response = GameSessionResponse.from(session);
 
@@ -212,6 +249,7 @@ class FinalJeopardyResponseTest {
         session.buzz(player1.getId());
         session.answerClue(player1.getId(), "George Washington");
         session.finishRevealingAnswer();
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
     }
@@ -224,6 +262,13 @@ class FinalJeopardyResponseTest {
         session.answerFinalJeopardy(player1.getId(), FINAL_RESPONSE);
         session.answerFinalJeopardy(player2.getId(), WRONG_ANSWER);
         session.timeoutFinalJeopardyAnswering();
+    }
+
+    // Takes every player's three reveal steps; the next one ends the game.
+    private void revealEveryone() {
+        for (int step = 0; step < 3 * session.getPlayers().size(); step++) {
+            session.timeoutFinalJeopardyReveal();
+        }
     }
 
     private String toJson(GameSessionResponse response) {

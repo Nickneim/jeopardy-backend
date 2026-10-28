@@ -224,7 +224,16 @@ class GameSessionEndToEndIntegrationTest {
         BlockingQueue<GameSessionResponse> messages =
                 subscribeToSession(stompSession, sessionId);
 
+        // The host shortens the phases the test waits through.
+        send(stompSession, sessionId, "update-timers",
+                Map.of("roundIntroMs", 1000, "dailyDoubleRevealMs", 1000, "clueRevealMs", 1000));
+
+        assertEquals(1000, awaitMessage(messages).timers().roundIntroMs());
+
         send(stompSession, sessionId, "start", Map.of());
+
+        // The round's title card, then its timer moves on to choosing.
+        assertEquals(GameSessionState.ROUND_INTRO, awaitMessage(messages).state());
 
         GameSessionResponse started = awaitMessage(messages);
 
@@ -256,6 +265,11 @@ class GameSessionEndToEndIntegrationTest {
                 new ChooseClueRequest(dailyDoubleClueId)
         );
 
+        // Announced first, then the wager.
+        assertEquals(
+                GameSessionState.REVEALING_DAILY_DOUBLE,
+                awaitMessage(messages).state()
+        );
         assertEquals(
                 GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
                 awaitMessage(messages).state()

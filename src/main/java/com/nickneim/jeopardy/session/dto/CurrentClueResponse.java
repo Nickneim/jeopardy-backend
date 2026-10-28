@@ -46,7 +46,7 @@ public record CurrentClueResponse(
                 showQuestion = false;
                 showAnswer = false;
             }
-            case WAITING_FOR_DAILY_DOUBLE_WAGER -> {
+            case REVEALING_DAILY_DOUBLE, WAITING_FOR_DAILY_DOUBLE_WAGER -> {
                 showQuestion = false;
                 showAnswer = false;
             }

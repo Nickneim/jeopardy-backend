@@ -12,7 +12,9 @@ public record SessionTimersResponse(
         long answerRevealMs,
         long finalJeopardyWagerMs,
         long finalJeopardyAnswerMs,
-        long finalJeopardyRevealMs
+        long finalJeopardyRevealMs,
+        long roundIntroMs,
+        long dailyDoubleRevealMs
 ) {
 
     public static SessionTimersResponse from(GameSessionTimeouts timeouts) {
@@ -25,7 +27,9 @@ public record SessionTimersResponse(
                 timeouts.answerReveal().toMillis(),
                 timeouts.finalJeopardyWager().toMillis(),
                 timeouts.finalJeopardyAnswer().toMillis(),
-                timeouts.finalJeopardyReveal().toMillis()
+                timeouts.finalJeopardyReveal().toMillis(),
+                timeouts.roundIntro().toMillis(),
+                timeouts.dailyDoubleReveal().toMillis()
         );
     }
 }

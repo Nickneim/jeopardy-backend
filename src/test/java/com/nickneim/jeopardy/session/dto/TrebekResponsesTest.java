@@ -94,6 +94,7 @@ class TrebekResponsesTest {
     @Test
     void pickedClue_showsOnlyWhichClueItIs() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, dailyDouble.id());
 
         GameSessionResponse response = GameSessionResponse.from(session);
@@ -116,6 +117,7 @@ class TrebekResponsesTest {
     @Test
     void answerWaitingForARuling_isOnlyInTrebeksView() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, capital.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -144,6 +146,7 @@ class TrebekResponsesTest {
     @Test
     void ruledAnswer_isPublicWithTheRuling() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, capital.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -219,6 +222,7 @@ class TrebekResponsesTest {
     // minimum wager, 5): Ana 195, Ben 0, and Final Jeopardy starts.
     private void playToFinalJeopardy() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, capital.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -227,10 +231,14 @@ class TrebekResponsesTest {
         session.rule(TREBEK, true);
         session.advance(TREBEK);
         session.chooseClue(ANA, dailyDouble.id());
+        // Shown, announced, wagered (the minimum), revealed.
+        session.advance(TREBEK);
         session.advance(TREBEK);
         session.advance(TREBEK);
         session.advance(TREBEK);
         session.rule(TREBEK, false);
+        // The answer reveal, then Final Jeopardy's title card.
+        session.advance(TREBEK);
         session.advance(TREBEK);
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());

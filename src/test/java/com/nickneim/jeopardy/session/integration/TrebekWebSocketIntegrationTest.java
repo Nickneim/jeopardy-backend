@@ -83,6 +83,7 @@ class TrebekWebSocketIntegrationTest {
         ana = service.joinSession(session.getId(), "Ana");
         service.updateSettings(as(trebek), new SessionSettingsRequest(null, HostMode.TREBEK, null));
         service.startGame(as(trebek));
+        TestGameSessions.finishRoundIntro(service, session.getId());
     }
 
     @AfterEach

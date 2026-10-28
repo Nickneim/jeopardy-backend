@@ -85,6 +85,7 @@ class GameSessionTrebekTest {
         assertError(GameErrorCode.NOT_HOST, () -> session.updateHostMode(ANA, HostMode.CONTESTANT));
 
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         assertError(GameErrorCode.INVALID_STATE, () -> session.updateHostMode(TREBEK, HostMode.CONTESTANT));
         assertError(GameErrorCode.INVALID_STATE, () -> session.updateTimerModes(TREBEK, GameSessionTimerModes.defaults()));
@@ -99,7 +100,8 @@ class GameSessionTrebekTest {
 
         GameSessionTimerModes allAutomatic = new GameSessionTimerModes(
                 TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC,
-                TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC);
+                TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC, TimerMode.AUTOMATIC,
+                TimerMode.AUTOMATIC, TimerMode.AUTOMATIC);
         session.updateTimerModes(TREBEK, allAutomatic);
 
         assertEquals(allAutomatic, session.getTimerModes());
@@ -118,6 +120,7 @@ class GameSessionTrebekTest {
     @Test
     void start_givesControlToTheFirstPlayerAfterTrebek() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
         assertEquals(ANA, session.getPlayerChoosingClue());
@@ -126,6 +129,7 @@ class GameSessionTrebekTest {
     @Test
     void trebekDoesntPlay() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, washington.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -141,6 +145,7 @@ class GameSessionTrebekTest {
         GameSession classic = new GameSession(SessionCode.random(), session.getBoard());
         classic.addPlayer(new GameSessionPlayer(TREBEK, "Alex", PlayerTokens.generate()));
         classic.startGame(TREBEK);
+        classic.finishRoundIntro();
 
         InvalidGameActionException error = assertError(GameErrorCode.INVALID_STATE, () -> classic.advance(TREBEK));
         assertEquals("Only a Trebek host can do that!", error.getMessage());
@@ -154,6 +159,7 @@ class GameSessionTrebekTest {
     @Test
     void choosingAClue_waitsForTrebekToShowIt() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, washington.id());
 
         assertEquals(GameSessionState.CLUE_PICKED, session.getState());
@@ -167,15 +173,30 @@ class GameSessionTrebekTest {
     @Test
     void showingAPickedDailyDouble_startsTheWager() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, adams.id());
+        session.advance(TREBEK);
+
+        assertEquals(GameSessionState.REVEALING_DAILY_DOUBLE, session.getState());
         session.advance(TREBEK);
 
         assertEquals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, session.getState());
     }
 
     @Test
+    void trebek_canEndATitleCardEarly() {
+        session.startGame(TREBEK);
+
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        session.advance(TREBEK);
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+    }
+
+    @Test
     void trebek_canChooseForTheChooser_whoKeepsControl() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(TREBEK, france.id());
 
         assertEquals(GameSessionState.CLUE_PICKED, session.getState());
@@ -189,6 +210,7 @@ class GameSessionTrebekTest {
     @Test
     void advancingWhileChoosing_choosesTheTopClueForTheChooser() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.advance(TREBEK);
 
         assertEquals(GameSessionState.CLUE_PICKED, session.getState());
@@ -199,6 +221,7 @@ class GameSessionTrebekTest {
     @Test
     void returnClue_putsThePickedClueBack() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, washington.id());
         long phase = session.getPhaseNumber();
 
@@ -213,6 +236,7 @@ class GameSessionTrebekTest {
     @Test
     void returnClue_onlyWhileAClueIsPicked() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         assertError(GameErrorCode.INVALID_STATE, () -> session.returnClue(TREBEK));
     }
@@ -220,7 +244,9 @@ class GameSessionTrebekTest {
     @Test
     void trebek_canPlaceTheDailyDoubleWagerForTheChooser() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, adams.id());
+        session.advance(TREBEK);
         session.advance(TREBEK);
 
         assertError(GameErrorCode.INVALID_WAGER, () -> session.placeDailyDoubleWager(TREBEK, 5000));
@@ -357,6 +383,7 @@ class GameSessionTrebekTest {
     @Test
     void rule_onlyWhileAnswering() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         assertError(GameErrorCode.INVALID_STATE, () -> session.rule(TREBEK, true));
     }
@@ -364,6 +391,7 @@ class GameSessionTrebekTest {
     @Test
     void doubleJeopardy_aBareAnswerRuledCorrect_stillShowsWhatItMatched() {
         playOutTheJeopardyRound();
+        session.advance(TREBEK);
         session.chooseClue(session.getPlayerChoosingClue(), mars.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -391,6 +419,7 @@ class GameSessionTrebekTest {
     @Test
     void advance_movesThroughEveryPhaseOfAClue() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, washington.id());
 
         session.advance(TREBEK);
@@ -415,6 +444,7 @@ class GameSessionTrebekTest {
     @Test
     void adjustScore_changesTheScoreAndTheJoinScore() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         session.adjustScore(TREBEK, BEN, -300);
         assertEquals(-300, ben.getScore());
@@ -430,6 +460,7 @@ class GameSessionTrebekTest {
         assertError(GameErrorCode.INVALID_STATE, () -> session.adjustScore(TREBEK, ANA, 100));
 
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         assertError(GameErrorCode.PLAYER_NOT_FOUND, () -> session.adjustScore(TREBEK, 99L, 100));
         assertError(GameErrorCode.PLAYER_NOT_FOUND, () -> session.adjustScore(TREBEK, TREBEK, 100));
@@ -459,6 +490,7 @@ class GameSessionTrebekTest {
     @Test
     void pause_freezesTheTimeLeft_andResumeRestartsIt() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.startPhaseTimer(Duration.ofSeconds(30), 0);
 
         assertTrue(session.pause(TREBEK, Duration.ofSeconds(10).toNanos()));
@@ -475,6 +507,7 @@ class GameSessionTrebekTest {
     @Test
     void aPhaseStartedWhilePaused_keepsItsFullTime() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.pause(TREBEK, 0);
 
         session.startPhaseTimer(Duration.ofSeconds(10), Duration.ofSeconds(1).toNanos());
@@ -485,6 +518,7 @@ class GameSessionTrebekTest {
     @Test
     void actionsStillWorkWhilePaused() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.pause(TREBEK, 0);
 
         session.chooseClue(ANA, washington.id());
@@ -526,7 +560,6 @@ class GameSessionTrebekTest {
         assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
         assertEquals(List.of(BEN, ANA), session.getRevealOrder());
         assertEquals(FinalRevealStep.HIDDEN, session.getRevealStep(BEN));
-        assertEquals(7, session.getRevealStepCount());
 
         session.advance(TREBEK);
         assertEquals(FinalRevealStep.WAGER, session.getRevealStep(BEN));
@@ -603,6 +636,7 @@ class GameSessionTrebekTest {
     @Test
     void trebekLeavingDuringTheGame_endsIt() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
 
         session.leave(TREBEK);
 
@@ -648,6 +682,7 @@ class GameSessionTrebekTest {
         started.addPlayer(new GameSessionPlayer(ANA, "Ana", PlayerTokens.generate()));
         started.updateHostMode(TREBEK, HostMode.TREBEK);
         started.startGame(TREBEK);
+        started.finishRoundIntro();
         started.chooseClue(ANA, washington.id());
 
         started.leave(ANA);
@@ -669,6 +704,7 @@ class GameSessionTrebekTest {
     @Test
     void trebekBeingAway_doesntStopTheGame() {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.setAway(TREBEK, true);
 
         session.chooseClue(ANA, washington.id());
@@ -682,6 +718,7 @@ class GameSessionTrebekTest {
 
     private void buzzIn(Long playerId, BoardClue clue) {
         session.startGame(TREBEK);
+        session.finishRoundIntro();
         session.chooseClue(ANA, clue.id());
         session.advance(TREBEK);
         session.advance(TREBEK);
@@ -697,6 +734,7 @@ class GameSessionTrebekTest {
         session.advance(TREBEK);
 
         session.chooseClue(ANA, adams.id());
+        session.advance(TREBEK);
         session.advance(TREBEK);
         session.placeDailyDoubleWager(ANA, 200);
         session.advance(TREBEK);
@@ -715,14 +753,14 @@ class GameSessionTrebekTest {
         assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
     }
 
-    // Double Jeopardy's clue goes unanswered.
+    // Double Jeopardy's clue goes unanswered: its title card, the clue
+    // chosen, shown, revealed, nobody buzzing, the answer revealed, then
+    // Final Jeopardy's title card.
     private void playToFinalJeopardy() {
         playOutTheJeopardyRound();
-        session.advance(TREBEK);
-        session.advance(TREBEK);
-        session.advance(TREBEK);
-        session.advance(TREBEK);
-        session.advance(TREBEK);
+        for (int step = 0; step < 7; step++) {
+            session.advance(TREBEK);
+        }
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
         assertEquals(400, ana.getScore());

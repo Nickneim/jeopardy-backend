@@ -91,7 +91,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void updateSettings_changesOnlyTheTimerModesItNames() {
         service.updateSettings(as(trebek), new SessionSettingsRequest(null, null,
-                new SessionTimerModesRequest(null, TimerMode.AUTOMATIC, null, null, null, null, null, null, null)));
+                new SessionTimerModesRequest(null, TimerMode.AUTOMATIC, null, null, null, null, null, null, null, null, null)));
 
         assertEquals(TimerMode.AUTOMATIC, session.getTimerModes().clueReveal());
         assertEquals(TimerMode.TREBEK, session.getTimerModes().answerReveal());
@@ -101,6 +101,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void phasesWaitingForTrebek_haveNoTimer_andAutomaticOnesDo() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         service.chooseClue(as(ana), CLUE_ID);
 
         assertEquals(GameSessionState.CLUE_PICKED, session.getState());
@@ -125,6 +126,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void theAnswerTimer_endsInARuling_neverInAScore() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         service.chooseClue(as(ana), CLUE_ID);
         service.advance(as(trebek));
         service.advance(as(trebek));
@@ -141,6 +143,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void pause_cancelsTheTimer_andResumeArmsItWithTheTimeLeft() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(30)), any());
         clearInvocations(timer, broadcaster);
 
@@ -167,6 +170,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void aPhaseThatStartsWhilePaused_isNotArmedUntilResumed() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         service.pause(as(trebek));
         service.chooseClue(as(ana), CLUE_ID);
         service.advance(as(trebek));
@@ -186,6 +190,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void aTimerThatFiresAfterThePause_doesNothing() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         Runnable clueChoiceTimeout = scheduled(Duration.ofSeconds(30));
 
         service.pause(as(trebek));
@@ -195,23 +200,23 @@ class GameSessionServiceTrebekTest {
     }
 
     @Test
-    void automaticFinalJeopardyReveal_splitsItsTimeOverEveryStep() {
+    void automaticFinalJeopardyReveal_splitsEachPlayersTimeOverTheirSteps() {
         service.updateSettings(as(trebek), new SessionSettingsRequest(null, null,
-                new SessionTimerModesRequest(null, null, null, null, null, null, null, null, TimerMode.AUTOMATIC)));
+                new SessionTimerModesRequest(null, null, null, null, null, null, null, null, TimerMode.AUTOMATIC, null, null)));
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         service.chooseClue(as(ana), CLUE_ID);
-        service.advance(as(trebek));
-        service.advance(as(trebek));
-        service.advance(as(trebek));
-        service.advance(as(trebek));
-        service.advance(as(trebek));
+        // Through the clue, Final Jeopardy's title card, wagering.
+        for (int step = 0; step < 6; step++) {
+            service.advance(as(trebek));
+        }
         clearInvocations(timer);
 
         service.advance(as(trebek));
 
-        // Two players: 3 steps each, then the end, over the default 10 s.
+        // Each player's 3 steps share the default 10 s.
         assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
-        Duration step = Duration.ofSeconds(10).dividedBy(7);
+        Duration step = Duration.ofSeconds(10).dividedBy(3);
         Runnable firstStep = scheduled(step);
 
         firstStep.run();
@@ -235,6 +240,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void trebekLeavingDuringTheGame_closesTheSession() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         PlayerPrincipal trebekPrincipal = as(trebek);
 
         service.leave(trebekPrincipal);
@@ -258,6 +264,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void theLastContestantLeavingTheGame_closesIt() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         service.leave(as(ben));
         service.leave(as(ana));
 
@@ -277,6 +284,7 @@ class GameSessionServiceTrebekTest {
     @Test
     void everyoneAway_includesTrebek() {
         service.startGame(as(trebek));
+        service.finishRoundIntro(session.getId());
         session.setAway(ana.getId(), true);
         session.setAway(ben.getId(), true);
         session.setAway(trebek.getId(), false);

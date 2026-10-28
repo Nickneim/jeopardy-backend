@@ -25,6 +25,16 @@ public final class TestGameSessions {
         service.removeSession(sessionId);
     }
 
+    /** Ends the round's title card now instead of on its timer. */
+    public static void finishRoundIntro(GameSessionService service, SessionCode sessionId) {
+        service.finishRoundIntro(sessionId);
+    }
+
+    /** Ends the Daily Double announcement now instead of on its timer. */
+    public static void finishRevealingDailyDouble(GameSessionService service, SessionCode sessionId) {
+        service.finishRevealingDailyDouble(sessionId);
+    }
+
     /** Ends the clue reveal now instead of on its timer. */
     public static void finishRevealingClue(GameSessionService service, SessionCode sessionId) {
         service.finishRevealingClue(sessionId);

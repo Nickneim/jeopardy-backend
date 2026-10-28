@@ -311,6 +311,7 @@ class GameSessionServiceTest {
         GameSession old = gameSessionService.createSession(id, createBoard());
         GameSessionPlayer oldPlayer = gameSessionService.joinSession(id, "Nico");
         gameSessionService.startGame(player(id, oldPlayer.getId()));
+        gameSessionService.finishRoundIntro(id);
         Runnable oldTimeout = captureScheduledRunnable(old, clueChoice);
         long armedTimerId = old.getPhaseTimerId();
         gameSessionService.leave(player(id, oldPlayer.getId()));
@@ -318,6 +319,7 @@ class GameSessionServiceTest {
         GameSession current = gameSessionService.createSession(id, createBoard());
         GameSessionPlayer player = gameSessionService.joinSession(id, "John");
         gameSessionService.startGame(player(id, player.getId()));
+        gameSessionService.finishRoundIntro(id);
         assertEquals(armedTimerId, current.getPhaseTimerId());
         clearInvocations(timer, broadcaster);
 
@@ -477,7 +479,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(3)),
+                eq(Duration.ofSeconds(8)),
                 any(Runnable.class)
         );
     }
@@ -546,7 +548,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(3)),
+                eq(Duration.ofSeconds(8)),
                 any(Runnable.class)
         );
     }
@@ -606,6 +608,7 @@ class GameSessionServiceTest {
         GameSession session = createSessionWithPlayers(1);
 
         gameSessionService.startGame(player(session.getId(), getFirstPlayerId(session)));
+        gameSessionService.finishRoundIntro(session.getId());
 
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
         verify(timer).schedule(
@@ -619,6 +622,7 @@ class GameSessionServiceTest {
     void clueChoiceTimeout_choosesTheTopClueForTheChooserAndBroadcasts() {
         GameSession session = createSessionWithPlayers(1);
         gameSessionService.startGame(player(session.getId(), getFirstPlayerId(session)));
+        gameSessionService.finishRoundIntro(session.getId());
 
         Runnable clueChoiceTimeout =
                 captureScheduledRunnable(session, Duration.ofSeconds(30));
@@ -633,7 +637,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(3)),
+                eq(Duration.ofSeconds(8)),
                 any(Runnable.class)
         );
         verify(broadcaster).broadcast(session);
@@ -643,6 +647,7 @@ class GameSessionServiceTest {
     void staleClueChoiceTimeout_afterClueChosen_doesNothing() {
         GameSession session = createSessionWithPlayers(1);
         gameSessionService.startGame(player(session.getId(), getFirstPlayerId(session)));
+        gameSessionService.finishRoundIntro(session.getId());
 
         Runnable clueChoiceTimeout =
                 captureScheduledRunnable(session, Duration.ofSeconds(30));
@@ -834,6 +839,7 @@ class GameSessionServiceTest {
         gameSessionService.startGame(
                 player(session.getId(), getFirstPlayerId(session))
         );
+        gameSessionService.finishRoundIntro(session.getId());
 
         return session;
     }
@@ -867,6 +873,7 @@ class GameSessionServiceTest {
         gameSessionService.startGame(
                 player(session.getId(), getFirstPlayerId(session))
         );
+        gameSessionService.finishRoundIntro(session.getId());
 
         gameSessionService.chooseClue(
                 player(session.getId(), getFirstPlayerId(session)),
@@ -930,6 +937,7 @@ class GameSessionServiceTest {
         gameSessionService.startGame(
                 player(session.getId(), getFirstPlayerId(session))
         );
+        gameSessionService.finishRoundIntro(session.getId());
 
         Long player1 = session.getPlayers().get(0).getId();
         Long player2 = session.getPlayers().get(1).getId();
@@ -1005,7 +1013,7 @@ class GameSessionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void chooseClue_onDailyDouble_schedulesWagerTimeout() {
+    void chooseClue_onDailyDouble_announcesItThenSchedulesWagerTimeout() {
         GameSession session = createStartedSessionWithDailyDouble();
 
         clearInvocations(timer, broadcaster);
@@ -1014,6 +1022,13 @@ class GameSessionServiceTest {
                 player(session.getId(), getFirstPlayerId(session)),
                 DAILY_DOUBLE_CLUE_ID
         );
+
+        assertEquals(GameSessionState.REVEALING_DAILY_DOUBLE, session.getState());
+        Runnable announcementEnds = captureScheduledRunnable(session, Duration.ofSeconds(6));
+        verify(broadcaster).broadcast(session);
+        clearInvocations(timer, broadcaster);
+
+        announcementEnds.run();
 
         assertEquals(
                 GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
@@ -1025,6 +1040,23 @@ class GameSessionServiceTest {
                 eq(Duration.ofSeconds(30)),
                 any(Runnable.class)
         );
+        verify(broadcaster).broadcast(session);
+    }
+
+    @Test
+    void startGame_showsTheTitleCard_thenSchedulesClueChoice() {
+        GameSession session = createSessionWithPlayers(1);
+
+        gameSessionService.startGame(player(session.getId(), getFirstPlayerId(session)));
+
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        Runnable introEnds = captureScheduledRunnable(session, Duration.ofSeconds(6));
+        clearInvocations(timer, broadcaster);
+
+        introEnds.run();
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(30)), any(Runnable.class));
         verify(broadcaster).broadcast(session);
     }
 
@@ -1046,7 +1078,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(3)),
+                eq(Duration.ofSeconds(8)),
                 any(Runnable.class)
         );
         verify(broadcaster).broadcast(session);
@@ -1096,6 +1128,7 @@ class GameSessionServiceTest {
                 player(session.getId(), getFirstPlayerId(session)),
                 DAILY_DOUBLE_CLUE_ID
         );
+        gameSessionService.finishRevealingDailyDouble(session.getId());
 
         Runnable wagerTimeout =
                 captureScheduledRunnable(session, Duration.ofSeconds(30));
@@ -1115,7 +1148,7 @@ class GameSessionServiceTest {
 
         verify(timer).schedule(
                 eq(session.getId()),
-                eq(Duration.ofSeconds(3)),
+                eq(Duration.ofSeconds(8)),
                 any(Runnable.class)
         );
         verify(broadcaster).broadcast(session);
@@ -1133,7 +1166,7 @@ class GameSessionServiceTest {
         );
 
         Runnable clueRevealTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(3));
+                captureScheduledRunnable(session, Duration.ofSeconds(8));
 
         clearInvocations(timer, broadcaster);
 
@@ -1239,7 +1272,7 @@ class GameSessionServiceTest {
         );
 
         Runnable answerRevealTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(3));
+                captureScheduledRunnable(session, Duration.ofSeconds(8));
 
         clearInvocations(timer, broadcaster);
 
@@ -1266,6 +1299,7 @@ class GameSessionServiceTest {
                 player(session.getId(), getFirstPlayerId(session)),
                 DAILY_DOUBLE_CLUE_ID
         );
+        gameSessionService.finishRevealingDailyDouble(session.getId());
 
         Runnable staleWagerTimeout =
                 captureScheduledRunnable(session, Duration.ofSeconds(30));
@@ -1341,6 +1375,7 @@ class GameSessionServiceTest {
         Long first = session.getPlayers().get(0).getId();
         Long second = session.getPlayers().get(1).getId();
         gameSessionService.startGame(player(session.getId(), first));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), first), CLUE_ID);
         clearInvocations(timer, broadcaster);
         gameSessionService.finishRevealingClue(session.getId());
@@ -1368,6 +1403,7 @@ class GameSessionServiceTest {
         GameSession session = createSessionWithPlayers(2);
         Long first = session.getPlayers().get(0).getId();
         gameSessionService.startGame(player(session.getId(), first));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), first), CLUE_ID);
         gameSessionService.finishRevealingClue(session.getId());
         gameSessionService.buzz(player(session.getId(), first));
@@ -1393,7 +1429,7 @@ class GameSessionServiceTest {
         );
 
         Runnable clueRevealTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(3));
+                captureScheduledRunnable(session, Duration.ofSeconds(8));
 
         gameSessionService.removeSession(session.getId());
         clearInvocations(timer, broadcaster);
@@ -1436,6 +1472,7 @@ class GameSessionServiceTest {
         gameSessionService.startGame(
                 player(session.getId(), getFirstPlayerId(session))
         );
+        gameSessionService.finishRoundIntro(session.getId());
 
         return session;
     }
@@ -1447,6 +1484,7 @@ class GameSessionServiceTest {
                 player(session.getId(), getFirstPlayerId(session)),
                 DAILY_DOUBLE_CLUE_ID
         );
+        gameSessionService.finishRevealingDailyDouble(session.getId());
 
         return session;
     }
@@ -1521,9 +1559,21 @@ class GameSessionServiceTest {
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
         verify(broadcaster).broadcast(session);
-        Runnable revealTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(10));
 
+        // The only player's wager, answer and award share their 10 s, then
+        // one more step ends the game.
+        Duration revealStep = Duration.ofSeconds(10).dividedBy(3);
+        for (int step = 0; step < 3; step++) {
+            Runnable revealTimeout = captureScheduledRunnable(session, revealStep);
+            clearInvocations(timer, broadcaster);
+
+            revealTimeout.run();
+
+            assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
+            verify(broadcaster).broadcast(session);
+        }
+        assertEquals(200 + 150, session.getPlayers().getFirst().getScore());
+        Runnable revealTimeout = captureScheduledRunnable(session, revealStep);
         clearInvocations(timer, broadcaster);
 
         revealTimeout.run();
@@ -1588,14 +1638,16 @@ class GameSessionServiceTest {
         session.addPlayer(new GameSessionPlayer(PLAYER_ID, "Player 1", PlayerTokens.generate()));
 
         gameSessionService.startGame(player(session.getId(), PLAYER_ID));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), PLAYER_ID), CLUE_ID);
         gameSessionService.finishRevealingClue(session.getId());
         gameSessionService.buzz(player(session.getId(), PLAYER_ID));
         gameSessionService.answerClue(player(session.getId(), PLAYER_ID), "Correct answer");
 
+        gameSessionService.finishRevealingAnswer(session.getId());
         clearInvocations(timer, broadcaster);
 
-        gameSessionService.finishRevealingAnswer(session.getId());
+        gameSessionService.finishRoundIntro(session.getId());
 
         return session;
     }
@@ -1625,6 +1677,9 @@ class GameSessionServiceTest {
 
         gameSessionService.startGame(player(session.getId(), getFirstPlayerId(session)));
         assertEquals(2, session.getVersion());
+
+        gameSessionService.finishRoundIntro(session.getId());
+        assertEquals(3, session.getVersion());
     }
 
     @Test
@@ -1654,13 +1709,13 @@ class GameSessionServiceTest {
         long before = System.nanoTime();
         gameSessionService.chooseClue(player(session.getId(), getFirstPlayerId(session)), CLUE_ID);
 
-        assertEquals(Duration.ofSeconds(3), session.getPhaseDuration());
+        assertEquals(Duration.ofSeconds(8), session.getPhaseDuration());
         Duration remaining = session.getPhaseRemaining(before);
-        assertTrue(remaining.compareTo(Duration.ofSeconds(3)) >= 0, remaining.toString());
+        assertTrue(remaining.compareTo(Duration.ofSeconds(8)) >= 0, remaining.toString());
 
         GameSessionResponse state = gameSessionService.getSessionState(session.getId());
-        assertEquals(3000L, state.phaseDurationMs());
-        assertTrue(state.phaseRemainingMs() > 0 && state.phaseRemainingMs() <= 3000, state.toString());
+        assertEquals(8000L, state.phaseDurationMs());
+        assertTrue(state.phaseRemainingMs() > 0 && state.phaseRemainingMs() <= 8000, state.toString());
     }
 
     @Test
@@ -1688,9 +1743,13 @@ class GameSessionServiceTest {
         clearInvocations(timer);
         answerTimeout.run();
 
-        Runnable revealTimeout =
-                captureScheduledRunnable(session, Duration.ofSeconds(10));
-        revealTimeout.run();
+        // One player: three reveal steps, then the end of the game.
+        for (int step = 0; step < 4; step++) {
+            Runnable revealTimeout =
+                    captureScheduledRunnable(session, Duration.ofSeconds(10).dividedBy(3));
+            clearInvocations(timer);
+            revealTimeout.run();
+        }
 
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
         assertNull(session.getPhaseDuration());
@@ -1789,6 +1848,7 @@ class GameSessionServiceTest {
     void leavingWithoutChangingTheState_keepsThePhaseTimerRunning() {
         GameSession session = createSessionWithPlayers(3);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), 1L), CLUE_ID);
         gameSessionService.finishRevealingClue(session.getId());
         clearInvocations(timer, broadcaster);
@@ -1804,6 +1864,7 @@ class GameSessionServiceTest {
     void leavingThatEndsTheBuzzing_schedulesTheAnswerReveal() {
         GameSession session = createSessionWithPlayers(2);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), 1L), CLUE_ID);
         gameSessionService.finishRevealingClue(session.getId());
         gameSessionService.buzz(player(session.getId(), 2L));
@@ -1814,7 +1875,7 @@ class GameSessionServiceTest {
         gameSessionService.leave(player(session.getId(), 1L));
 
         assertEquals(GameSessionState.REVEALING_ANSWER, session.getState());
-        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(3)), any(Runnable.class));
+        verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(8)), any(Runnable.class));
         verify(broadcaster).broadcast(session);
     }
 
@@ -1823,6 +1884,7 @@ class GameSessionServiceTest {
         GameSession session = createSession();
         GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
         gameSessionService.startGame(player(session.getId(), player.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
 
         assertClosedOnNextBroadcast(session, SessionCloseReason.ABANDONED);
         clearInvocations(timer);
@@ -1845,6 +1907,7 @@ class GameSessionServiceTest {
         GameSessionPlayer chooser = gameSessionService.joinSession(session.getId(), "Nico");
         GameSessionPlayer other = gameSessionService.joinSession(session.getId(), "John");
         gameSessionService.startGame(player(session.getId(), chooser.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), chooser.getId()), CLUE_ID);
         gameSessionService.leave(player(session.getId(), chooser.getId()));
 
@@ -1860,6 +1923,7 @@ class GameSessionServiceTest {
     void chooserLeavingWhileChoosing_givesTheNewChooserTheFullTime() {
         GameSession session = createSessionWithPlayers(2);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         clearInvocations(timer, broadcaster);
 
         gameSessionService.leave(player(session.getId(), 1L));
@@ -1878,6 +1942,7 @@ class GameSessionServiceTest {
     void lastConnectionClosing_marksThePlayerAway_withoutTouchingThePhaseTimer() {
         GameSession session = createSessionWithPlayers(2);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         clearInvocations(timer, broadcaster);
         PlayerPrincipal second = PlayerPrincipal.of(session, 2L);
         when(connections.isConnected(second)).thenReturn(false);
@@ -1911,6 +1976,7 @@ class GameSessionServiceTest {
     void everyoneAway_closesTheSessionAfterTheGracePeriod() {
         GameSession session = createSessionWithPlayers(2);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         goAway(session, 1L);
         verify(timer, never()).scheduleAbandonment(any(), any(), any());
 
@@ -1927,6 +1993,7 @@ class GameSessionServiceTest {
     void someoneComingBack_cancelsTheGracePeriod() {
         GameSession session = createSessionWithPlayers(2);
         gameSessionService.startGame(player(session.getId(), 1L));
+        gameSessionService.finishRoundIntro(session.getId());
         goAway(session, 1L);
         goAway(session, 2L);
         Runnable abandonment = captureAbandonment(session);
@@ -1953,6 +2020,7 @@ class GameSessionServiceTest {
         assertTrue(player.isAway());
 
         gameSessionService.startGame(player(session.getId(), player.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
 
         captureAbandonment(session);
         clearInvocations(timer);
@@ -2006,10 +2074,11 @@ class GameSessionServiceTest {
         GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
         gameSessionService.updateTimers(
                 player(session.getId(), player.getId()),
-                new SessionTimersRequest(45_000L, null, null, null, null, null, null, null, null)
+                new SessionTimersRequest(45_000L, null, null, null, null, null, null, null, null, null, null)
         );
 
         gameSessionService.startGame(player(session.getId(), player.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
 
         verify(timer).schedule(eq(session.getId()), eq(Duration.ofSeconds(45)), any(Runnable.class));
     }
@@ -2022,7 +2091,7 @@ class GameSessionServiceTest {
 
         gameSessionService.updateTimers(
                 player(session.getId(), host.getId()),
-                new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null)
+                new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null, null, null)
         );
 
         assertEquals(Duration.ofSeconds(4), session.getTimeouts().buzzer());
@@ -2042,7 +2111,7 @@ class GameSessionServiceTest {
                 InvalidGameActionException.class,
                 () -> gameSessionService.updateTimers(
                         player(session.getId(), other.getId()),
-                        new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null)
+                        new SessionTimersRequest(null, null, null, 4_000L, null, null, null, null, null, null, null)
                 )
         );
 
@@ -2107,7 +2176,7 @@ class GameSessionServiceTest {
 
         // Even if it fires anyway, a game in progress is never cleaned up.
         staleCleanup.run();
-        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
     }
 
     @Test
@@ -2151,6 +2220,7 @@ class GameSessionServiceTest {
         );
         GameSessionPlayer player = gameSessionService.joinSession(session.getId(), "Nico");
         gameSessionService.startGame(player(session.getId(), player.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
         gameSessionService.chooseClue(player(session.getId(), player.getId()), CLUE_ID);
         gameSessionService.finishRevealingClue(session.getId());
         gameSessionService.buzz(player(session.getId(), player.getId()));
@@ -2183,6 +2253,7 @@ class GameSessionServiceTest {
         GameSession finished = createSession();
         finished.addPlayer("Nico", PlayerTokens.generate());
         finished.startGame(1L);
+        finished.finishRoundIntro();
         finished.timeoutChoosingClue();
         finished.finishRevealingClue();
         finished.timeoutBuzzer();
@@ -2209,6 +2280,7 @@ class GameSessionServiceTest {
         gameSessionService.joinSession(session.getId(), "John");
         gameSessionService.joinSession(session.getId(), "Ana");
         gameSessionService.startGame(player(session.getId(), host.getId()));
+        gameSessionService.finishRoundIntro(session.getId());
         // The chooser stays (leaving) until someone else takes control.
         gameSessionService.leave(player(session.getId(), host.getId()));
 

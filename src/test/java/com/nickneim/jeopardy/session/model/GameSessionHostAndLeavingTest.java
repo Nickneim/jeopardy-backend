@@ -72,6 +72,7 @@ class GameSessionHostAndLeavingTest {
         assertEquals(GameSessionState.WAITING_FOR_START, session.getState());
 
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
         assertEquals(ana.getId(), session.getPlayerChoosingClue());
@@ -96,6 +97,7 @@ class GameSessionHostAndLeavingTest {
 
         assertEquals(cy.getId(), session.getHostPlayerId());
         session.startGame(cy.getId());
+        session.finishRoundIntro();
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
     }
 
@@ -120,6 +122,7 @@ class GameSessionHostAndLeavingTest {
     void newHost_canStartAndChoosesFirst() {
         session.leave(ana.getId());
         session.startGame(ben.getId());
+        session.finishRoundIntro();
 
         assertEquals(ben.getId(), session.getPlayerChoosingClue());
     }
@@ -127,6 +130,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void hostLeavingMidGame_passesHostAtOnce_evenWhileStillChoosing() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         session.leave(ana.getId());
 
@@ -174,6 +178,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void kickingAPlayerWhoAlreadyLeft_isRejected() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
         session.leave(ben.getId());
 
@@ -195,6 +200,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void playerWhoLeft_cantLeaveAgainOrAct() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.leave(ana.getId());
 
         assertError(GameErrorCode.PLAYER_NOT_IN_SESSION, () -> session.leave(ana.getId()));
@@ -227,6 +233,7 @@ class GameSessionHostAndLeavingTest {
                 new BoardCategory("HISTORY", List.of(HISTORY_200))
         )))));
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
         session.answerClue(ben.getId(), HISTORY_200.answer());
         session.finishRevealingAnswer();
@@ -252,7 +259,9 @@ class GameSessionHostAndLeavingTest {
         session.leave(ana.getId());
         assertTrue(session.getFinalJeopardy().hasAnswer(ana.getId()));
 
-        session.finishFinalJeopardyReveal();
+        while (session.getState() == GameSessionState.FINAL_JEOPARDY_REVEALING) {
+            session.timeoutFinalJeopardyReveal();
+        }
 
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
         assertTrue(session.getPlayers().contains(ana));
@@ -266,6 +275,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void leavingWithoutARole_removesThePlayerAtOnce() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         session.leave(cy.getId());
 
@@ -275,6 +285,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void playerWhoLeftWithoutARole_takesTheirAnswersWithThem() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, cy);
         session.answerClue(cy.getId(), "Wrong");
         session.buzz(ben.getId());
@@ -288,6 +299,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void lastPlayerWhoCouldBuzzLeaving_revealsTheAnswer() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
         session.answerClue(ben.getId(), "Wrong");
         session.buzz(ana.getId());
@@ -307,6 +319,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void leavingWhileAnswering_keepsThePlayerUntilTheAnswerTimesOut() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
 
         session.leave(ben.getId());
@@ -327,6 +340,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void departingBuzzersRemoval_letsTheOthersStillBuzz() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
         session.leave(ben.getId());
         session.timeoutAnswer();
@@ -341,6 +355,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void departingBuzzerWhoWasTheLastToBuzz_endsTheClue() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ana);
         session.answerClue(ana.getId(), "Wrong");
         session.buzz(cy.getId());
@@ -361,6 +376,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void leavingWhileChoosing_handsControlToTheLowestScoreAtOnce() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         chooseAndBuzz(HISTORY_200, ben);
         session.answerClue(ben.getId(), "Wrong");
         session.buzz(cy.getId());
@@ -379,6 +395,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void leavingWhileChoosing_onATie_handsControlToTheLowestId() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         session.leave(ana.getId());
 
@@ -389,6 +406,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void departedChooser_cantBuzz_andLosesControlWhenTheClueEnds() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), HISTORY_200.id());
         session.finishRevealingClue();
 
@@ -417,6 +435,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void departedChooser_losesControlToACorrectAnswer() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), HISTORY_200.id());
         session.finishRevealingClue();
         session.leave(ana.getId());
@@ -431,7 +450,9 @@ class GameSessionHostAndLeavingTest {
     @Test
     void departedChooser_keepsControlThroughADailyDouble() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), SCIENCE_DAILY_DOUBLE.id());
+        session.finishRevealingDailyDouble();
 
         session.leave(ana.getId());
 
@@ -461,6 +482,7 @@ class GameSessionHostAndLeavingTest {
                 new BoardRound(GameRound.FINAL_JEOPARDY, List.of(new BoardCategory("FINAL", List.of(FINAL))))
         )));
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), HISTORY_200.id());
         session.finishRevealingClue();
         session.leave(ana.getId());
@@ -468,9 +490,14 @@ class GameSessionHostAndLeavingTest {
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
 
-        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+        // Nobody chooses from Final Jeopardy's title card on, so Ana goes now.
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
         assertEquals(List.of(ben, cy), session.getPlayers());
         assertNull(session.getPlayerChoosingClue());
+
+        session.finishRoundIntro();
+
+        assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
     }
 
     @Test
@@ -479,6 +506,7 @@ class GameSessionHostAndLeavingTest {
                 new BoardCategory("HISTORY", List.of(HISTORY_200))
         )))));
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), HISTORY_200.id());
         session.finishRevealingClue();
         session.leave(ana.getId());
@@ -531,7 +559,8 @@ class GameSessionHostAndLeavingTest {
         GameSessionTimeouts faster = new GameSessionTimeouts(
                 Duration.ofSeconds(10), Duration.ofSeconds(1), Duration.ofSeconds(10),
                 Duration.ofSeconds(5), Duration.ofSeconds(3), Duration.ofSeconds(1),
-                Duration.ofSeconds(10), Duration.ofSeconds(10), Duration.ofSeconds(5)
+                Duration.ofSeconds(10), Duration.ofSeconds(10), Duration.ofSeconds(5),
+                Duration.ofSeconds(2), Duration.ofSeconds(2)
         );
 
         session.updateTimeouts(ana.getId(), faster);
@@ -550,6 +579,7 @@ class GameSessionHostAndLeavingTest {
     @Test
     void timersCantChangeOnceTheGameHasStarted() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertError(
                 GameErrorCode.INVALID_STATE,
@@ -600,14 +630,17 @@ class GameSessionHostAndLeavingTest {
 
     private void reachFinalJeopardy() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         playWithoutBuzz(HISTORY_200);
         playWithoutBuzz(HISTORY_400);
         playWithoutBuzz(SCIENCE_200);
         session.chooseClue(ana.getId(), SCIENCE_DAILY_DOUBLE.id());
+        session.finishRevealingDailyDouble();
         session.timeoutDailyDoubleWager();
         session.finishRevealingClue();
         session.answerClue(ana.getId(), SCIENCE_DAILY_DOUBLE.answer());
         session.finishRevealingAnswer();
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
     }

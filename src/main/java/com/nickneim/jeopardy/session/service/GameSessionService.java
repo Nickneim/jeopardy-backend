@@ -465,8 +465,24 @@ public class GameSessionService {
         }
     }
 
-    // For tests, through TestGameSessions: real reveals end on their timers.
-    // Each does nothing outside its reveal.
+    // For tests, through TestGameSessions: real reveals and title cards end
+    // on their timers. Each does nothing outside its phase.
+    void finishRoundIntro(SessionCode sessionId) {
+        mutate(
+                getSession(sessionId),
+                session -> session.getState() == GameSessionState.ROUND_INTRO,
+                GameSession::finishRoundIntro
+        );
+    }
+
+    void finishRevealingDailyDouble(SessionCode sessionId) {
+        mutate(
+                getSession(sessionId),
+                session -> session.getState() == GameSessionState.REVEALING_DAILY_DOUBLE,
+                GameSession::finishRevealingDailyDouble
+        );
+    }
+
     void finishRevealingClue(SessionCode sessionId) {
         mutate(
                 getSession(sessionId),
@@ -699,8 +715,8 @@ public class GameSessionService {
      * The timer of the session's current phase, or null if it has none: in
      * a Trebek session, also a phase whose timer mode is TREBEK (it waits
      * for Trebek's advance), and the Final Jeopardy reveal while it waits for
-     * a ruling. There, each reveal step gets an even share of the reveal's
-     * duration.
+     * a ruling. Each Final Jeopardy reveal step is a phase of its own, with
+     * an even share of the reveal's duration, which is per player.
      */
     private PhaseTimeout phaseTimeout(GameSession session) {
         GameSessionTimeouts timeouts = session.getTimeouts();
@@ -712,6 +728,9 @@ public class GameSessionService {
         }
 
         return switch (state) {
+            case ROUND_INTRO -> new PhaseTimeout(timeouts.roundIntro(), GameSession::finishRoundIntro);
+            case REVEALING_DAILY_DOUBLE ->
+                    new PhaseTimeout(timeouts.dailyDoubleReveal(), GameSession::finishRevealingDailyDouble);
             case CHOOSING_CLUE -> new PhaseTimeout(timeouts.clueChoice(), GameSession::timeoutChoosingClue);
             case REVEALING_CLUE -> new PhaseTimeout(timeouts.clueReveal(), GameSession::finishRevealingClue);
             case WAITING_FOR_BUZZER -> new PhaseTimeout(timeouts.buzzer(), GameSession::timeoutBuzzer);
@@ -724,13 +743,10 @@ public class GameSessionService {
             case FINAL_JEOPARDY_ANSWERING ->
                     new PhaseTimeout(timeouts.finalJeopardyAnswer(), GameSession::timeoutFinalJeopardyAnswering);
             case FINAL_JEOPARDY_REVEALING -> {
-                if (!trebekSession) {
-                    yield new PhaseTimeout(timeouts.finalJeopardyReveal(), GameSession::timeoutFinalJeopardyReveal);
-                }
                 if (session.isRevealWaitingForRuling()) {
                     yield null;
                 }
-                Duration step = timeouts.finalJeopardyReveal().dividedBy(session.getRevealStepCount());
+                Duration step = timeouts.finalJeopardyReveal().dividedBy(GameSession.REVEAL_STEPS_PER_PLAYER);
                 yield new PhaseTimeout(step, GameSession::timeoutFinalJeopardyReveal);
             }
             // No timeout for these states: they wait for a player or Trebek.

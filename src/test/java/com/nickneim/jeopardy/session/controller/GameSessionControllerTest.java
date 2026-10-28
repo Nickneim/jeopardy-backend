@@ -687,14 +687,16 @@ class GameSessionControllerTest {
                 .andExpect(jsonPath("$.closeReason").isEmpty())
                 .andExpect(jsonPath("$.players[1].leaving").value(false))
                 .andExpect(jsonPath("$.timers.clueChoiceMs").value(30000))
-                .andExpect(jsonPath("$.timers.clueRevealMs").value(3000))
+                .andExpect(jsonPath("$.timers.clueRevealMs").value(8000))
                 .andExpect(jsonPath("$.timers.dailyDoubleWagerMs").value(30000))
                 .andExpect(jsonPath("$.timers.buzzerMs").value(10000))
                 .andExpect(jsonPath("$.timers.answerMs").value(15000))
-                .andExpect(jsonPath("$.timers.answerRevealMs").value(3000))
+                .andExpect(jsonPath("$.timers.answerRevealMs").value(8000))
                 .andExpect(jsonPath("$.timers.finalJeopardyWagerMs").value(30000))
                 .andExpect(jsonPath("$.timers.finalJeopardyAnswerMs").value(30000))
-                .andExpect(jsonPath("$.timers.finalJeopardyRevealMs").value(10000));
+                .andExpect(jsonPath("$.timers.finalJeopardyRevealMs").value(10000))
+                .andExpect(jsonPath("$.timers.roundIntroMs").value(6000))
+                .andExpect(jsonPath("$.timers.dailyDoubleRevealMs").value(6000));
     }
 
     @Test

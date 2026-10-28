@@ -16,9 +16,9 @@ import java.util.List;
  * shown. {@code phrasedAsQuestion} is also null for a player who didn't
  * answer, and the last two are only set for a correct answer.
  *
- * <p>In a Trebek session the reveal goes one player at a time, and
- * {@code revealStep} says how far this player's has got: the wager, then
- * the answer, then the result (Trebek's ruling). It's null otherwise.
+ * <p>The reveal goes one player at a time, and {@code revealStep} says how
+ * far this player's has got: the wager, then the answer, then the result
+ * (Trebek's ruling in a Trebek session). It's null before the reveal.
  */
 public record FinalJeopardyPlayerResponse(
         Long playerId,
@@ -34,7 +34,7 @@ public record FinalJeopardyPlayerResponse(
         FinalRevealStep revealStep
 ) {
 
-    /** An entry of a contestant session, which has no reveal steps. */
+    /** An entry before the reveal, which has no reveal step yet. */
     public FinalJeopardyPlayerResponse(
             Long playerId,
             boolean hasWagered,
@@ -67,15 +67,12 @@ public record FinalJeopardyPlayerResponse(
         );
     }
 
-    /** Everything, from the reveal on. No answer counts as a wrong one. */
-    static FinalJeopardyPlayerResponse revealed(GameSessionPlayer player, FinalJeopardy finalJeopardy) {
-        return revealedUpTo(player, finalJeopardy, null);
-    }
-
     /**
-     * A Trebek session's reveal, as far as the player's has got: from
+     * The reveal, as far as the player's has got: from
      * {@link FinalRevealStep#WAGER} their wager, from {@code ANSWER} their
-     * answer, and once {@code AWARDED} whether Trebek ruled it correct.
+     * answer, and once {@code AWARDED} whether it was correct (as Trebek
+     * ruled, in a Trebek session; no answer counts as a wrong one). A null
+     * step shows everything.
      */
     static FinalJeopardyPlayerResponse revealedUpTo(GameSessionPlayer player, FinalJeopardy finalJeopardy, FinalRevealStep step) {
         Long playerId = player.getId();

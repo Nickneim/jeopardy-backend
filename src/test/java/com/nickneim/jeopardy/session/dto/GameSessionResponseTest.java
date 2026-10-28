@@ -57,6 +57,7 @@ class GameSessionResponseTest {
     @Test
     void board_showsCurrentRoundAsRectangularGrid() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
 
@@ -87,6 +88,7 @@ class GameSessionResponseTest {
     @Test
     void board_includesCategoryComments() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
 
@@ -102,6 +104,7 @@ class GameSessionResponseTest {
     @Test
     void board_marksChosenCluesAsPlayed() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow2.id());
 
         List<BoardCategoryResponse> board = GameSessionResponse.from(session).board();
@@ -119,6 +122,7 @@ class GameSessionResponseTest {
     @Test
     void board_followsTheCurrentRound() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         for (BoardClue clue : List.of(historyRow1, scienceRow1, scienceRow2)) {
             session.chooseClue(player.getId(), clue.id());
@@ -128,6 +132,7 @@ class GameSessionResponseTest {
         }
 
         session.chooseClue(player.getId(), historyRow3.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(player.getId(), 5);
         session.finishRevealingClue();
         session.answerClue(player.getId(), "John Adams");
@@ -157,6 +162,7 @@ class GameSessionResponseTest {
     @Test
     void serializedResponse_neverContainsQuestionsAnswersOrDailyDoubles() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         String json = JsonMapper.builder().build()
                 .writeValueAsString(GameSessionResponse.from(session));
@@ -169,8 +175,8 @@ class GameSessionResponseTest {
             assertFalse(json.contains(clue.question()), "leaked question: " + clue.question());
             assertFalse(json.contains(clue.answer()), "leaked answer: " + clue.answer());
         }
-        // timers.dailyDoubleWagerMs is a public setting, not a flag.
-        String withoutTimers = json.replace("\"dailyDoubleWagerMs\"", "");
+        // timers.dailyDoubleWagerMs and dailyDoubleRevealMs are public settings, not flags.
+        String withoutTimers = json.replace("\"dailyDoubleWagerMs\"", "").replace("\"dailyDoubleRevealMs\"", "");
         assertFalse(withoutTimers.toLowerCase().contains("dailydouble"), "leaked Daily Double flag: " + json);
     }
 
@@ -183,6 +189,7 @@ class GameSessionResponseTest {
         assertNull(GameSessionResponse.from(session).currentClue());
 
         session.startGame(player.getId());
+        session.finishRoundIntro();
         assertNull(GameSessionResponse.from(session).currentClue());
 
         session.chooseClue(player.getId(), scienceRow1.id());
@@ -196,6 +203,7 @@ class GameSessionResponseTest {
     @Test
     void currentClue_showsQuestionButNotAnswerWhileClueIsInPlay() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         CurrentClueResponse expected = new CurrentClueResponse(
                 scienceRow1.id(),
@@ -225,6 +233,7 @@ class GameSessionResponseTest {
     @Test
     void currentClue_showsAnswerWhenRevealingAnswer() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow1.id());
         session.finishRevealingClue();
         session.timeoutBuzzer();
@@ -238,7 +247,16 @@ class GameSessionResponseTest {
     @Test
     void currentClue_hidesDailyDoubleQuestionUntilWagerIsPlaced() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), historyRow3.id());
+
+        // Announced: it's a Daily Double, nothing more yet.
+        assertEquals(
+                new CurrentClueResponse(historyRow3.id(), 600, true, null, null, null, null, null, null, null, null, null),
+                GameSessionResponse.from(session).currentClue()
+        );
+
+        session.finishRevealingDailyDouble();
 
         assertEquals(
                 new CurrentClueResponse(historyRow3.id(), 600, true, null, 5, 600, null, null, null, null, null, null),
@@ -268,6 +286,7 @@ class GameSessionResponseTest {
         )));
         numberSession.addPlayer(player);
         numberSession.startGame(player.getId());
+        numberSession.finishRoundIntro();
         numberSession.chooseClue(player.getId(), numberClue.id());
 
         assertEquals(true, GameSessionResponse.from(numberSession).currentClue().numberExpected());
@@ -276,6 +295,7 @@ class GameSessionResponseTest {
     @Test
     void serializedResponse_whileAnswering_onlyContainsTheCurrentQuestion() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow1.id());
         session.finishRevealingClue();
         session.buzz(player.getId());
@@ -306,7 +326,9 @@ class GameSessionResponseTest {
         )));
         mediaSession.addPlayer(player);
         mediaSession.startGame(player.getId());
+        mediaSession.finishRoundIntro();
         mediaSession.chooseClue(player.getId(), imageDailyDouble.id());
+        mediaSession.finishRevealingDailyDouble();
 
         GameSessionResponse wagering = GameSessionResponse.from(mediaSession);
         assertNull(wagering.currentClue().clueType());
@@ -337,6 +359,7 @@ class GameSessionResponseTest {
         )));
         mediaSession.addPlayer(player);
         mediaSession.startGame(player.getId());
+        mediaSession.finishRoundIntro();
         mediaSession.chooseClue(player.getId(), soundClue.id());
 
         CurrentClueResponse revealing = GameSessionResponse.from(mediaSession).currentClue();
@@ -363,6 +386,7 @@ class GameSessionResponseTest {
     @Test
     void phaseTiming_isMeasuredWhenTheResponseIsBuilt() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.startPhaseTimer(Duration.ofSeconds(30), 0);
 
         GameSessionResponse atStart = GameSessionResponse.from(session, 0);
@@ -382,6 +406,7 @@ class GameSessionResponseTest {
     @Test
     void clueAnswers_isAnEmptyListBeforeAnyAnswer() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         assertEquals(List.of(), GameSessionResponse.from(session).clueAnswers());
         assertTrue(toJson(GameSessionResponse.from(session)).contains("\"clueAnswers\":[]"));
@@ -393,6 +418,7 @@ class GameSessionResponseTest {
         session.addPlayer(secondPlayer);
 
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow1.id());
         session.finishRevealingClue();
         session.buzz(player.getId());
@@ -416,6 +442,7 @@ class GameSessionResponseTest {
     @Test
     void serializedResponse_afterCorrectAnswer_onlyShowsItDuringTheReveal() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow1.id());
         session.finishRevealingClue();
         session.buzz(player.getId());
@@ -445,6 +472,7 @@ class GameSessionResponseTest {
         assertEquals(Set.of(), beforeStart.playersLockedOut());
 
         session.startGame(player.getId());
+        session.finishRoundIntro();
         session.chooseClue(player.getId(), scienceRow1.id());
         session.finishRevealingClue();
         session.buzz(player.getId());
@@ -458,6 +486,7 @@ class GameSessionResponseTest {
     @Test
     void serializedResponse_neverContainsAPlayersToken() {
         session.startGame(player.getId());
+        session.finishRoundIntro();
 
         String json = JsonMapper.builder().build()
                 .writeValueAsString(GameSessionResponse.from(session));

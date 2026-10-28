@@ -14,9 +14,9 @@ import java.util.List;
  * shown while wagering, the clue (and whether only an exact number is
  * accepted) once answering starts, and the correct response (as stored and
  * as {@code acceptedAnswers} to show) plus everyone's wagers and answers only
- * from the reveal on. In a Trebek session the reveal goes one player at a
- * time, in {@code revealOrder} (null otherwise), each player's entry as far
- * as their own reveal has got.
+ * from the reveal on. The reveal goes one player at a time, in
+ * {@code revealOrder} (null before it), each player's entry as far as their
+ * own reveal has got.
  */
 public record FinalJeopardyResponse(
         String category,
@@ -29,7 +29,7 @@ public record FinalJeopardyResponse(
         List<Long> revealOrder
 ) {
 
-    /** Final Jeopardy of a contestant session, revealed all at once. */
+    /** Final Jeopardy before the reveal, which has no reveal order yet. */
     public FinalJeopardyResponse(
             String category,
             String categoryComments,
@@ -77,17 +77,11 @@ public record FinalJeopardyResponse(
         FinalJeopardy finalJeopardy = session.getFinalJeopardy();
 
         boolean wagering = session.getState() == GameSessionState.FINAL_JEOPARDY_WAGERING;
-        List<Long> revealOrder = session.getRevealOrder();
         List<FinalJeopardyPlayerResponse> players = session.getPlayers()
                 .stream()
-                .map(player -> {
-                    if (!showResults) {
-                        return FinalJeopardyPlayerResponse.submitted(player, finalJeopardy, wagering);
-                    }
-                    return revealOrder == null
-                            ? FinalJeopardyPlayerResponse.revealed(player, finalJeopardy)
-                            : FinalJeopardyPlayerResponse.revealedUpTo(player, finalJeopardy, session.getRevealStep(player.getId()));
-                })
+                .map(player -> showResults
+                        ? FinalJeopardyPlayerResponse.revealedUpTo(player, finalJeopardy, session.getRevealStep(player.getId()))
+                        : FinalJeopardyPlayerResponse.submitted(player, finalJeopardy, wagering))
                 .toList();
 
         BoardCategory category = session.getBoard().getFinalJeopardyCategory();
@@ -100,7 +94,7 @@ public record FinalJeopardyResponse(
                 showResults ? clue.answer() : null,
                 showResults ? AcceptedAnswersResponse.from(session.getBoard().getAcceptedAnswers(clue.id())) : null,
                 players,
-                revealOrder
+                session.getRevealOrder()
         );
     }
 }

@@ -17,7 +17,9 @@ public record SessionTimerModesRequest(
         TimerMode answerRevealMs,
         TimerMode finalJeopardyWagerMs,
         TimerMode finalJeopardyAnswerMs,
-        TimerMode finalJeopardyRevealMs
+        TimerMode finalJeopardyRevealMs,
+        TimerMode roundIntroMs,
+        TimerMode dailyDoubleRevealMs
 ) {
 
     /** {@code current} with every mode this request sets replaced. */
@@ -31,7 +33,9 @@ public record SessionTimerModesRequest(
                 orElse(answerRevealMs, current.answerReveal()),
                 orElse(finalJeopardyWagerMs, current.finalJeopardyWager()),
                 orElse(finalJeopardyAnswerMs, current.finalJeopardyAnswer()),
-                orElse(finalJeopardyRevealMs, current.finalJeopardyReveal())
+                orElse(finalJeopardyRevealMs, current.finalJeopardyReveal()),
+                orElse(roundIntroMs, current.roundIntro()),
+                orElse(dailyDoubleRevealMs, current.dailyDoubleReveal())
         );
     }
 

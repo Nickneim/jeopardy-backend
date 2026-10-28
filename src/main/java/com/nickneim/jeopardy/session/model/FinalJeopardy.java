@@ -4,7 +4,6 @@ import com.nickneim.jeopardy.session.exception.GameErrorCode;
 import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,19 +63,6 @@ public class FinalJeopardy {
         rulings.put(ruled.playerId(), ruled);
     }
 
-    /** Each player wins their wager with a correct answer and loses it otherwise (no answer counts as wrong). */
-    Map<GameSessionPlayer, Integer> scoreChanges(List<GameSessionPlayer> players) {
-        Map<GameSessionPlayer, Integer> changes = new LinkedHashMap<>();
-
-        for (GameSessionPlayer player : players) {
-            int wager = getWager(player.getId());
-
-            changes.put(player, isCorrect(player.getId()) ? wager : -wager);
-        }
-
-        return changes;
-    }
-
     void remove(Long playerId) {
         wagers.remove(playerId);
         answers.remove(playerId);
@@ -96,6 +82,7 @@ public class FinalJeopardy {
         return wagers.getOrDefault(playerId, 0);
     }
 
+    /** Whether the player's result is correct (see {@link #resultOf}); no answer counts as wrong. */
     public boolean isCorrect(Long playerId) {
         return resultOf(playerId).correct();
     }

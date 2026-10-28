@@ -19,7 +19,9 @@ public record SessionTimersRequest(
         @Range(min = MIN, max = MAX, message = MESSAGE) Long answerRevealMs,
         @Range(min = MIN, max = MAX, message = MESSAGE) Long finalJeopardyWagerMs,
         @Range(min = MIN, max = MAX, message = MESSAGE) Long finalJeopardyAnswerMs,
-        @Range(min = MIN, max = MAX, message = MESSAGE) Long finalJeopardyRevealMs
+        @Range(min = MIN, max = MAX, message = MESSAGE) Long finalJeopardyRevealMs,
+        @Range(min = MIN, max = MAX, message = MESSAGE) Long roundIntroMs,
+        @Range(min = MIN, max = MAX, message = MESSAGE) Long dailyDoubleRevealMs
 ) {
     private static final long MIN = GameSessionTimeouts.MIN_MILLIS;
     private static final long MAX = GameSessionTimeouts.MAX_MILLIS;
@@ -37,7 +39,9 @@ public record SessionTimersRequest(
                 orElse(answerRevealMs, current.answerReveal()),
                 orElse(finalJeopardyWagerMs, current.finalJeopardyWager()),
                 orElse(finalJeopardyAnswerMs, current.finalJeopardyAnswer()),
-                orElse(finalJeopardyRevealMs, current.finalJeopardyReveal())
+                orElse(finalJeopardyRevealMs, current.finalJeopardyReveal()),
+                orElse(roundIntroMs, current.roundIntro()),
+                orElse(dailyDoubleRevealMs, current.dailyDoubleReveal())
         );
     }
 

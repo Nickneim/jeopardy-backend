@@ -21,9 +21,12 @@ public class GameSession {
     /** The most Trebek can add to or take from a score at once. */
     public static final int MAX_SCORE_ADJUSTMENT = 100_000;
 
-    // Final Jeopardy reveal steps per player in a Trebek session: wager,
-    // answer, award (see FinalRevealStep).
-    private static final int REVEAL_STEPS_PER_PLAYER = 3;
+    /**
+     * Final Jeopardy reveal steps per player: wager, answer, award (see
+     * FinalRevealStep). The reveal's clock gives each step an even share of
+     * a player's reveal time.
+     */
+    public static final int REVEAL_STEPS_PER_PLAYER = 3;
 
     private static final AtomicLong INSTANCE_IDS = new AtomicLong();
 
@@ -97,8 +100,8 @@ public class GameSession {
     private ClueAnswer pendingAnswer;
 
     private FinalJeopardy finalJeopardy = new FinalJeopardy();
-    // A Trebek session's Final Jeopardy reveal: the players in the order
-    // they're revealed, set when it starts, and how many steps were taken.
+    // The Final Jeopardy reveal: the players in the order they're revealed,
+    // set when it starts, and how many steps were taken.
     private List<Long> revealOrder;
     private int revealSteps;
     // The reveal's clock reached a player's award before Trebek ruled on
@@ -658,10 +661,11 @@ public class GameSession {
                 .orElse(fallback);
     }
 
-    // Choosing and answering are the only roles, and only in the clue rounds.
+    // Choosing and answering are the only roles, and only in the clue rounds
+    // (a clue round's intro included: its chooser is already set).
     private boolean holdsRole(Long playerId) {
         return switch (state) {
-            case CHOOSING_CLUE, CLUE_PICKED, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE,
+            case ROUND_INTRO, CHOOSING_CLUE, CLUE_PICKED, REVEALING_DAILY_DOUBLE, WAITING_FOR_DAILY_DOUBLE_WAGER, REVEALING_CLUE,
                  WAITING_FOR_BUZZER, WAITING_FOR_ANSWER, WAITING_FOR_RULING, REVEALING_ANSWER ->
                     playerId.equals(playerChoosingClue) || playerId.equals(getPlayerAnswering());
             default -> false;
@@ -691,12 +695,25 @@ public class GameSession {
         enterRound(board.getFirstRound());
     }
 
+    // Every round opens with its title card.
     private void enterRound(GameRound newRound) {
         round = newRound;
 
         if (newRound == GameRound.FINAL_JEOPARDY) {
+            // Nobody chooses from here on.
+            playerChoosingClue = null;
+        }
+        setState(GameSessionState.ROUND_INTRO);
+    }
+
+    /** The round's title card has been shown: the round begins. */
+    public void finishRoundIntro() {
+        requireState(GameSessionState.ROUND_INTRO);
+
+        if (round == GameRound.FINAL_JEOPARDY) {
             startFinalJeopardy();
         } else {
+            handOverControlIfDeparted();
             setState(GameSessionState.CHOOSING_CLUE);
         }
     }
@@ -710,6 +727,7 @@ public class GameSession {
 
         if (!byTrebek && chosenBy != null && chosenBy != ChosenBy.CHOOSER && playerId.equals(playerChoosingClue)
                 && (state == GameSessionState.CLUE_PICKED
+                    || state == GameSessionState.REVEALING_DAILY_DOUBLE
                     || state == GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER
                     || state == GameSessionState.REVEALING_CLUE)) {
             throw tooLate(chosenBy == ChosenBy.TIMER
@@ -751,10 +769,17 @@ public class GameSession {
         if (board.isDailyDouble(chosenClueId)) {
             // Only the chooser can answer a Daily Double, so they count as the buzzer.
             playerWhoBuzzed = playerChoosingClue;
-            setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
+            setState(GameSessionState.REVEALING_DAILY_DOUBLE);
         } else {
             setState(GameSessionState.REVEALING_CLUE);
         }
+    }
+
+    /** The Daily Double has been announced: the chooser wagers. */
+    public void finishRevealingDailyDouble() {
+        requireState(GameSessionState.REVEALING_DAILY_DOUBLE);
+
+        setState(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER);
     }
 
     /**
@@ -1046,8 +1071,8 @@ public class GameSession {
     // -------------------------------------------------------------------------
 
     /**
-     * Trebek ends the current phase now, exactly as its timer would: shows
-     * the picked clue, opens and closes the buzzers, locks wagers and
+     * Trebek ends the current phase now, exactly as its timer would: ends a
+     * title card, shows the picked clue, opens and closes the buzzers, locks wagers and
      * answers, goes back to the board, or takes the next Final Jeopardy
      * reveal step. Never past a ruling only Trebek can make.
      */
@@ -1055,8 +1080,10 @@ public class GameSession {
         requireTrebek(trebekId);
 
         switch (state) {
+            case ROUND_INTRO -> finishRoundIntro();
             case CHOOSING_CLUE -> chooseTopClue(ChosenBy.TREBEK);
             case CLUE_PICKED -> showClue();
+            case REVEALING_DAILY_DOUBLE -> finishRevealingDailyDouble();
             case WAITING_FOR_DAILY_DOUBLE_WAGER -> timeoutDailyDoubleWager();
             case REVEALING_CLUE -> finishRevealingClue();
             case WAITING_FOR_BUZZER -> timeoutBuzzer();
@@ -1192,44 +1219,31 @@ public class GameSession {
     }
 
     /**
-     * Answering ends. In a Trebek session the players are then revealed one
-     * at a time, lowest score first (the lowest id on a tie).
+     * Answering ends. The players are then revealed one at a time, lowest
+     * score first (the lowest id on a tie).
      */
     public void timeoutFinalJeopardyAnswering() {
         requireState(GameSessionState.FINAL_JEOPARDY_ANSWERING);
 
-        if (hostMode == HostMode.TREBEK) {
-            revealOrder = players.stream()
-                    .sorted(Comparator.comparingInt(GameSessionPlayer::getScore)
-                            .thenComparing(GameSessionPlayer::getId))
-                    .map(GameSessionPlayer::getId)
-                    .toList();
-            revealSteps = 0;
-            revealWaitingForRuling = false;
-        }
+        revealOrder = players.stream()
+                .sorted(Comparator.comparingInt(GameSessionPlayer::getScore)
+                        .thenComparing(GameSessionPlayer::getId))
+                .map(GameSessionPlayer::getId)
+                .toList();
+        revealSteps = 0;
+        revealWaitingForRuling = false;
         setState(GameSessionState.FINAL_JEOPARDY_REVEALING);
     }
 
-    /** Applies every wager (no answer counts as wrong) and ends the game. */
-    public void finishFinalJeopardyReveal() {
-        requireState(GameSessionState.FINAL_JEOPARDY_REVEALING);
-
-        // Applied together, so the join score sees the final scores at once.
-        changeScores(finalJeopardy.scoreChanges(players));
-        setState(GameSessionState.FINISHED_GAME);
-    }
-
     /**
-     * The reveal's timer ran out. In a contestant session that ends the
-     * reveal; in a Trebek session it takes the next step, except a player's
-     * award before Trebek has ruled on them, where the clock waits.
+     * The reveal's timer ran out, so it takes the next step, except in a
+     * Trebek session at a player's award before Trebek has ruled on them,
+     * where the clock waits.
      */
     public void timeoutFinalJeopardyReveal() {
         requireState(GameSessionState.FINAL_JEOPARDY_REVEALING);
 
-        if (hostMode == HostMode.CONTESTANT) {
-            finishFinalJeopardyReveal();
-        } else if (nextRevealAwardWaitsForRuling()) {
+        if (nextRevealAwardWaitsForRuling()) {
             revealWaitingForRuling = true;
             // A new phase without a timer, until the ruling.
             phaseNumber++;
@@ -1263,9 +1277,10 @@ public class GameSession {
     }
 
     /**
-     * The next step of a Trebek session's reveal: a player's wager, their
-     * answer, then their award (their ruling applied to their score); after
-     * the last player's award, the end of the game.
+     * The next step of the reveal: a player's wager, their answer, then their
+     * award (their result applied to their score: Trebek's ruling in a Trebek
+     * session, otherwise the checked answer, where no answer counts as
+     * wrong); after the last player's award, the end of the game.
      */
     private void takeRevealStep() {
         if (revealSteps == REVEAL_STEPS_PER_PLAYER * revealOrder.size()) {
@@ -1276,14 +1291,13 @@ public class GameSession {
         if (isNextRevealStepAnAward()) {
             Long playerId = nextRevealPlayer();
             GameSessionPlayer player = getPlayer(playerId);
-            Boolean ruling = finalJeopardy.rulingOf(playerId);
 
-            if (ruling == null) {
+            if (hostMode == HostMode.TREBEK && finalJeopardy.rulingOf(playerId) == null) {
                 throw new InvalidGameActionException(GameErrorCode.INVALID_STATE, "Rule on " + player.getName() + "'s answer first!");
             }
 
             int wager = finalJeopardy.getWager(playerId);
-            changeScore(player, ruling ? wager : -wager);
+            changeScore(player, finalJeopardy.isCorrect(playerId) ? wager : -wager);
         }
 
         revealSteps++;
@@ -1306,20 +1320,18 @@ public class GameSession {
     private boolean nextRevealAwardWaitsForRuling() {
         Long playerId = nextRevealPlayer();
 
-        return playerId != null && isNextRevealStepAnAward() && finalJeopardy.rulingOf(playerId) == null;
+        return hostMode == HostMode.TREBEK
+                && playerId != null
+                && isNextRevealStepAnAward()
+                && finalJeopardy.rulingOf(playerId) == null;
     }
 
-    /**
-     * In a Trebek session, the players in the order they're revealed, from
-     * the Final Jeopardy reveal on; otherwise null.
-     */
+    /** The players in the order they're revealed, from the Final Jeopardy reveal on; otherwise null. */
     public List<Long> getRevealOrder() {
-        return hostMode == HostMode.TREBEK && revealOrder != null && isFinalJeopardyRevealedState()
-                ? revealOrder
-                : null;
+        return revealOrder != null && isFinalJeopardyRevealedState() ? revealOrder : null;
     }
 
-    /** In a Trebek session, how far a player's reveal has got, from the reveal on; otherwise null. */
+    /** How far a player's reveal has got, from the reveal on; otherwise null. */
     public FinalRevealStep getRevealStep(Long playerId) {
         List<Long> order = getRevealOrder();
         int index = order == null ? -1 : order.indexOf(playerId);
@@ -1330,17 +1342,6 @@ public class GameSession {
 
         int taken = Math.clamp(revealSteps - (long) REVEAL_STEPS_PER_PLAYER * index, 0, REVEAL_STEPS_PER_PLAYER);
         return FinalRevealStep.values()[taken];
-    }
-
-    /**
-     * How many steps a Trebek session's reveal has in all, each player's and
-     * the end of the game; null in a contestant session. Its clock splits
-     * the reveal's duration evenly over them.
-     */
-    public Integer getRevealStepCount() {
-        return hostMode == HostMode.TREBEK && revealOrder != null
-                ? REVEAL_STEPS_PER_PLAYER * revealOrder.size() + 1
-                : null;
     }
 
     /** Whether the reveal's clock stopped at an award, waiting for Trebek's ruling. */

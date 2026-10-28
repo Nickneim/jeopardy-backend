@@ -53,6 +53,7 @@ class GameSessionJoiningTest {
     @Test
     void scoreBelowTheJoinScore_lowersIt_andNewPlayersStartThere() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(0), ben, false);
 
         assertEquals(-200, session.getJoinScore());
@@ -62,6 +63,7 @@ class GameSessionJoiningTest {
     @Test
     void lowestPlayerLeavingAndRejoining_keepsTheirLowScore() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(1), ben, false);
 
         session.leave(ben.getId());
@@ -74,6 +76,7 @@ class GameSessionJoiningTest {
     @Test
     void bottomPlayerPushedUp_raisesTheJoinScoreToTheLowestScore() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(0), ana, false);
         play(HISTORY.get(1), ben, false);
         assertEquals(-400, session.getJoinScore());
@@ -89,6 +92,7 @@ class GameSessionJoiningTest {
     @Test
     void joinScore_neverRisesAboveZero() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(0), ana, true);
         play(HISTORY.get(1), ben, false);
 
@@ -103,6 +107,7 @@ class GameSessionJoiningTest {
     void joinScore_staysWhileAnotherPlayerIsStillAtTheBottom() {
         GameSessionPlayer cy = session.addPlayer("Cy", PlayerTokens.generate());
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(0), ana, false);
         play(HISTORY.get(1), ben, false);
         play(HISTORY.get(2), cy, false);
@@ -121,6 +126,7 @@ class GameSessionJoiningTest {
     @Test
     void playerAboveTheJoinScore_scoringDoesntChangeIt() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(0), ben, false);
 
         play(HISTORY.get(1), ana, true);
@@ -133,6 +139,7 @@ class GameSessionJoiningTest {
     @Test
     void joinScore_staysAfterTheBottomPlayerLeaves_untilAJoinerAtItIsPushedUp() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         play(HISTORY.get(1), ben, false);
         session.leave(ben.getId());
 
@@ -157,8 +164,10 @@ class GameSessionJoiningTest {
         )));
         ana = session.addPlayer("Ana", PlayerTokens.generate());
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(ana.getId(), dailyDouble.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(ana.getId(), 700);
         session.finishRevealingClue();
         session.answerClue(ana.getId(), "Wrong");
@@ -173,6 +182,7 @@ class GameSessionJoiningTest {
     @Test
     void playersCanJoinAfterTheStartByDefault() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertTrue(session.isLateJoinAllowed());
         assertTrue(session.isJoinable());
@@ -188,6 +198,7 @@ class GameSessionJoiningTest {
         assertTrue(session.getPlayers().contains(cy));
 
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertFalse(session.isJoinable());
         assertThrows(SessionNotJoinableException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
@@ -198,6 +209,7 @@ class GameSessionJoiningTest {
     void blockedJoining_alsoKeepsOutPlayersWhoLeft() {
         session.updateLateJoin(ana.getId(), false);
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.leave(ben.getId());
 
         assertThrows(SessionNotJoinableException.class, () -> session.addPlayer("Ben", PlayerTokens.generate()));
@@ -206,6 +218,7 @@ class GameSessionJoiningTest {
     @Test
     void finishedGame_isNeverJoinable() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         for (int i = 0; i < 10; i++) {
             session.timeoutChoosingClue();
             session.finishRevealingClue();
@@ -225,6 +238,7 @@ class GameSessionJoiningTest {
     void blockedJoining_saysTheGameHasStarted() {
         session.updateLateJoin(ana.getId(), false);
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         SessionNotJoinableException exception =
                 assertThrows(SessionNotJoinableException.class, () -> session.addPlayer("Dee", PlayerTokens.generate()));
@@ -236,6 +250,7 @@ class GameSessionJoiningTest {
         session.updateLateJoin(ana.getId(), false);
         session.updateLateJoin(ana.getId(), true);
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertTrue(session.isJoinable());
     }
@@ -249,6 +264,7 @@ class GameSessionJoiningTest {
     @Test
     void lateJoiningCantChangeOnceTheGameHasStarted() {
         session.startGame(ana.getId());
+        session.finishRoundIntro();
 
         assertError(GameErrorCode.INVALID_STATE, () -> session.updateLateJoin(ana.getId(), false));
     }
@@ -263,10 +279,15 @@ class GameSessionJoiningTest {
         )));
         ana = session.addPlayer("Ana", PlayerTokens.generate());
         session.startGame(ana.getId());
+        session.finishRoundIntro();
         session.chooseClue(ana.getId(), jeopardyClue.id());
         session.finishRevealingClue();
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
+
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        assertTrue(session.isJoinable());
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
         assertTrue(session.isJoinable());

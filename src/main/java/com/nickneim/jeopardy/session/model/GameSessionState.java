@@ -2,9 +2,16 @@ package com.nickneim.jeopardy.session.model;
 
 public enum GameSessionState {
     WAITING_FOR_START,
+    /**
+     * A title card for the round about to start (the session's round), before
+     * each round, Final Jeopardy included.
+     */
+    ROUND_INTRO,
     CHOOSING_CLUE,
     /** Trebek sessions only: a clue was chosen, and Trebek hasn't shown it yet. */
     CLUE_PICKED,
+    /** The chosen clue is a Daily Double, announced before the chooser wagers. */
+    REVEALING_DAILY_DOUBLE,
     WAITING_FOR_DAILY_DOUBLE_WAGER,
     REVEALING_CLUE,
     WAITING_FOR_BUZZER,

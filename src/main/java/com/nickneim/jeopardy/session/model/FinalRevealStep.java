@@ -1,8 +1,8 @@
 package com.nickneim.jeopardy.session.model;
 
 /**
- * How far one player's Final Jeopardy reveal has got in a Trebek session,
- * where players are revealed one at a time. In this order.
+ * How far one player's Final Jeopardy reveal has got. Players are revealed
+ * one at a time, each through these steps in this order.
  */
 public enum FinalRevealStep {
     HIDDEN,
@@ -10,6 +10,6 @@ public enum FinalRevealStep {
     WAGER,
     /** Their answer is shown too. */
     ANSWER,
-    /** Trebek's ruling was applied to their score. */
+    /** Their result (Trebek's ruling in a Trebek session) was applied to their score. */
     AWARDED
 }

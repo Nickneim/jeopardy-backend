@@ -11,6 +11,7 @@ import com.nickneim.jeopardy.session.exception.InvalidGameActionException;
 import com.nickneim.jeopardy.session.security.PlayerTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import java.time.Duration;
 import java.util.List;
@@ -146,8 +147,61 @@ class GameSessionTest {
     }
 
     @Test
+    void startGame_showsTheFirstRoundsTitleCard_withTheChooserAlreadySet() {
+        session.startGame(player1.getId());
+
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        assertEquals(GameRound.JEOPARDY, session.getRound());
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+        assertError(GameErrorCode.INVALID_STATE, () -> session.chooseClue(player1.getId(), jeopardyClue1.id()));
+    }
+
+    @Test
+    void roundIntro_withADepartedChooser_handsControlOverWhenTheRoundBegins() {
+        session.startGame(player1.getId());
+        session.leave(player1.getId());
+
+        // The chooser keeps the role through the title card.
+        assertEquals(player1.getId(), session.getPlayerChoosingClue());
+        assertTrue(session.getPlayers().contains(player1));
+
+        session.finishRoundIntro();
+
+        assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
+        assertEquals(player2.getId(), session.getPlayerChoosingClue());
+        assertFalse(session.getPlayers().contains(player1));
+    }
+
+    @Test
+    void finishRoundIntro_isRejectedOutsideATitleCard() {
+        session.startGame(player1.getId());
+        session.finishRoundIntro();
+
+        assertError(GameErrorCode.INVALID_STATE, session::finishRoundIntro);
+    }
+
+    @Test
+    void chooseClue_forDailyDouble_announcesItBeforeTheWager() {
+        addDailyDoubleClue();
+        session.startGame(player1.getId());
+        session.finishRoundIntro();
+
+        session.chooseClue(player1.getId(), dailyDoubleClue1.id());
+
+        assertEquals(GameSessionState.REVEALING_DAILY_DOUBLE, session.getState());
+        assertNull(session.getMinimumDailyDoubleWager());
+        assertError(GameErrorCode.INVALID_STATE, () -> session.placeDailyDoubleWager(player1.getId(), 5));
+
+        session.finishRevealingDailyDouble();
+
+        assertEquals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, session.getState());
+        assertEquals(5, session.getMinimumDailyDoubleWager());
+    }
+
+    @Test
     void startGame_startsJeopardyRound() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         assertEquals(
                 GameRound.JEOPARDY,
@@ -166,6 +220,7 @@ class GameSessionTest {
     @Test
     void startGame_cannotBeCalledAfterGameHasStarted() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         assertThrows(
                 InvalidGameActionException.class,
@@ -176,6 +231,7 @@ class GameSessionTest {
     @Test
     void chooseClue_selectsAvailableClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -206,6 +262,7 @@ class GameSessionTest {
     @Test
     void chooseClue_rejectsPlayerWhoIsNotChoosing() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -225,6 +282,7 @@ class GameSessionTest {
     @Test
     void chooseClue_rejectsAlreadySelectedClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -255,6 +313,7 @@ class GameSessionTest {
     @Test
     void chooseClue_rejectsUnknownClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -274,6 +333,7 @@ class GameSessionTest {
     @Test
     void chooseClue_rejectsClueFromDifferentRound() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -293,6 +353,7 @@ class GameSessionTest {
     @Test
     void finishRevealingClue_startsBuzzerPhase() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -310,6 +371,7 @@ class GameSessionTest {
     @Test
     void buzz_movesPlayerToAnswerPhase() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -332,6 +394,7 @@ class GameSessionTest {
     @Test
     void buzz_rejectsWhenNotWaitingForBuzzer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception =
                 assertThrows(
@@ -348,6 +411,7 @@ class GameSessionTest {
     @Test
     void buzz_justAfterSomeoneElse_isTooLate() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -364,6 +428,7 @@ class GameSessionTest {
     @Test
     void answer_justAfterItTimedOut_isTooLate() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -381,6 +446,7 @@ class GameSessionTest {
     @Test
     void choice_justAfterTheTimerChose_isTooLate() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.timeoutChoosingClue();
 
         InvalidGameActionException exception = assertThrows(
@@ -394,6 +460,7 @@ class GameSessionTest {
     @Test
     void secondChoice_afterChoosingInTime_isntTooLate() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
 
         InvalidGameActionException exception = assertThrows(
@@ -407,6 +474,7 @@ class GameSessionTest {
     @Test
     void buzz_rejectsPlayerNotInSession() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -429,6 +497,7 @@ class GameSessionTest {
     @Test
     void buzz_rejectsPlayerWhoAlreadyBuzzed() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -461,6 +530,7 @@ class GameSessionTest {
     @Test
     void timeoutBuzzer_revealsAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -479,6 +549,7 @@ class GameSessionTest {
     @Test
     void answerClue_correctAnswer_awardsPoints() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -509,6 +580,7 @@ class GameSessionTest {
     @Test
     void answerClue_wrongAnswer_deductsPoints() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -531,6 +603,7 @@ class GameSessionTest {
     @Test
     void answerClue_rejectsPlayerWhoDidNotBuzz() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -557,6 +630,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_deductsPoints() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -576,6 +650,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_whenAllPlayersBuzzed_revealsAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
@@ -595,6 +670,7 @@ class GameSessionTest {
     @Test
     void finishRevealingAnswer_startsNextRoundWhenJeopardyIsFinished() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -625,6 +701,7 @@ class GameSessionTest {
     @Test
     void doubleJeopardy_startsWithTheLowestScoreInControl() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         // Player 1 drops below player 2 and takes control back with a correct answer.
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
@@ -652,6 +729,7 @@ class GameSessionTest {
     void doubleJeopardy_skipsALowestScoreWhoIsAway() {
         // As above: player 1 ends on 200, player 2 on -600.
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -677,6 +755,7 @@ class GameSessionTest {
     void doubleJeopardy_withEveryoneAway_startsWithTheLowestScore() {
         // Player 2 answers wrong once, so ends lowest.
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -698,6 +777,7 @@ class GameSessionTest {
     @Test
     void doubleJeopardy_onATie_startsWithTheLowestId() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -728,6 +808,7 @@ class GameSessionTest {
         session.addPlayer(player3);
         session.setAway(player3.getId(), true);
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
 
@@ -746,6 +827,7 @@ class GameSessionTest {
         session.addPlayer(player3);
         session.setAway(player3.getId(), true);
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -763,6 +845,7 @@ class GameSessionTest {
     @Test
     void setAway_saysWhetherAnythingChanged_andNeverChangesTheState() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         assertTrue(session.setAway(player2.getId(), true));
         assertFalse(session.setAway(player2.getId(), true));
@@ -792,6 +875,7 @@ class GameSessionTest {
     @Test
     void setUpNewRound_makesDoubleJeopardyCluesAvailable() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Finish Jeopardy round.
         finishJeopardyRound();
@@ -816,6 +900,7 @@ class GameSessionTest {
     @Test
     void finishRevealingAnswer_startsFinalRoundWhenDoubleJeopardyIsFinished() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -833,6 +918,11 @@ class GameSessionTest {
                 session.getRound()
         );
 
+        // Final Jeopardy's title card comes first, and nobody chooses from it on.
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        assertNull(session.getPlayerChoosingClue());
+        session.finishRoundIntro();
+
         assertEquals(
                 GameSessionState.FINAL_JEOPARDY_WAGERING,
                 session.getState()
@@ -849,6 +939,7 @@ class GameSessionTest {
     @Test
     void finishRevealingAnswer_finishesGameWhenFinalJeopardyIsFinished() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Select every available Jeopardy clue.
         finishJeopardyRound();
@@ -860,10 +951,11 @@ class GameSessionTest {
         session.finishRevealingClue();
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
+        session.finishRoundIntro();
 
         session.timeoutFinalJeopardyWagering();
         session.timeoutFinalJeopardyAnswering();
-        session.finishFinalJeopardyReveal();
+        finishFinalJeopardyReveal();
 
         assertEquals(
                 GameSessionState.FINISHED_GAME,
@@ -874,6 +966,7 @@ class GameSessionTest {
     @Test
     void answerClue_correctAnswerInDoubleJeopardy_awardsDoubleValue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Finish Jeopardy.
         finishJeopardyRound();
@@ -901,6 +994,7 @@ class GameSessionTest {
     @Test
     void answerClue_inJeopardy_acceptsALenientAnswerWithoutTheQuestionForm() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -917,6 +1011,7 @@ class GameSessionTest {
     @Test
     void answerClue_inDoubleJeopardy_rejectsAnAnswerWithoutTheQuestionForm() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
         session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
         session.finishRevealingClue();
@@ -934,6 +1029,7 @@ class GameSessionTest {
     @Test
     void answerClue_inDoubleJeopardy_acceptsATypoOfTheQuestionWord() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
         session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
         session.finishRevealingClue();
@@ -985,11 +1081,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         assertEquals(
                 GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER,
@@ -1002,11 +1100,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1024,11 +1124,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1046,11 +1148,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1068,11 +1172,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         session.placeDailyDoubleWager(player1.getId(), 500);
 
@@ -1085,11 +1191,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         session.placeDailyDoubleWager(player1.getId(), 500);
         session.finishRevealingClue();
@@ -1105,11 +1213,13 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         session.placeDailyDoubleWager(player1.getId(), 500);
         session.finishRevealingClue();
@@ -1125,12 +1235,14 @@ class GameSessionTest {
         addDailyDoubleClue();
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         Long playerId = session.getPlayers().getFirst().getId();
 
         session.chooseClue(
                 playerId,
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
 
         session.placeDailyDoubleWager(playerId, 500);
         session.finishRevealingClue();
@@ -1145,11 +1257,13 @@ class GameSessionTest {
     void timeoutWaitingForDailyDouble_revealsClue() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.chooseClue(
                 player1.getId(),
                 dailyDoubleClue1.id()
         );
+        session.finishRevealingDailyDouble();
         session.timeoutDailyDoubleWager();
 
         assertEquals(
@@ -1168,6 +1282,7 @@ class GameSessionTest {
     void placeDailyDoubleWager_rejectsWhenNotWaitingForWager() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1258,12 +1373,14 @@ class GameSessionTest {
     void placeDailyDoubleWager_inDoubleJeopardy_allowsUpTo2000() {
         addDoubleJeopardyDailyDouble();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
 
         session.chooseClue(
                 player1.getId(),
                 doubleJeopardyDailyDouble.id()
         );
+        session.finishRevealingDailyDouble();
 
         assertInvalidWager(2001);
 
@@ -1321,9 +1438,11 @@ class GameSessionTest {
     void answerClue_correctDailyDouble_addsWagerAndChooserKeepsControl() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), dailyDoubleClue1.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(player2.getId(), 750);
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "John Adams");
@@ -1338,9 +1457,11 @@ class GameSessionTest {
     void answerClue_incorrectDailyDouble_deductsWagerAndChooserKeepsControl() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), dailyDoubleClue1.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(player2.getId(), 750);
         session.finishRevealingClue();
         session.answerClue(player2.getId(), "Thomas Jefferson");
@@ -1379,6 +1500,7 @@ class GameSessionTest {
     void timeoutAnswer_onDailyDoubleAfterBuzzedClue_deductsWagerFromChooserOnly() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // Player 2 buzzes on a normal clue and misses, leaving player 1 in control.
         session.chooseClue(player1.getId(), jeopardyClue1.id());
@@ -1389,6 +1511,7 @@ class GameSessionTest {
         session.finishRevealingAnswer();
 
         session.chooseClue(player1.getId(), dailyDoubleClue1.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(player1.getId(), 500);
         session.finishRevealingClue();
 
@@ -1403,17 +1526,21 @@ class GameSessionTest {
     void dailyDouble_countsTowardRoundCompletion() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
 
         assertEquals(GameRound.JEOPARDY, session.getRound());
 
         session.chooseClue(player1.getId(), dailyDoubleClue1.id());
+        session.finishRevealingDailyDouble();
         session.placeDailyDoubleWager(player1.getId(), 5);
         session.finishRevealingClue();
         session.answerClue(player1.getId(), "John Adams");
         session.finishRevealingAnswer();
 
         assertEquals(GameRound.DOUBLE_JEOPARDY, session.getRound());
+        assertEquals(GameSessionState.ROUND_INTRO, session.getState());
+        session.finishRoundIntro();
         assertEquals(GameSessionState.CHOOSING_CLUE, session.getState());
     }
 
@@ -1451,6 +1578,7 @@ class GameSessionTest {
     @Test
     void answerClue_rejectsWhenNotWaitingForAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1463,6 +1591,7 @@ class GameSessionTest {
     @Test
     void answerClue_wrongAnswer_withPlayersRemaining_reopensBuzzer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1484,6 +1613,7 @@ class GameSessionTest {
     @Test
     void answerClue_wrongAnswer_whenAllPlayersBuzzed_revealsAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
 
@@ -1500,6 +1630,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_withPlayersRemaining_reopensBuzzer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1512,6 +1643,7 @@ class GameSessionTest {
     @Test
     void finishRevealingClue_resetsPlayersAlreadyBuzzedForNextClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         givePlayer2Control();
 
         session.chooseClue(player2.getId(), jeopardyClue2.id());
@@ -1527,6 +1659,7 @@ class GameSessionTest {
     @Test
     void answerClue_correctAnswerOnSecondRow_awardsRowValue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue2.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -1543,6 +1676,7 @@ class GameSessionTest {
     @Test
     void getAvailableClues_excludesPlayedCluesOfTheCurrentRound() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         assertEquals(
                 Set.of(jeopardyClue1.id(), jeopardyClue2.id()),
@@ -1560,6 +1694,7 @@ class GameSessionTest {
     @Test
     void chooseClue_rejectsPlayedClueFromAnEarlierRound() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
 
         InvalidGameActionException exception = assertThrows(
@@ -1584,7 +1719,9 @@ class GameSessionTest {
         );
         smallSession.addPlayer(player1);
         smallSession.startGame(player1.getId());
+        smallSession.finishRoundIntro();
         smallSession.chooseClue(player1.getId(), dailyDouble.id());
+        smallSession.finishRevealingDailyDouble();
 
         InvalidGameActionException exception = assertThrows(
                 InvalidGameActionException.class,
@@ -1635,7 +1772,9 @@ class GameSessionTest {
         );
         tinySession.addPlayer(player1);
         tinySession.startGame(player1.getId());
+        tinySession.finishRoundIntro();
         tinySession.chooseClue(player1.getId(), dailyDouble.id());
+        tinySession.finishRevealingDailyDouble();
 
         return tinySession;
     }
@@ -1655,11 +1794,13 @@ class GameSessionTest {
         );
         noDoubleJeopardy.addPlayer(player1);
         noDoubleJeopardy.startGame(player1.getId());
+        noDoubleJeopardy.finishRoundIntro();
 
         noDoubleJeopardy.chooseClue(player1.getId(), jeopardyClue1.id());
         noDoubleJeopardy.finishRevealingClue();
         noDoubleJeopardy.timeoutBuzzer();
         noDoubleJeopardy.finishRevealingAnswer();
+        noDoubleJeopardy.finishRoundIntro();
 
         assertEquals(GameRound.FINAL_JEOPARDY, noDoubleJeopardy.getRound());
         assertEquals(
@@ -1675,6 +1816,7 @@ class GameSessionTest {
     @Test
     void getPlayerAnswering_isOnlySetWhileWaitingForAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         assertNull(session.getPlayerAnswering());
 
         session.chooseClue(player1.getId(), jeopardyClue1.id());
@@ -1692,6 +1834,7 @@ class GameSessionTest {
     @Test
     void getPlayerAnswering_isNotLeftOverFromAPreviousClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1716,6 +1859,7 @@ class GameSessionTest {
     @Test
     void getPlayersLockedOut_coversOnlyTheClueInPlay() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1799,6 +1943,7 @@ class GameSessionTest {
     @Test
     void timeoutChoosingClue_choosesTheTopClueForTheChooser() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.timeoutChoosingClue();
 
@@ -1811,6 +1956,7 @@ class GameSessionTest {
     @Test
     void timeoutChoosingClue_skipsPlayedClues() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         playClueWithoutBuzz(jeopardyClue1.id());
 
         session.timeoutChoosingClue();
@@ -1821,6 +1967,7 @@ class GameSessionTest {
     @Test
     void timeoutChoosingClue_choosesForWhoeverHasControl() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         givePlayer2Control();
 
         session.timeoutChoosingClue();
@@ -1843,6 +1990,7 @@ class GameSessionTest {
         )));
         session.addPlayer(player1);
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         session.timeoutChoosingClue();
 
@@ -1853,18 +2001,20 @@ class GameSessionTest {
     void timeoutChoosingClue_canLandOnADailyDouble() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         playClueWithoutBuzz(jeopardyClue1.id());
         playClueWithoutBuzz(jeopardyClue2.id());
 
         session.timeoutChoosingClue();
 
         assertEquals(dailyDoubleClue1.id(), session.getChosenClueId());
-        assertEquals(GameSessionState.WAITING_FOR_DAILY_DOUBLE_WAGER, session.getState());
+        assertEquals(GameSessionState.REVEALING_DAILY_DOUBLE, session.getState());
     }
 
     @Test
     void timeoutChoosingClue_isRejectedOutsideChoosingClue() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
 
         InvalidGameActionException exception = assertThrows(
@@ -1878,6 +2028,7 @@ class GameSessionTest {
     @Test
     void phaseEndings_areRejectedOutsideTheirPhase() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         // CHOOSING_CLUE: none of the other phases can end, and nothing changes.
         List<Runnable> otherPhases = List.of(
@@ -1888,7 +2039,7 @@ class GameSessionTest {
                 session::finishRevealingAnswer,
                 session::timeoutFinalJeopardyWagering,
                 session::timeoutFinalJeopardyAnswering,
-                session::finishFinalJeopardyReveal
+                session::timeoutFinalJeopardyReveal
         );
 
         for (Runnable phaseEnding : otherPhases) {
@@ -1905,6 +2056,7 @@ class GameSessionTest {
     @Test
     void timeoutAnswer_isRejectedWhileWaitingForTheBuzzer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
 
@@ -1926,6 +2078,7 @@ class GameSessionTest {
         assertEquals(List.of(), session.getClueAnswers());
 
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1936,6 +2089,7 @@ class GameSessionTest {
     @Test
     void getClueAnswers_keepsEveryAnswerToTheClueInOrder() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -1965,6 +2119,7 @@ class GameSessionTest {
     @Test
     void getClueAnswers_recordsARunOutClockAsANullAnswer() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player2.getId());
@@ -1992,6 +2147,7 @@ class GameSessionTest {
     @Test
     void getClueAnswers_lastsUntilTheNextClueIsChosen() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -2012,6 +2168,7 @@ class GameSessionTest {
     @Test
     void getClueAnswers_isClearedWhenFinalJeopardyStarts() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
         session.chooseClue(player1.getId(), doubleJeopardyClue1.id());
         session.finishRevealingClue();
@@ -2019,6 +2176,7 @@ class GameSessionTest {
         session.answerClue(player1.getId(), "Venus");
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
+        session.finishRoundIntro();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
         assertEquals(List.of(), session.getClueAnswers());
@@ -2047,6 +2205,7 @@ class GameSessionTest {
         onlyFinal.addPlayer(player1);
 
         onlyFinal.startGame(player1.getId());
+        onlyFinal.finishRoundIntro();
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, onlyFinal.getState());
     }
@@ -2061,6 +2220,7 @@ class GameSessionTest {
         );
         noFinal.addPlayer(player1);
         noFinal.startGame(player1.getId());
+        noFinal.finishRoundIntro();
 
         noFinal.chooseClue(player1.getId(), jeopardyClue1.id());
         noFinal.finishRevealingClue();
@@ -2077,6 +2237,7 @@ class GameSessionTest {
         GameSessionPlayer joined = session.addPlayer("Joined", PlayerTokens.generate());
         assertTrue(joined.isAway());
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), jeopardyClue1.id());
         session.finishRevealingClue();
         session.buzz(player1.getId());
@@ -2144,6 +2305,7 @@ class GameSessionTest {
     @Test
     void placeFinalJeopardyWager_rejectsWhenNotWagering() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
 
         InvalidGameActionException beforeFinal = assertThrows(
                 InvalidGameActionException.class,
@@ -2258,7 +2420,7 @@ class GameSessionTest {
     }
 
     @Test
-    void finishFinalJeopardyReveal_appliesWagersAndFinishesGame() {
+    void finalJeopardyReveal_appliesWagersAndFinishesGame() {
         reachFinalJeopardy();
         player1.addScore(1000);
         player2.addScore(800);
@@ -2276,7 +2438,7 @@ class GameSessionTest {
         // Player 3 never answers, which counts as wrong.
         session.timeoutFinalJeopardyAnswering();
 
-        session.finishFinalJeopardyReveal();
+        finishFinalJeopardyReveal();
 
         assertEquals(GameSessionState.FINISHED_GAME, session.getState());
         assertEquals(1500, player1.getScore());
@@ -2285,14 +2447,52 @@ class GameSessionTest {
     }
 
     @Test
-    void finishFinalJeopardyReveal_withZeroWager_leavesScoreUnchanged() {
+    void finalJeopardyReveal_showsOnePlayerAtATime_lowestScoreFirst_scoringEachAtTheirAward() {
+        reachFinalJeopardy();
+        player1.addScore(1000);
+        player2.addScore(800);
+        session.placeFinalJeopardyWager(player1.getId(), 500);
+        session.placeFinalJeopardyWager(player2.getId(), 300);
+        session.timeoutFinalJeopardyWagering();
+        session.answerFinalJeopardy(player1.getId(), "What is the American Revolution?");
+        session.answerFinalJeopardy(player2.getId(), "The Civil War");
+        session.timeoutFinalJeopardyAnswering();
+
+        assertEquals(List.of(player2.getId(), player1.getId()), session.getRevealOrder());
+        assertEquals(FinalRevealStep.HIDDEN, session.getRevealStep(player2.getId()));
+
+        session.timeoutFinalJeopardyReveal();
+        assertEquals(FinalRevealStep.WAGER, session.getRevealStep(player2.getId()));
+        session.timeoutFinalJeopardyReveal();
+        assertEquals(FinalRevealStep.ANSWER, session.getRevealStep(player2.getId()));
+        assertEquals(800, player2.getScore());
+        session.timeoutFinalJeopardyReveal();
+        assertEquals(FinalRevealStep.AWARDED, session.getRevealStep(player2.getId()));
+        assertEquals(500, player2.getScore());
+        assertEquals(FinalRevealStep.HIDDEN, session.getRevealStep(player1.getId()));
+        assertEquals(1000, player1.getScore());
+
+        session.timeoutFinalJeopardyReveal();
+        session.timeoutFinalJeopardyReveal();
+        session.timeoutFinalJeopardyReveal();
+        assertEquals(FinalRevealStep.AWARDED, session.getRevealStep(player1.getId()));
+        assertEquals(1500, player1.getScore());
+        assertEquals(GameSessionState.FINAL_JEOPARDY_REVEALING, session.getState());
+
+        session.timeoutFinalJeopardyReveal();
+        assertEquals(GameSessionState.FINISHED_GAME, session.getState());
+        assertEquals(List.of(player2.getId(), player1.getId()), session.getRevealOrder());
+    }
+
+    @Test
+    void finalJeopardyReveal_withZeroWager_leavesScoreUnchanged() {
         reachFinalJeopardy();
         player1.addScore(-200);
         session.timeoutFinalJeopardyWagering();
         session.answerFinalJeopardy(player1.getId(), "The Civil War");
         session.timeoutFinalJeopardyAnswering();
 
-        session.finishFinalJeopardyReveal();
+        finishFinalJeopardyReveal();
 
         assertEquals(-200, player1.getScore());
     }
@@ -2363,10 +2563,18 @@ class GameSessionTest {
 
     private void reachFinalJeopardy() {
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         finishJeopardyRound();
         playClueWithoutBuzz(doubleJeopardyClue1.id());
 
         assertEquals(GameSessionState.FINAL_JEOPARDY_WAGERING, session.getState());
+    }
+
+    // Takes every reveal step, as the reveal's timer would.
+    private void finishFinalJeopardyReveal() {
+        while (session.getState() == GameSessionState.FINAL_JEOPARDY_REVEALING) {
+            session.timeoutFinalJeopardyReveal();
+        }
     }
 
     private void assertInvalidFinalWager(GameSessionPlayer player, int wager) {
@@ -2378,11 +2586,23 @@ class GameSessionTest {
         assertEquals(GameErrorCode.INVALID_WAGER, exception.getCode());
     }
 
+    // Also ends the next round's title card if the clue ended a round.
     private void playClueWithoutBuzz(Long clueId) {
         session.chooseClue(session.getPlayerChoosingClue(), clueId);
         session.finishRevealingClue();
         session.timeoutBuzzer();
         session.finishRevealingAnswer();
+        finishRoundIntroIfShown();
+    }
+
+    private static void assertError(GameErrorCode code, Executable action) {
+        assertEquals(code, assertThrows(InvalidGameActionException.class, action).getCode());
+    }
+
+    private void finishRoundIntroIfShown() {
+        if (session.getState() == GameSessionState.ROUND_INTRO) {
+            session.finishRoundIntro();
+        }
     }
 
     // Player 2 answers jeopardyClue1 correctly (+200) and takes control of the board.
@@ -2397,7 +2617,9 @@ class GameSessionTest {
     private void startDailyDouble() {
         addDailyDoubleClue();
         session.startGame(player1.getId());
+        session.finishRoundIntro();
         session.chooseClue(player1.getId(), dailyDoubleClue1.id());
+        session.finishRevealingDailyDouble();
     }
 
     private void assertInvalidWager(int wager) {

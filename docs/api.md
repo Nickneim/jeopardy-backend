@@ -458,7 +458,7 @@ A successful action produces a broadcast. A failed one produces an error on `/us
 | `hostPlayerId` | The host's player id (§6.4), or `null` while nobody has joined. Always a player with `leaving: false`, or in a `TREBEK` session `trebek.id`. |
 | `allowLateJoin` | Whether players can join after the start. `true` by default; only the host can change it, before the start (§6.6). |
 | `joinScore` | The score a player who joins now starts with. Never above 0 (§6.6). |
-| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses, and once the game has finished. |
+| `playerChoosingClue` | Whose turn it is to pick. `null` before the game starts; already set during a clue round's `ROUND_INTRO`. Correct answers take control of the board, and Double Jeopardy starts with the lowest score in control (§6.2). Always `null` from Final Jeopardy on, where nobody chooses, and once the game has finished. |
 | `playerAnswering` | Who must answer right now. Only set in `WAITING_FOR_ANSWER` (the buzzer, or the chooser on a Daily Double), and in `WAITING_FOR_RULING` for the player whose answer Trebek is ruling on; otherwise `null`. |
 | `playersLockedOut` | Players who already buzzed on this clue and can't buzz again. Only filled in `WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER` and `WAITING_FOR_RULING`; otherwise `[]`. |
 | `board` | The current round's grid (§5.1). Never contains questions, answers or Daily Double locations. |
@@ -490,10 +490,10 @@ Non-null while an ordinary clue (or Daily Double) is in play, from the moment it
 | Field | Meaning |
 |---|---|
 | `clueId`, `value` | The chosen clue |
-| `dailyDouble` | `true` for a Daily Double. It's public at this point, since the wager phase reveals it. `null` in `CLUE_PICKED` (§6.8), so the board doesn't give a Daily Double away before Trebek shows it. |
+| `dailyDouble` | `true` for a Daily Double. It's public at this point: `REVEALING_DAILY_DOUBLE` announces it. `null` in `CLUE_PICKED` (§6.8), so the board doesn't give a Daily Double away before Trebek shows it. |
 | `wager` | The Daily Double wager once it's placed; otherwise `null` |
-| `minWager`, `maxWager` | The lowest and highest wager the chooser can place (§6.2), only in `WAITING_FOR_DAILY_DOUBLE_WAGER`; otherwise `null` |
-| `question` | Hidden (`null`) in `CLUE_PICKED` and while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on (`WAITING_FOR_RULING` included) |
+| `minWager`, `maxWager` | The lowest and highest wager the chooser can place (§6.2), only in `WAITING_FOR_DAILY_DOUBLE_WAGER`; otherwise `null` (also during the announcement) |
+| `question` | Hidden (`null`) in `CLUE_PICKED`, `REVEALING_DAILY_DOUBLE` and while waiting for a Daily Double wager; shown from `REVEALING_CLUE` on (`WAITING_FOR_RULING` included) |
 | `clueType` | `TEXT` \| `IMAGE` \| `SOUND` \| `VIDEO`. Hidden exactly like `question`. |
 | `mediaUrl` | The image, sound or video to play with the question, `null` for a `TEXT` clue. Hidden exactly like `question`. |
 | `numberExpected` | `true` when only an exact number is accepted (§6.7), so you can warn the player that typos won't be forgiven. Hidden exactly like `question`, since it says something about the answer. |
@@ -513,9 +513,9 @@ Non-null during the Final Jeopardy states, and in `FINISHED_GAME` if the game ha
 | `answer` (the correct response, written as in §6.7) and `acceptedAnswers` (the same, ready to show, as in §5.2) | `FINAL_JEOPARDY_REVEALING` |
 | `players[]` → `playerId`, `hasWagered`, `hasAnswered` (only `true` for a player who actually wagered or answered; a missing wager still counts as 0) | always |
 | `players[]` → `maxWager` (the most that player can wager: their score, or 0) | only in `FINAL_JEOPARDY_WAGERING`; `null` otherwise |
-| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | `FINAL_JEOPARDY_REVEALING` (before that they're `null`, so nobody can see anyone else's). `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. In a Trebek session, per player as their reveal steps are reached instead (below). |
-| `revealOrder` | Trebek sessions only: the player ids in the order they're revealed, from `FINAL_JEOPARDY_REVEALING` on (and in `FINISHED_GAME`). `null` in a `CONTESTANT` session. |
-| `players[]` → `revealStep` | Trebek sessions only, from `FINAL_JEOPARDY_REVEALING` on: `HIDDEN` \| `WAGER` \| `ANSWER` \| `AWARDED`, how far this player's reveal has got. From `WAGER` their `wager` is shown, from `ANSWER` also their `answer` and `phrasedAsQuestion`, and once `AWARDED` also `correct` (Trebek's ruling), `matchedAnswers` and `alsoAccepted`. `null` in a `CONTESTANT` session. |
+| `players[]` → `wager`, `answer`, `correct`, `phrasedAsQuestion`, `matchedAnswers`, `alsoAccepted` | During `FINAL_JEOPARDY_REVEALING`, per player as their reveal steps are reached (`revealStep`, below); before the reveal they're all `null`, so nobody can see anyone else's. `phrasedAsQuestion` (§6.7) stays `null` for a player who didn't answer; `matchedAnswers` and `alsoAccepted` (as in §5.4) are only set for a correct answer. |
+| `revealOrder` | The player ids in the order they're revealed (§6.2), from `FINAL_JEOPARDY_REVEALING` on (and in `FINISHED_GAME`); `null` before. |
+| `players[]` → `revealStep` | From `FINAL_JEOPARDY_REVEALING` on: `HIDDEN` \| `WAGER` \| `ANSWER` \| `AWARDED`, how far this player's reveal has got. From `WAGER` their `wager` is shown, from `ANSWER` also their `answer` and `phrasedAsQuestion`, and once `AWARDED` also `correct` (in a Trebek session, Trebek's ruling), `matchedAnswers` and `alsoAccepted`. `null` before the reveal. |
 
 ### 5.4 `clueAnswers`
 
@@ -528,7 +528,7 @@ What players answered on the current ordinary clue or Daily Double, oldest first
 - `matchedAnswers` (only for a correct answer, otherwise `null`; in a Trebek session only when Trebek ruled it correct **and** the check matched it, so fall back to `acceptedAnswers`): what the answer named, in the order the player named it, each in the wording they matched. For `a linen [closet | cupboard]`, "linen cupbord" gives `["a linen cupboard"]`; for `(2 of) gold | frankincense | myrrh`, "myrrh and gold" gives `["myrrh", "gold"]`. Optional parts stay in, said or not (`["(Abraham) Lincoln"]`).
 - `alsoAccepted` (only for a correct answer, otherwise `null`): the options of a list the player didn't name, each in its first wording, for "We would also have accepted ...". It's empty for an answer that isn't a list, since other wordings of the same thing are never offered. A correct answer ends the clue, so neither field shows anything before the reveal.
 
-An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE`, until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
+An entry appears in the broadcast that follows the answer. After a wrong answer, the list stays visible while others buzz and answer (`WAITING_FOR_BUZZER`, `WAITING_FOR_ANSWER`). After the last answer it stays visible in `REVEALING_ANSWER` and then in `CHOOSING_CLUE` (or the next round's `ROUND_INTRO`), until the next clue is chosen. It's cleared when a clue is chosen and when Final Jeopardy starts (Final Jeopardy has its own reveal in §5.3).
 
 The one exception: when a player is removed after leaving (§6.4), their entries are deleted with them.
 
@@ -546,24 +546,30 @@ It never contains the stored correct response, which is only sent as `currentClu
 WAITING_FOR_START
    │ start
    ▼
+ROUND_INTRO (6s: the round's title card)
+   ▼
 CHOOSING_CLUE (30s) ◄────────────────────────────────────────┐
    │ choose-clue (or 30s: a clue is chosen for the chooser)  │
-   ├── Daily Double ─► WAITING_FOR_DAILY_DOUBLE_WAGER        │
+   ├── Daily Double ─► REVEALING_DAILY_DOUBLE (6s)           │
+   │                     ▼                                   │
+   │                   WAITING_FOR_DAILY_DOUBLE_WAGER        │
    │                     │ place-daily-double-wager (or 30s) │
    ▼                     ▼                                   │
-REVEALING_CLUE (3s)                                          │
+REVEALING_CLUE (8s)                                          │
    ├── Daily Double ─► WAITING_FOR_ANSWER (chooser only)     │
    ▼                                                         │
-WAITING_FOR_BUZZER (10s) ──── buzz ───► WAITING_FOR_ANSWER (5s)
+WAITING_FOR_BUZZER (10s) ──── buzz ───► WAITING_FOR_ANSWER (15s)
    │ nobody buzzes                         │ correct, wrong with nobody left,
    ▼                                       │ Daily Double, or timeout
-REVEALING_ANSWER (3s) ◄────────────────────┘
+REVEALING_ANSWER (8s) ◄────────────────────┘
    │                (wrong with players left → back to WAITING_FOR_BUZZER)
-   └─► CHOOSING_CLUE, next round, Final Jeopardy, or FINISHED_GAME ─┘
+   └─► CHOOSING_CLUE, or the next round's ROUND_INTRO (Final Jeopardy's
+       included), or FINISHED_GAME ─┘
 
-Final Jeopardy:
+Final Jeopardy (after its ROUND_INTRO):
 FINAL_JEOPARDY_WAGERING (30s) → FINAL_JEOPARDY_ANSWERING (30s)
-  → FINAL_JEOPARDY_REVEALING (10s) → scores applied → FINISHED_GAME
+  → FINAL_JEOPARDY_REVEALING (10s per player, one at a time; each scored as revealed)
+  → FINISHED_GAME
 
 Any state ──(session removed, §6.5)──► CLOSED   (only in the very last broadcast)
 ```
@@ -572,20 +578,23 @@ The durations shown are the defaults; each session can change them (§6.3). A Tr
 
 ### 6.2 Rules
 
-These are a `CONTESTANT` session's rules. A Trebek session keeps them except where §6.8 says otherwise: nobody is scored by the answer check, the question form is Trebek's call, and Final Jeopardy scores change at each player's award.
+These are a `CONTESTANT` session's rules. A Trebek session keeps them except where §6.8 says otherwise: nobody is scored by the answer check, the question form is Trebek's call, and each Final Jeopardy award waits for Trebek's ruling.
 
 
 - **Start:** only the host can start, and the host picks the first clue.
+- **Title cards:** every round opens with `ROUND_INTRO` (6 s by default, `roundIntroMs`): the game's first round when the game starts, then each later round, Final Jeopardy included. `round` is already the round being introduced, and so are `board` and, in a clue round, `playerChoosingClue` (`null` before Final Jeopardy). Show a title card for that round ("Jeopardy!", "Double Jeopardy!", "Final Jeopardy!"). Nothing can be played until it ends; then a clue round goes to `CHOOSING_CLUE` and Final Jeopardy to `FINAL_JEOPARDY_WAGERING`. Rounds without clues are skipped, title card included, and a game without Final Jeopardy goes straight to `FINISHED_GAME`. If the chooser left during the title card, control passes when the round begins, as in §6.4.
 - **Choosing a clue:** the player in control has 30 s (by default) to choose. If they don't, the server chooses for them: the top-most available clue (lowest row), leftmost category first. It's played exactly as if they had chosen it, so it can be a Daily Double, and they keep control. This keeps the game moving if the chooser is `away`. A chooser who has *left* loses control instead (§6.4).
 - **Scoring:** a correct answer adds the clue's value and gives that player control of the board. A wrong answer, or running out of time to answer, subtracts it. Not buzzing costs nothing.
 - **Wrong answers:** the other players who haven't buzzed yet can buzz. When everyone has buzzed, the answer is revealed. "Everyone" means every player who hasn't left and isn't `away`: players marked `leaving` can't buzz, and neither they nor `away` players are waited for (an `away` player who reconnects in time can still buzz). If a player leaves while everyone else still in the game has already buzzed, the answer is revealed at once. A player going `away` never ends a phase by itself; it counts from the next answer on.
 - **Rounds:** when every clue in a round has been played, the next round starts. Rounds with no clues are skipped. After Double Jeopardy comes Final Jeopardy if the game has one; otherwise the game finishes. As on the show, **Double Jeopardy starts with the lowest score in control** (the lowest id on a tie, among players who haven't left; an `away` player only gets control if everyone is `away`).
-- **Daily Double:** only the player who chose it plays. Their wager must be between 5 and the larger of their score and the round's highest clue value (normally 1000 in Jeopardy and 2000 in Double Jeopardy). On a board whose values are so low that this maximum is under 5, the minimum is the maximum instead. While they wager, `currentClue.minWager` and `currentClue.maxWager` give the range; a wager outside it gets `INVALID_WAGER` with the range in the message, for example `"Your wager must be between 5 and 2000!"`. Not wagering in time means the minimum wager (5). Right or wrong, the wager is added or subtracted, and the chooser keeps control.
+- **Daily Double:** choosing one (or the timer choosing it) first announces it: `REVEALING_DAILY_DOUBLE` (6 s by default, `dailyDoubleRevealMs`), with `currentClue.dailyDouble` `true` and the question still hidden. Then the wager starts. Only the player who chose it plays. Their wager must be between 5 and the larger of their score and the round's highest clue value (normally 1000 in Jeopardy and 2000 in Double Jeopardy). On a board whose values are so low that this maximum is under 5, the minimum is the maximum instead. While they wager, `currentClue.minWager` and `currentClue.maxWager` give the range; a wager outside it gets `INVALID_WAGER` with the range in the message, for example `"Your wager must be between 5 and 2000!"`. Not wagering in time means the minimum wager (5). Right or wrong, the wager is added or subtracted, and the chooser keeps control.
 - **Final Jeopardy:**
   - Every player wagers between 0 and their score (`finalJeopardy.players[].maxWager` while wagering). A score of 0 or less can only wager 0, but that player still plays. A wager outside the range gets `INVALID_WAGER`, for example `"Your wager must be between 0 and 3400!"`.
   - Wagers and answers can be changed until their phase ends. Phases always run their full time.
   - A missing wager counts as 0, and a missing answer counts as wrong.
-  - Scores change only after the reveal.
+  - **The reveal goes one player at a time**, in `finalJeopardy.revealOrder`: lowest score when answering closed first (the lowest id on a tie). The correct response is shown as the reveal starts, with every player `HIDDEN`. Then each player takes three steps, shown in `players[].revealStep`: `WAGER` (everyone sees their wager), `ANSWER` (their answer and `phrasedAsQuestion` too), and `AWARDED` (their wager is added or subtracted, and `correct`, `matchedAnswers` and `alsoAccepted` are shown). After the last player's award, one more step ends the game (`FINISHED_GAME`).
+  - The reveal's clock gives each player `finalJeopardyRevealMs` (§6.3), split evenly over their three steps, and the opening step (everyone hidden) and the closing one (before `FINISHED_GAME`) get one share each. With the default 10 s, every step is a phase of 3333 ms with its own `phaseDurationMs`, so two players take 7 × 3333 ms ≈ 23.3 s.
+  - **Scores change at each player's award**, not before.
 - **Answer checking** is lenient about spelling, wording and order but strict about numbers, and Double and Final Jeopardy need the question form ("What is ...?"). See §6.7.
 
 ### 6.3 Timings
@@ -594,15 +603,17 @@ Each session has its own phase durations, sent in every response as `timers`. Th
 
 | Phase | `timers` field | Default |
 |---|---|---|
+| A round's title card (`ROUND_INTRO`) | `roundIntroMs` | 6 s |
 | Choosing a clue (`CHOOSING_CLUE`) | `clueChoiceMs` | 30 s |
-| Clue reveal (`REVEALING_CLUE`) | `clueRevealMs` | 3 s |
+| Clue reveal (`REVEALING_CLUE`) | `clueRevealMs` | 8 s |
+| Daily Double announcement (`REVEALING_DAILY_DOUBLE`) | `dailyDoubleRevealMs` | 6 s |
 | Daily Double wager (`WAITING_FOR_DAILY_DOUBLE_WAGER`) | `dailyDoubleWagerMs` | 30 s |
 | Buzzer (`WAITING_FOR_BUZZER`) | `buzzerMs` | 10 s |
 | Answer (`WAITING_FOR_ANSWER`) | `answerMs` | 15 s |
-| Answer reveal (`REVEALING_ANSWER`) | `answerRevealMs` | 3 s |
+| Answer reveal (`REVEALING_ANSWER`) | `answerRevealMs` | 8 s |
 | Final Jeopardy wagering | `finalJeopardyWagerMs` | 30 s |
 | Final Jeopardy answering | `finalJeopardyAnswerMs` | 30 s |
-| Final Jeopardy reveal | `finalJeopardyRevealMs` | 10 s |
+| Final Jeopardy reveal, **per player** (§6.2) | `finalJeopardyRevealMs` | 10 s |
 
 `WAITING_FOR_START`, `FINISHED_GAME` and `CLOSED` have no timer, and neither do a Trebek session's `CLUE_PICKED`, `WAITING_FOR_RULING` and phases whose timer mode is `TREBEK` (§6.8).
 
@@ -645,8 +656,10 @@ As soon as a player leaves:
 |---|---|
 | `WAITING_FOR_START` | Removed at once |
 | During the clue rounds, without a role | Removed at once |
+| While they're `playerChoosingClue` in a clue round's `ROUND_INTRO` | Stay with `leaving: true` until the title card ends; then control passes as in the next row and they're removed. |
+| Final Jeopardy's `ROUND_INTRO` | Removed at once (nobody chooses any more). |
 | While they're `playerChoosingClue` in `CHOOSING_CLUE` | Control passes at once to the player with the lowest score (the lowest id on a tie) among those who haven't left, skipping `away` players unless everyone is `away`, with a fresh clue-choice timer, and they're removed. |
-| While they're `playerChoosingClue` during a clue (one they chose, a Daily Double, or the reveal) | Stay with `leaving: true` until the clue ends. If someone answers correctly, that player takes control as usual; otherwise control passes as in the row above when the reveal ends (or, at the end of a round, to the next round's lowest score, §6.2). Until then the timers wager for them on a Daily Double. |
+| While they're `playerChoosingClue` during a clue (one they chose, a Daily Double and its announcement, or the reveal) | Stay with `leaving: true` until the clue ends. If someone answers correctly, that player takes control as usual; otherwise control passes as in the row above when the reveal ends (or, at the end of a round, to the next round's lowest score, §6.2). Until then the timers wager for them on a Daily Double. |
 | While they're `playerAnswering` (the buzzer, or the chooser on a Daily Double) | Stay with `leaving: true` until their answer time runs out, which counts as a wrong answer (or a wrong Daily Double). If they're also the chooser, they stay until control passes, as above. |
 | `FINAL_JEOPARDY_WAGERING`, `FINAL_JEOPARDY_ANSWERING` | Removed at once. There are no roles in Final Jeopardy. |
 | `FINAL_JEOPARDY_REVEALING`, `FINISHED_GAME` | Stay in `players` with `leaving: true`, so the results still show them. A player who leaves during the reveal is still scored. |
@@ -754,7 +767,7 @@ Defaults:
 
 | Timer | Mode |
 |---|---|
-| `clueChoiceMs`, `buzzerMs`, `answerMs`, `finalJeopardyWagerMs`, `finalJeopardyAnswerMs` | `AUTOMATIC` |
+| `roundIntroMs`, `dailyDoubleRevealMs`, `clueChoiceMs`, `buzzerMs`, `answerMs`, `finalJeopardyWagerMs`, `finalJeopardyAnswerMs` | `AUTOMATIC` |
 | `clueRevealMs`, `dailyDoubleWagerMs`, `answerRevealMs`, `finalJeopardyRevealMs` | `TREBEK` |
 
 **Starting** needs at least one player besides Trebek: otherwise `INVALID_STATE`, `"Nobody is playing yet!"`. The first chooser is the player with the lowest id in `players` (the first to join after Trebek).
@@ -765,7 +778,7 @@ All destinations are prefixed with `/app/sessions/{sessionId}/`. They're **Trebe
 
 | Destination | Body | Allowed when | Effect |
 |---|---|---|---|
-| `advance` | none | See the table below | Ends the current phase now, exactly as if its timer had run out, whether its mode is `AUTOMATIC` or `TREBEK`. It's how Trebek shows a clue, opens and closes the buzzers, locks wagers and answers, goes back to the board and steps through the Final Jeopardy reveal. |
+| `advance` | none | See the table below | Ends the current phase now, exactly as if its timer had run out, whether its mode is `AUTOMATIC` or `TREBEK`. It's how Trebek ends a title card or a Daily Double announcement, shows a clue, opens and closes the buzzers, locks wagers and answers, goes back to the board and steps through the Final Jeopardy reveal. |
 | `return-clue` | none | `CLUE_PICKED` (otherwise `INVALID_STATE`) | Puts the picked clue back: it's `AVAILABLE` again, the same player keeps control, and `CHOOSING_CLUE` starts again with a fresh timer. |
 | `rule` | `{ "correct": boolean }` | `WAITING_FOR_ANSWER`, `WAITING_FOR_RULING` (otherwise `INVALID_STATE`) | Rules on the answering player's answer (below). |
 | `rule-final` | `{ "playerId": number, "correct": boolean }` | `FINAL_JEOPARDY_REVEALING`, until that player is `AWARDED` | Rules on one player's Final Jeopardy answer (below). It can be changed until their points are awarded; after that `INVALID_STATE`, `"<name>'s points were already awarded!"`. An id that isn't in the reveal gets `PLAYER_NOT_FOUND`. Earlier, `INVALID_STATE`: answers are only ruled on once answering is over. |
@@ -786,7 +799,7 @@ CHOOSING_CLUE ◄─────────────────────
    ▼                                                                 │
 CLUE_PICKED (waits for Trebek) ── return-clue ──► CHOOSING_CLUE      │
    │ advance                                                         │
-   ├── Daily Double ─► WAITING_FOR_DAILY_DOUBLE_WAGER                │
+   ├── Daily Double ─► REVEALING_DAILY_DOUBLE ─► WAITING_FOR_DAILY_DOUBLE_WAGER
    │                     │ wager (the chooser or Trebek), advance or timer (minimum wager)
    ▼                     ▼                                           │
 REVEALING_CLUE                                                       │
@@ -810,8 +823,10 @@ A phase whose timer mode is `TREBEK` waits for `advance`, and its `phaseDuration
 
 | State | `advance` does |
 |---|---|
+| `ROUND_INTRO` | Ends the title card: the round begins |
 | `CHOOSING_CLUE` | Chooses for the chooser, as the timer does (§6.2) |
-| `CLUE_PICKED` | Shows the clue (`REVEALING_CLUE`), or for a Daily Double starts the wager |
+| `CLUE_PICKED` | Shows the clue (`REVEALING_CLUE`), or announces a Daily Double (`REVEALING_DAILY_DOUBLE`) |
+| `REVEALING_DAILY_DOUBLE` | Starts the wager |
 | `WAITING_FOR_DAILY_DOUBLE_WAGER` | Locks the minimum wager, as the timer does |
 | `REVEALING_CLUE` | Opens the buzzers (on a Daily Double, the chooser answers) |
 | `WAITING_FOR_BUZZER` | Closes them: nobody else buzzed, the answer is revealed |
@@ -842,13 +857,9 @@ In `CLUE_PICKED` everyone sees which clue was picked (`currentClue.clueId` and `
 
 **Rulings.** Once answering is over (`FINAL_JEOPARDY_REVEALING`), Trebek rules on each player with `rule-final`, and can change a ruling until that player's points are awarded. Nothing is decided automatically: a missing answer is only a suggestion of wrong.
 
-**The reveal goes one player at a time**, in `finalJeopardy.revealOrder`: lowest score first when answering closed (the lowest id on a tie). Each player has three steps, shown in `players[].revealStep`:
+**The reveal goes one player at a time**, with the same order and steps as in §6.2 (`WAGER`, `ANSWER`, `AWARDED`), except that the award applies Trebek's ruling and needs one.
 
-1. `WAGER`: everyone sees their wager.
-2. `ANSWER`: everyone sees their answer and `phrasedAsQuestion`.
-3. `AWARDED`: their ruling is applied to their score (the wager added or subtracted), and `correct`, `matchedAnswers` and `alsoAccepted` are shown. It needs a ruling.
-
-Each `advance` takes one step; after the last player's award, the next `advance` ends the game (`FINISHED_GAME`). **Scores change at each award**, not all at once after the reveal. With `finalJeopardyRevealMs` set to `AUTOMATIC`, the clock takes the steps instead: the duration is split evenly over every step (3 per player, plus the end of the game), each step is a phase with its own `phaseDurationMs`, and **at an award step it waits** (`phaseDurationMs` `null`) until Trebek rules on that player; the award then happens at once and the clock goes on.
+Each `advance` takes one step; after the last player's award, the next `advance` ends the game (`FINISHED_GAME`). With `finalJeopardyRevealMs` set to `AUTOMATIC`, the clock takes the steps instead, timed as in §6.2, but **at an award step it waits** (`phaseDurationMs` `null`) until Trebek rules on that player; the award then happens at once and the clock goes on.
 
 #### Pausing the clock
 
@@ -931,8 +942,10 @@ type ClueType = "TEXT" | "IMAGE" | "SOUND" | "VIDEO";
 
 type GameSessionState =
   | "WAITING_FOR_START"
+  | "ROUND_INTRO"          // the title card of `round`, before each round (§6.2)
   | "CHOOSING_CLUE"
   | "CLUE_PICKED"          // Trebek sessions: a clue was chosen, Trebek hasn't shown it (§6.8)
+  | "REVEALING_DAILY_DOUBLE" // a Daily Double is announced, before the wager (§6.2)
   | "WAITING_FOR_DAILY_DOUBLE_WAGER"
   | "REVEALING_CLUE"
   | "WAITING_FOR_BUZZER"
@@ -1105,7 +1118,9 @@ interface SessionTimers {
   answerRevealMs: number;
   finalJeopardyWagerMs: number;
   finalJeopardyAnswerMs: number;
-  finalJeopardyRevealMs: number;
+  finalJeopardyRevealMs: number;  // per player (§6.2)
+  roundIntroMs: number;           // each round's title card
+  dailyDoubleRevealMs: number;    // a Daily Double's announcement
 }
 
 // Which phases wait for Trebek, keyed like SessionTimers (§6.8)
@@ -1294,13 +1309,13 @@ interface FinalJeopardyPlayerResponse {
   hasWagered: boolean;     // placed a wager; a missing one counts as 0
   hasAnswered: boolean;
   maxWager: number | null;  // the most they can wager, only in FINAL_JEOPARDY_WAGERING
-  wager: number | null;     // revealed in FINAL_JEOPARDY_REVEALING
-  answer: string | null;    // revealed in FINAL_JEOPARDY_REVEALING
-  correct: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING
-  phrasedAsQuestion: boolean | null;  // revealed in FINAL_JEOPARDY_REVEALING; null without an answer
-  matchedAnswers: string[] | null;    // revealed, correct only (as in ClueAnswerResponse)
-  alsoAccepted: string[] | null;      // revealed, correct only (as in ClueAnswerResponse)
-  revealStep: FinalRevealStep | null; // Trebek sessions, from FINAL_JEOPARDY_REVEALING (§6.8)
+  wager: number | null;     // revealed from revealStep WAGER
+  answer: string | null;    // revealed from revealStep ANSWER
+  correct: boolean | null;  // revealed at revealStep AWARDED
+  phrasedAsQuestion: boolean | null;  // revealed from revealStep ANSWER; null without an answer
+  matchedAnswers: string[] | null;    // revealed at AWARDED, correct only (as in ClueAnswerResponse)
+  alsoAccepted: string[] | null;      // revealed at AWARDED, correct only (as in ClueAnswerResponse)
+  revealStep: FinalRevealStep | null; // from FINAL_JEOPARDY_REVEALING (§6.2)
 }
 
 interface FinalJeopardyResponse {
@@ -1311,7 +1326,7 @@ interface FinalJeopardyResponse {
   answer: string | null;           // "(N of) A | B" lists, "[A | B]" wordings (§6.7)
   acceptedAnswers: AcceptedAnswersResponse | null;  // with answer: ready to show (§6.7)
   players: FinalJeopardyPlayerResponse[];
-  revealOrder: number[] | null;    // Trebek sessions, from FINAL_JEOPARDY_REVEALING (§6.8)
+  revealOrder: number[] | null;    // from FINAL_JEOPARDY_REVEALING (§6.2)
 }
 
 interface GameSessionResponse {
