@@ -5,9 +5,9 @@ $ErrorActionPreference = "Stop"
 
 Push-Location $FrontendDir
 try {
-    npm ci
-    if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
-    npm run build
+    pnpm install --frozen-lockfile
+    if ($LASTEXITCODE -ne 0) { throw "pnpm install failed" }
+    pnpm run build
     if ($LASTEXITCODE -ne 0) { throw "The frontend build failed" }
 
     # Hashed file names: a changed file gets a new name, so these can be cached
