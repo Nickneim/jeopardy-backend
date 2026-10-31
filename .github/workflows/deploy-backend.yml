@@ -7,7 +7,7 @@ name: Deploy backend
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - "src/**"
       - "build.gradle"

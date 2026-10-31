@@ -110,7 +110,7 @@ python -m unittest discover -s scripts/data         # the import scripts' tests
 ## Deployment
 
 - **Kubernetes** (`k8s/`): runs any number of replicas on a local cluster. An ingress hashes each request's `session` parameter, so a session always reaches the pod that holds it. See [k8s/README.md](k8s/README.md).
-- **AWS** (`deploy/aws/`): the live demo. A single EC2 instance runs the backend and Postgres with Docker Compose, starts on demand and stops itself when idle. CloudFront serves the frontend from S3 and forwards `/api` and `/ws` to the instance. A GitHub Actions workflow tests every push to `master`, publishes the image to ECR and restarts the backend, but never while a game is running.
+- **AWS** (`deploy/aws/`): the live demo. A single EC2 instance runs the backend and Postgres with Docker Compose, starts on demand and stops itself when idle. CloudFront serves the frontend from S3 and forwards `/api` and `/ws` to the instance. A GitHub Actions workflow tests every push to `main`, publishes the image to ECR and restarts the backend, but never while a game is running.
 
 ## Project layout
 
