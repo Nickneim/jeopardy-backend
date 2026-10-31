@@ -17,9 +17,9 @@ name: jeopardy
 
 services:
   db:
-    # postgres:17 (the same major version as the Postgres installed before,
-    # so pg_dump and pg_restore move data between them) plus the legacy time
-    # zone names; see docker/postgres/Dockerfile. Compose builds it on the
+    # postgres:17 (the same major version as the AWS deployment's, so pg_dump
+    # and pg_restore move data between them) plus the legacy time zone names;
+    # see docker/postgres/Dockerfile. Compose builds it on the
     # first `up`; after editing the Dockerfile, run `docker compose up -d --build`.
     build: docker/postgres
     image: jeopardy-postgres:17

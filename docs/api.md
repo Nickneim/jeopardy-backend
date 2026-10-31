@@ -11,7 +11,7 @@ The contract between this backend and the React frontend. It covers the REST API
 - Base URL: `http://localhost:8080`. The WebSocket endpoint is `ws://localhost:8080/ws`.
 - Required environment variables: `DATABASE_URL`, `DATABASE_USERNAME` and `DATABASE_PASSWORD`. They live in the backend's git-ignored `.env`, which the backend reads by itself when started from the backend's root folder: from IntelliJ (any run configuration) or with `./gradlew bootRun`. Exported environment variables override it.
 - **Browser origins (CORS):** the backend accepts browser requests and WebSocket connections from `http://localhost:5173` (the Vite dev server) by default. To allow other origins, set `ALLOWED_ORIGINS` to a comma-separated list, for example `ALLOWED_ORIGINS=https://jeopardy.example,http://localhost:5173`.
-- **Debugging server errors:** error bodies never include stack traces or exception messages. To see them while developing the backend, run it with the `dev` profile (set the environment variable `SPRING_PROFILES_ACTIVE=dev`, for example in the IntelliJ run configuration; putting it in `.env` only works with the saved run configuration, which loads `.env` as environment variables). Never use it anywhere else.
+- **Debugging server errors:** error bodies never include stack traces or exception messages. To see them while developing the backend, run it with the `dev` profile (set the environment variable `SPRING_PROFILES_ACTIVE=dev`, for example in an IntelliJ run configuration or with `SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun`; putting it in `.env` only works when something exports `.env` as real environment variables, such as a run configuration that loads it as an env file). Never use it anywhere else.
 
 ---
 

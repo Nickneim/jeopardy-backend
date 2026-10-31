@@ -12,5 +12,6 @@ $FrontendBucket = "jeopardy-frontend-241200392621"
 # someone else. Names under .invalid never exist (RFC 6761), so CloudFront
 # answers 502 at once, which the frontend shows as "offline".
 $OfflineOrigin = "jeopardy-backend-offline.invalid"
-# The frontend repository, built and uploaded by deploy-frontend.ps1.
-$FrontendDir = "C:\Users\Nico\Documents\programming\java\jeopardy\frontend"
+# The frontend repository, built and uploaded by deploy-frontend.ps1: a
+# checkout named frontend next to this one, unless FRONTEND_DIR says otherwise.
+$FrontendDir = if ($env:FRONTEND_DIR) { $env:FRONTEND_DIR } else { Join-Path $PSScriptRoot "..\..\..\frontend" }
