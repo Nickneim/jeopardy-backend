@@ -10,12 +10,10 @@ The React client is in a separate repository: **[jeopardy-frontend](https://gith
 
 - **Real-time multiplayer over WebSockets (STOMP).** The server is authoritative: after every change it sends each player the full game state, and players render whatever arrives. Anyone can watch a session without joining.
 - **The full show.** Jeopardy, Double Jeopardy and Final Jeopardy rounds, round title cards, Daily Doubles with wager limits, a buzzer with lockouts, and a Final Jeopardy reveal that goes through the players one at a time, lowest score first.
-- **Lenient answer checking.** Responses are matched against the stored answer while tolerating typos, optional words, alternative wordings and "name N of these" lists. From Double Jeopardy on they must be phrased as a question. The rules are pinned down by a suite of test cases built from real clues.
-- **Host as Trebek.** The host can run the show instead of playing: revealing clues, ruling on answers, adjusting scores and pausing the clock. Secrets such as unrevealed answers only go to the host's connection.
-- **Custom shows.** Write your own board in the client and play it without storing anything. It's validated with specific feedback for each mistake.
-- **Robust sessions.** Players reconnect with a secret token after a refresh. Every phase is on a server-side timer, so an absent player can't stall the game. Players can join mid-game, the host role passes on when the host leaves, and abandoned sessions are cleaned up.
-- **Lobby and game browser.** Live sessions can be filtered, sorted and paged. Imported games can be browsed by season, title and air date.
-- **Horizontal scaling.** Sessions live in memory, and Kubernetes manifests route each session to the instance that holds it. The lobby gathers sessions from every instance.
+- **Lenient answer checking.** Responses are matched against the stored answer while tolerating typos, optional words, alternative wordings and "name N of these" lists. From Double Jeopardy on they must be phrased as a question.
+- **Host as Trebek.** The host can run the show instead of playing: revealing clues, ruling on answers, adjusting scores and pausing the clock.
+- **Custom shows.** Write your own board in the client and play it without storing anything.
+- **Horizontal scaling.** Sessions live in memory, and Kubernetes manifests route each session to the instance that holds it.
 
 ## Tech stack
 
